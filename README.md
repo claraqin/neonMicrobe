@@ -1,15 +1,18 @@
-# Analysis of NEON and DoB soil microbial community data
+# Analysis of NEON and DoB fungal sequence data
+### NSF Macrosystems: Macroecology of microorganisms: Scaling fungal biodiversity from soil cores to the North American continent 
 
-├ data
-│  ├ metadata
-│  │  └ NEON_soilRawDataFiles.csv  # URL lookup table for NEON fastq downloads
-│  │
-│  └ Illumina  # raw fastq files from NEON and DoB Illumina sequencing;
-│              #   NOT PUSHED TO GITHUB - ACCESS ON SERVER (see below)
-│
-└ code
-   └ downloadRawSequenceData.R  # R script for downloading NEON fastq files in bulk;
-                                #   used to populate /data/Illumina
+```
+├── data
+|   ├── metadata
+|   |   └── NEON_soilRawDataFiles.csv  # URL lookup table for NEON fastq downloads
+|   |
+|   └── Illumina  # raw fastq files from NEON and DoB Illumina sequencing;
+|                 #   NOT PUSHED TO GITHUB - ACCESS ON SERVER (see below)
+|
+└── code
+    └── downloadRawSequenceData.R  # R script for downloading NEON fastq files in bulk;
+                                   #   used to populate /data/Illumina
+```
 
 
 ## Setup
