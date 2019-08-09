@@ -20,6 +20,11 @@ downloadRawSequenceData <- function(sites="all", startYrMo="YYYY-MM", endYrMo="Y
     download.file(url=as.character(u.urls[i]), destfile = ifelse(dir.exists(outdir), 
                                               paste(outdir, fileNms, sep="/"), 
                                              paste(getwd(), fileNms, sep="/" )) ) 
+    if(dir.exists(outdir)) {
+      print(paste("Finished downloading", paste(outdir, fileNms, sep="/")))
+    } else {
+      print(paste("Finished downloading", paste(getwd(), fileNms, sep="/" )))
+    }
   }
   
   return(dat)
