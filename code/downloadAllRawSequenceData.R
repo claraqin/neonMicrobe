@@ -1,0 +1,18 @@
+# Download ALL raw sequence data
+#
+# Wrapper for downloadRawSequenceData.R,
+# parameterized for socs-stats.ucsc.edu server,
+# and will pull data up to current month.
+
+library(neonUtilities)
+library(utils)
+
+source("downloadRawSequenceData.R")
+
+sites = "all"
+startYrMo = "2011-06"
+endYrMo = format(Sys.Date(), "%Y-%m")
+outdir = "/afs/cats.ucsc.edu/users/b/claraqin/zhulab/NEON_DoB_analysis/data/Illumina"
+checkFileSize = FALSE
+
+downloadRawSequenceData(sites, startYrMo, endYrMo, outdir, checkFileSize)
