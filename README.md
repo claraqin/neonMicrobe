@@ -32,9 +32,9 @@ To work with the sequence data, you must create an account on `socs-stats.ucsc.e
 
 Now you should be able to work with the raw sequence data on the server. There are a few ways to interact with the data. Probably the most straightforward is to use the [RStudio Server](https://socs-stats.ucsc.edu:8787). (You'll be prompted for your username and password.) You can also see [this page](https://socs-stats.ucsc.edu/doku.php) for other access options.
 
-## Downloading raw sequence files as a batch
+## Downloading raw sequence files as a batch (backend process)
 
-To download all fastq files, run on `screen`:
+To download all fastq files onto the socs-stats server, log in to the server, start a new `screen`, and run the following:
 
 ```
 Rscript downloadAllRawSequenceData.R
