@@ -14,5 +14,7 @@ startYrMo = "2011-06"
 endYrMo = format(Sys.Date(), "%Y-%m")
 outdir = "/afs/cats.ucsc.edu/users/b/claraqin/zhulab/NEON_DoB_analysis/data/Illumina"
 checkFileSize = FALSE
+return_data = FALSE
 
-downloadRawSequenceData(sites, startYrMo, endYrMo, outdir, checkFileSize)
+downloadRawSequenceData(sites, startYrMo, endYrMo, outdir, checkFileSize,
+                        return_data)

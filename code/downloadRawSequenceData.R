@@ -9,7 +9,8 @@
 # checkFileSize = TRUE
 
 downloadRawSequenceData <- function(sites="all", startYrMo="YYYY-MM", endYrMo="YYYY-MM", 
-                                    outdir="~/Downloads", checkFileSize=TRUE) {
+                                    outdir="~/Downloads", checkFileSize=TRUE,
+                                    return_data=TRUE) {
   # outdir - path to directory to ouput the data. Defaults to the R default directory if none provided
   # change checkFileSize to FALSE to override file size checks
   
@@ -34,6 +35,8 @@ downloadRawSequenceData <- function(sites="all", startYrMo="YYYY-MM", endYrMo="Y
     }
   }
   
-  return(dat)
+  if(return_data) {
+    return(dat)
+  }
   ## END FUNCTION ##
 }
