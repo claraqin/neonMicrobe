@@ -48,3 +48,15 @@ To extract all downloaded zipped files:
 cd /data/ZHULAB/NEON_DOB/Illumina
 ls *.gz | xargs -n1 tar xvzf
 ```
+
+To flatten the nested directories that begin with `hpc`:
+
+```
+find /data/ZHULAB/NEON_DOB/Illumina -mindepth 2 -type f -exec mv -t /data/ZHULAB/NEON_DOB/Illumina -n '{}' +
+```
+
+To remove all zipped files (to save space):
+
+```
+rm *.gz
+```
