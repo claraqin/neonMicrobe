@@ -60,3 +60,6 @@ To remove all zipped files (to save space):
 ```
 rm *.gz
 ```
+
+**UPDATE:** There is now a built-in function in the `neonUtilities` R package called `zipsByURI` which could replace some of this custom code.
+
