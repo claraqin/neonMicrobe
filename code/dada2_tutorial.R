@@ -1,11 +1,9 @@
 # DADA2 tutorial
-# Follows https://benjjneb.github.io/dada2/tutorial.html
-
-# May want to follow this too https://benjjneb.github.io/dada2/ITS_workflow.html
+# Follows the ITS workflow https://benjjneb.github.io/dada2/ITS_workflow.html
 
 library(dada2)
 
-path <- "~/zhulab/NEON_DoB_analysis/data/Illumina"
+path <- "~/zhulab/NEON_DoB_analysis/data/Illumina/ITS"
 list.files(path)
 
 # Forward and reverse fastq filenames have format: SAMPLENAME_R1_001.fastq and SAMPLENAME_R2_001.fastq

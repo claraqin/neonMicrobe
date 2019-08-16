@@ -55,6 +55,15 @@ To flatten the nested directories that begin with `hpc`:
 find /data/ZHULAB/NEON_DOB/Illumina -mindepth 2 -type f -exec mv -t /data/ZHULAB/NEON_DOB/Illumina -n '{}' +
 ```
 
+Then to organize ITS and 16S sequences into separate directories:
+
+```
+mkdir ITS
+mv *ITS*.fastq ITS
+mkdir 16S
+mv *16S*.fastq 16S
+```
+
 To remove all zipped files (to save space):
 
 ```
