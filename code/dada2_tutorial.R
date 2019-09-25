@@ -171,23 +171,25 @@ plotQualityProfile(cutRs[1:2])
 filtFs <- file.path(path.cut2, "filtered", basename(cutFs))
 filtRs <- file.path(path.cut2, "filtered", basename(cutRs))
 
-### TO CHANGE: Currently, following code is only for first 10 out of 2196 samples
-
-out <- filterAndTrim(cutFs[1:10], filtFs[1:10], cutRs[1:10], filtRs[1:10], maxN = 0, maxEE = c(2, 2), 
+out <- filterAndTrim(cutFs, filtFs, cutRs, filtRs, maxN = 0, maxEE = c(2, 2), 
                      truncQ = 2, minLen = 50, rm.phix = TRUE, compress = TRUE, multithread = TRUE)  # on windows, set multithread = FALSE
 head(out)
 
+filtFs.out <- list.files(paste(path.cut2, "filtered", sep="/"), pattern="_R1.fastq.gz", full.names=TRUE)
+filtRs.out <- list.files(paste(path.cut2, "filtered", sep="/"), pattern="_R2.fastq.gz", full.names=TRUE)
+
 # Learn the error rates
-errF <- learnErrors(filtFs[1:10], multithread = TRUE)
-errR <- learnErrors(filtRs[1:10], multithread = TRUE)
+errF <- learnErrors(filtFs.out, multithread = TRUE)
+errR <- learnErrors(filtRs.out, multithread = TRUE)
 
 # Visualize estimated error rates
-plotErrors(errF[1:10], nominalQ = TRUE)
+plotErrors(errF, nominalQ = TRUE)
 
 # Dereplicate identical reads
-derepFs <- derepFastq(filtFs[1:10], verbose = TRUE)
-derepRs <- derepFastq(filtRs[1:10], verbose = TRUE)
+derepFs <- derepFastq(filtFs.out, verbose = TRUE)
+derepRs <- derepFastq(filtRs.out, verbose = TRUE)
 # Name the derep-class objects by the sample names
+sample.names <- unname(sapply(filtFs.out, get.sample.name))
 names(derepFs) <- sample.names
 names(derepRs) <- sample.names
 
@@ -216,7 +218,7 @@ track <- cbind(out, sapply(dadaFs, getN), sapply(dadaRs, getN),
 # sapply(dadaFs, getN) with getN(dadaFs)
 colnames(track) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", 
                      "nonchim")
-rownames(track) <- sample.names[1:10]
+rownames(track) <- sample.names
 head(track)
 
 ### NOTE: unlike the tutorial, we lost a lot of reads at the "filtN" stage,
@@ -231,3 +233,11 @@ taxa <- assignTaxonomy(seqtab.nochim, unite.ref, multithread = TRUE, tryRC = TRU
 taxa.print <- taxa  # Removing sequence rownames for display only
 rownames(taxa.print) <- NULL
 head(taxa.print)
+
+
+# Hand off to phyloseq
+
+
+
+library(phyloseq)
+packageVersion("phyloseq")
