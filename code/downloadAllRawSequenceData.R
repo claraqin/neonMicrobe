@@ -1,5 +1,7 @@
 # Download ALL raw sequence data
 #
+# Metadata is DP1.10108: "Soil microbe marker gene sequences"
+#
 # Wrapper for downloadRawSequenceData.R,
 # parameterized for socs-stats.ucsc.edu server,
 # and will pull data up to current month.

@@ -105,3 +105,9 @@ It seems that `cutadapt` (and perhaps also `filterAndTrim`) requires fastq files
 gzip *.fastq
 ```
 
+## Retrieving soil sample data
+
+```
+# TO DO: confirm that this works on socs-stats
+Rscript downloadAllRawSoilData.R
+```

@@ -1,6 +1,8 @@
 ## Function downloads the metadata for various sequencing data products and downloads the ##
 ## raw data files ##
 
+# Metadata is DP1.10108: "Soil microbe marker gene sequences"
+
 # sites = "HARV"
 # startYrMo = "2014-06"
 # endYrMo = "2014-07"
