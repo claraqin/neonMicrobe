@@ -1,6 +1,8 @@
 # Download ALL raw soil data
 #
-# Data product is DP1.10086: "Soil physical properties (Distributed periodic)"
+# Data product are
+# - DP1.10078: "Soil chemical properties (Distributed periodic)"
+# - DP1.10086: "Soil physical properties (Distributed periodic)"
 #
 # Wrapper for downloadRawSoilData.R,
 # parameterized for socs-stats.ucsc.edu server,

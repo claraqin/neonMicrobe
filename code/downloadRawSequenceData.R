@@ -4,8 +4,8 @@
 # Metadata is DP1.10108: "Soil microbe marker gene sequences"
 
 # sites = "HARV"
-# startYrMo = "2014-06"
-# endYrMo = "2014-07"
+# startYrMo = "2016-04"
+# endYrMo = "2016-07"
 # outdir = "/afs/cats.ucsc.edu/users/b/claraqin/zhulab/NEON_DoB_analysis/data/Illumina"
 # # outdir = "~/Downloads"
 # checkFileSize = TRUE
