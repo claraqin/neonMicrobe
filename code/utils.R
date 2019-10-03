@@ -167,9 +167,9 @@ downloadRawSoilData <- function(sites="all", startYrMo="YYYY-MM", endYrMo="YYYY-
     dat_soilChemistry <- read.delim(path_soilChemistry, sep=",", stringsAsFactors=FALSE)
     
     select(dat_soilCoreCollection, uid:biomassID, -uid) %>%
-      full_join(select(dat_soilMoisture, uid:dryMassFraction, -uid)) %>%
-      full_join(select(dat_soilpH, uid:caclpHRatio, -uid)) %>%
-      full_join(select(dat_soilChemistry, uid:CNratio, -uid)) -> 
+      full_join(select(dat_soilMoisture, uid:dryMassFraction, -uid), by=joining_cols) %>%
+      full_join(select(dat_soilpH, uid:caclpHRatio, -uid), by=joining_cols) %>%
+      full_join(select(dat_soilChemistry, uid:CNratio, -uid), by=joining_cols) -> 
       dat_soil
     
     return(dat_soil)
