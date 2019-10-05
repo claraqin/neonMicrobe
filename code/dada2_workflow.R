@@ -1,5 +1,5 @@
-# DADA2 tutorial
-# Follows the ITS workflow https://benjjneb.github.io/dada2/ITS_workflow.html
+# DADA2 workflow for processing NEON ITS raw sequences
+# Follows https://benjjneb.github.io/dada2/ITS_workflow.html
 
 library(dada2)
 library(ShortRead)
