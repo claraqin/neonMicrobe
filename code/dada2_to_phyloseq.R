@@ -55,5 +55,6 @@ plot_richness(ps, x="collectDate", measures=c("Shannon", "Simpson"), color="site
 
 plot_richness(ps, x="soilTemp", measures=c("Shannon", "Simpson"), color="horizon")
 
-plot_richness(ps, x="decimalLatitude", measures=c("Observed", "Shannon"), color="domainID")
+plot_richness(ps, x="decimalLatitude", measures=c("Observed", "Shannon"), color="domainID") + 
+  geom_smooth()
 
