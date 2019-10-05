@@ -2,21 +2,16 @@
 # DADA2 pipeline (e.g. non-chimeric sequence table, taxonomic table)
 # to environmental/sample data.
 
-source("./utils.R")
+source("./code/utils.R")
 library(phyloseq)
 library(ggplot2)
 
-seqtab.nochim <- readRDS("./NEON_ITS_seqtab_nochim_DL08-13-2019.Rds")
-taxa <- readRDS("./NEON_ITS_taxa_DL08-13-2019.Rds")
+seqtab.nochim <- readRDS("./code/NEON_ITS_seqtab_nochim_DL08-13-2019.Rds")
+taxa <- readRDS("./code/NEON_ITS_taxa_DL08-13-2019.Rds")
 
 seqmetadata <- downloadAllSequenceMetadata()
 
 seqmetadata$geneticSampleID <- sub("-DNA[1-3]", "", seqmetadata$dnaSampleID)
-
-# seqmetadata %>%
-#   select(geneticSampleID, internalLabID) %>%
-#   distinct() ->
-#   link_geneticID_labID
 
 seqmetadata %>%
   select(geneticSampleID, rawDataFileName) %>%
@@ -24,17 +19,7 @@ seqmetadata %>%
   distinct() ->
   link_geneticID_filename
 
-# TODO: Merge metadata with the output of downloadAllRawSoilData(),
-# joining by geneticSampleID. Then match rownames of seqtab_nochim
-# to the environmental data via the newly merged dataset's 
-# "internalLabID" column.
-
 soildata <- downloadAllRawSoilData()
-
-# soildata %>%
-#   filter(geneticSampleID != "") %>%
-#   inner_join(seqmetadata, by="geneticSampleID") ->
-#   sampledata
 
 soildata %>%
   filter(geneticSampleID != "") %>%
@@ -62,7 +47,7 @@ ps <- merge_phyloseq(ps, dna)
 taxa_names(ps) <- paste0("ASV", seq(ntaxa(ps)))
 ps
 
-saveRDS(ps, "NEON_ITS_phyloseq_DL08-13-2019.Rds")
+saveRDS(ps, "./code/NEON_ITS_phyloseq_DL08-13-2019.Rds")
 
 # Phyloseq object is ready for analysis
 
