@@ -227,17 +227,14 @@ head(track)
 ### be lost in the filtering stage.
 
 # Assign taxonomy using the UNITE database
-unite.ref <- "../data/tax_ref/sh_general_release_dynamic_02.02.2019.fasta"
+unite.ref <- "./data/tax_ref/sh_general_release_dynamic_02.02.2019.fasta"
 taxa <- assignTaxonomy(seqtab.nochim, unite.ref, multithread = TRUE, tryRC = TRUE)
 
 taxa.print <- taxa  # Removing sequence rownames for display only
 rownames(taxa.print) <- NULL
 head(taxa.print)
 
-
-# Hand off to phyloseq
-
-
-
-library(phyloseq)
-packageVersion("phyloseq")
+# Save OTU table and taxonomic table as RDS files
+# to hand off to dada2_to_phyloseq.R
+saveRDS(seqtab.nochim, "NEON_ITS_seqtab_nochim_DL08-13-2019.Rds")
+saveRDS(taxa, "NEON_ITS_taxa_DL08-13-2019.Rds")
