@@ -8,18 +8,19 @@ library(dplyr)
 preset_sites = "all"
 preset_startYrMo = "2011-06"
 preset_endYrMo = format(Sys.Date(), "%Y-%m")
-preset_outdir = "/afs/cats.ucsc.edu/users/b/claraqin/zhulab/NEON_DoB_analysis/data/Illumina"
+preset_outdir_sequence = "/afs/cats.ucsc.edu/users/b/claraqin/zhulab/NEON_DoB_analysis/data/Illumina/NEON"
+preset_outdir_seqmeta = "/afs/cats.ucsc.edu/users/b/claraqin/zhulab/NEON_DoB_analysis/data/sequence_metadata"
+preset_outdir_soil = "/afs/cats.ucsc.edu/users/b/claraqin/zhulab/NEON_DoB_analysis/data/soil"
 preset_checkFileSize = FALSE
 preset_return_data = TRUE
 
-## Function downloads the metadata for marker gene sequencing data products 
+## Function downloads the metadata for NEON marker gene sequencing data products 
 #
 # Metadata is just one table withing DP1.10108 ("Soil microbe marker gene sequences")
 # called "mmg_soilRawDataFiles.csv"
-downloadSequenceMetadata <- function(sites="all", startYrMo="YYYY-MM", endYrMo="YYYY-MM", 
-                                     outdir="~/Downloads", checkFileSize=TRUE,
-                                     return_data=TRUE) {
-  # outdir - path to directory to download the data. Defaults to the R default directory if none provided
+downloadSequenceMetadata <- function(sites = preset_sites, startYrMo = preset_startYrMo, endYrMo = preset_endYrMo, 
+                                     outdir = preset_outdir_seqmeta, checkFileSize = preset_checkFileSize, return_data = preset_return_data) {
+  # outdir - path to directory to download the data
   # change checkFileSize to FALSE to override file size checks
   
   PRNUM <- "10108"
@@ -48,25 +49,25 @@ downloadSequenceMetadata <- function(sites="all", startYrMo="YYYY-MM", endYrMo="
 }
 ## END FUNCTION ##
 
-## Function downloads ALL metadata for marker gene sequencing data products,
+## Function downloads ALL metadata for NEON marker gene sequencing data products,
 ## using preset parameters
 # 
 # Wrapper for downloadSequenceMetadata,
 # parameterized for socs-stats.ucsc.edu server,
 # and will pull data up to current month.
-downloadAllSequenceMetadata <- function() {
-  return(downloadSequenceMetadata(preset_sites, preset_startYrMo, preset_endYrMo, 
-                                  preset_outdir, preset_checkFileSize, preset_return_data))
+downloadAllSequenceMetadata <- function(sites = preset_sites, startYrMo = preset_startYrMo, endYrMo = preset_endYrMo, 
+                                        outdir = preset_outdir_seqmeta, checkFileSize = preset_checkFileSize, return_data = preset_return_data) {
+  return(downloadSequenceMetadata(sites, startYrMo, endYrMo, 
+                                  outdir, checkFileSize, return_data))
 }
 
-## Function downloads the metadata for marker gene sequencing data products 
-## AND downloads the raw data files
+## Function downloads the metadata for NEON marker gene sequencing data products 
+## AND downloads the NEON raw sequence data files
 #
 # Wrapper for downloadSequenceMetadata
-downloadRawSequenceData <- function(sites="all", startYrMo="YYYY-MM", endYrMo="YYYY-MM", 
-                                    outdir="~/Downloads", checkFileSize=TRUE,
-                                    return_data=TRUE) {
-  # outdir - path to directory to download the data. Defaults to the R default directory if none provided
+downloadRawSequenceData <- function(sites = preset_sites, startYrMo = preset_startYrMo, endYrMo = preset_endYrMo, 
+                                    outdir = preset_outdir_sequence, checkFileSize = preset_checkFileSize, return_data = preset_return_data) {
+  # outdir - path to directory to download the data
   # change checkFileSize to FALSE to override file size checks
   
   metadata <- downloadSequenceMetadata(sites, startYrMo, endYrMo, outdir, checkFileSize=FALSE, return_data=TRUE)
@@ -94,15 +95,16 @@ downloadRawSequenceData <- function(sites="all", startYrMo="YYYY-MM", endYrMo="Y
 ## END FUNCTION ##
 
 
-## Function downloads ALL metadata for marker gene sequencing data products
-## AND downloads ALL raw sequence data, using preset parameters
+## Function downloads ALL metadata for NEON marker gene sequencing data products
+## AND downloads ALL NEON raw sequence data, using preset parameters
 #
 # Wrapper for downloadRawSequenceData,
 # parameterized for socs-stats.ucsc.edu server,
 # and will pull data up to current month.
-downloadAllRawSequenceData <- function() {
-  return(downloadRawSequenceData(preset_sites, preset_startYrMo, preset_endYrMo, 
-                                 preset_outdir, preset_checkFileSize, preset_return_data))
+downloadAllRawSequenceData <- function(sites = preset_sites, startYrMo = preset_startYrMo, endYrMo = preset_endYrMo, 
+                                       outdir = preset_outdir_sequence, checkFileSize = preset_checkFileSize, return_data = preset_return_data) {
+  return(downloadRawSequenceData(sites, startYrMo, endYrMo, 
+                                 outdir, checkFileSize, return_data))
 }
 ## END FUNCTION
 
@@ -113,9 +115,8 @@ downloadAllRawSequenceData <- function() {
 # Data product are
 # - DP1.10078: "Soil chemical properties (Distributed periodic)"
 # - DP1.10086: "Soil physical properties (Distributed periodic)"
-downloadRawSoilData <- function(sites="all", startYrMo="YYYY-MM", endYrMo="YYYY-MM", 
-                                outdir="~/Downloads", checkFileSize=TRUE,
-                                return_data=TRUE) {
+downloadRawSoilData <- function(sites = preset_sites, startYrMo = preset_startYrMo, endYrMo = preset_endYrMo, 
+                                outdir = preset_outdir_soil, checkFileSize = preset_checkFileSize, return_data = preset_return_data) {
   # outdir - path to directory to download the data. Defaults to the R default directory if none provided
   # change checkFileSize to FALSE to override file size checks
   
@@ -178,20 +179,14 @@ downloadRawSoilData <- function(sites="all", startYrMo="YYYY-MM", endYrMo="YYYY-
 ## END FUNCTION ##
 
 
-## Function downloads ALL raw soil data, using preset parameters
+## Function downloads ALL NEON soil data, using preset parameters
 #
 # Wrapper for downloadRawSoilData,
 # parameterized for socs-stats.ucsc.edu server,
 # and will pull data up to current month.
-downloadAllRawSoilData <- function() {
-  sites = "all"
-  startYrMo = "2011-06"
-  endYrMo = format(Sys.Date(), "%Y-%m")
-  outdir = "/afs/cats.ucsc.edu/users/b/claraqin/zhulab/NEON_DoB_analysis/data/metadata"
-  checkFileSize = FALSE
-  return_data = TRUE
-  
-  return(downloadRawSoilData(preset_sites, preset_startYrMo, preset_endYrMo, 
-                             preset_outdir, preset_checkFileSize, preset_return_data))
+downloadAllRawSoilData <- function(sites = preset_sites, startYrMo = preset_startYrMo, endYrMo = preset_endYrMo, 
+                                   outdir = preset_outdir_soil, checkFileSize = preset_checkFileSize, return_data = preset_return_data) {
+return(downloadRawSoilData(sites, startYrMo, endYrMo, 
+                             outdir, checkFileSize, return_data))
 }
 ## END FUNCTION ##
