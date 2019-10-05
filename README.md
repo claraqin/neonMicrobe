@@ -3,6 +3,7 @@
 
 ```
 ├── data  # NONE OF THIS DIRECTORY IS PUSHED TO GITHUB - ACCESS ON SERVER (see below)
+|   |
 |   ├── metadata
 |   |   └── NEON_soilRawDataFiles.csv  # URL lookup table for NEON fastq downloads
 |   |
@@ -24,20 +25,23 @@
 |                   └── filtered  # after passing quality filter
 |                 
 |
-└── code
-    ├── data2_tutorial.R  # follows https://benjjneb.github.io/dada2/ITS_workflow.html
-    |                     #  to create the processed reads from raw fastqs    
+└── code  # if running R scripts in RStudio, set working directory
+    |     # to be the git root directory (e.g. "NEON_DoB_analysis"), 
+    |     # not "code" subdirectory
     |
-    ├── downloadRawSequenceData.R  # R script for downloading NEON fastq files in bulk;
-    |                              #   used to populate /data/Illumina
+    ├── utils.R  # contains various functions including one which downloads all
+    |            # NEON raw microbial sequence data
     |
-    └── downloadAllRawSequenceData.R  # Wrapper for downloadRawSequenceData.R;
-                                      #   downloads all files uploaded since given date
+    ├── dada2_workflow.R  # follows https://benjjneb.github.io/dada2/ITS_workflow.html
+    |                     # to process NEON ITS raw sequence data
+    |
+    └── dada2_to_phyloseq.R  # assembles outputs of dada2_workflow.R, plus soil data
+                             # and sequence metadata, to create phyloseq object
     
 ```
 
 
-## Setup
+## Setup for new collaborators
 
 **None of the data is pushed to this repo. Even if you clone this repo, you will still not be able to access the data.**
 
@@ -50,20 +54,53 @@ To work with the sequence data, you must create an account on `socs-stats.ucsc.e
 
 Now you should be able to work with the data on the server. There are a few ways to interact with the data. Probably the most straightforward is to use the [RStudio Server](https://socs-stats.ucsc.edu:8787). (You'll be prompted for your username and password.) You can also see [this page](https://socs-stats.ucsc.edu/doku.php) for other access options.
 
-## Downloading raw sequence files as a batch (backend process)
+## Processed data
 
-To download all fastq files onto the socs-stats server, log in to the server, start a new `screen`, and run the following:
+The complete workflow thus far for processing the raw sequence data consisted of running the following scripts in order:
+
+1. `dada2_workflow.R`
+2. `dada2_to_phyloseq.R`
+
+This workflow has produced the following objects of potential interest for downstream analysis:
+
+1. a phyloseq object representing all NEON ITS data, plus their associated sample data and taxonomic table, as of Aug. 13, 2019: `./code/NEON_ITS_phyloseq_DL08-13-2019.Rds`
+
+
+To read these into `R`, use the `readRDS()` function, e.g.:
 
 ```
-Rscript downloadAllRawSequenceData.R
+ps <- readRDS("./code/NEON_ITS_phyloseq_DL08-13-2019.Rds")
 ```
 
-(To avoid wasting time downloading files that already exist, you may have to change `startYrMo` in `downloadAllRawSequenceData.R`.)
+
+## Setup for starting from scratch on the socs-stats server
+
+(This is how I set everything up on socs-stats in the first place.)
+
+
+### Downloading raw sequence files as a batch
+
+To download all fastq files onto the socs-stats server, log in to the server, `cd` to the root directory of your cloned repository (e.g. `cd NEON_DoB_analysis`), start a new `screen`, and start `R`. Then, in `R`:
+
+```
+source("./code/utils.R")
+downloadAllRawSequenceData()
+```
+
+Notes: 
+* This process may take a while. You can detach the screen while waiting, using `Ctrl+A, D`. Later you can reattach by typing `screen -r`.
+* To avoid wasting time downloading files that already exist, you may have to change the `startYrMo` argument in `downloadAllRawSequenceData()`, e.g. `downloadAllRawSequenceData(startYrMo = "2019-01")`.
+
+Once finished, quit R.
+
+```
+q()
+```
 
 To extract all downloaded zipped files:
 
 ```
-cd /data/ZHULAB/NEON_DOB/Illumina
+cd /data/ZHULAB/NEON_DOB/Illumina/NEON
 ls *.gz | xargs -n1 tar xvzf
 ```
 
@@ -88,9 +125,8 @@ To remove all zipped files (to save space):
 rm *.gz
 ```
 
-**UPDATE:** There is now a built-in function in the `neonUtilities` R package called `zipsByURI` which could replace some of this custom code.
 
-## Pre-processing
+### Pre-processing
 
 I had to rename a single file due to a capitalization error, though there may be more in the future:
 
@@ -103,11 +139,4 @@ It seems that `cutadapt` (and perhaps also `filterAndTrim`) requires fastq files
 
 ```
 gzip *.fastq
-```
-
-## Retrieving soil sample data
-
-```
-# TO DO: confirm that this works on socs-stats
-Rscript downloadAllRawSoilData.R
 ```
