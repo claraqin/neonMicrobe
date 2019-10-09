@@ -56,14 +56,16 @@ Now you should be able to work with the data on the server. There are a few ways
 
 ## Processed data
 
-The complete workflow thus far for processing the raw sequence data consisted of running the following scripts in order:
+The complete workflow thus far for processing the raw sequence data consisted of running the following scripts in order. If you need to re-run the scripts for any reason, you should set the working directory to be the git root directory (e.g. `NEON_DoB_analysis`), *not* the `code` subdirectory.
 
 1. `dada2_workflow.R`
 2. `dada2_to_phyloseq.R`
 
 This workflow has produced the following objects of potential interest for downstream analysis:
 
-1. a phyloseq object representing all NEON ITS data, plus their associated sample data and taxonomic table, as of Aug. 13, 2019: `./code/NEON_ITS_phyloseq_DL08-13-2019.Rds`
+1. a phyloseq object representing all NEON ITS data as of Aug. 13, 2019, plus their associated sample data and taxonomic table: `./code/NEON_ITS_phyloseq_DL08-13-2019.Rds` (NOTE: this phyloseq object is currently still missing soil data for over half of the samples. NEON is working to resolve this.)
+
+
 
 
 To read these into `R`, use the `readRDS()` function, e.g.:
