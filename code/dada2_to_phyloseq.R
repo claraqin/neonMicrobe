@@ -14,10 +14,11 @@ seqmetadata <- downloadAllSequenceMetadata()
 seqmetadata$geneticSampleID <- sub("-DNA[1-3]", "", seqmetadata$dnaSampleID)
 
 seqmetadata %>%
-  select(geneticSampleID, rawDataFileName) %>%
-  mutate(filename = sub(".fastq"))
+  # select(geneticSampleID, rawDataFileName, internalLabID) %>%
+  # mutate(match_name = sub("_((ITS)|(16S))_R[12].fastq(.tar)?(.gz)?$","", rawDataFileName)) %>% dim()
+  select(geneticSampleID, internalLabID) %>%
   distinct() ->
-  link_geneticID_filename
+  link_geneticID_labID
 
 soildata <- downloadAllRawSoilData()
 
@@ -31,6 +32,7 @@ seqtab_labID <- rownames(seqtab.nochim)
 sampledata_ind <- match(seqtab_labID, sampledata_full$internalLabID)
 # Not all sequencing samples have a corresponding sample-data entry!
 
+lee_metadata <- read.csv("./code/ITSmetadataMapped.csv")
 lee_metadata %>%
   mutate(match_name = sub("_((ITS)|(16S))_R[12].fastq$", "", fileName)) ->
   lee_metadata
