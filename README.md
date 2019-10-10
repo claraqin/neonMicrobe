@@ -1,6 +1,12 @@
 # Analysis of NEON and DoB fungal sequence data
 ### NSF Macrosystems: Macroecology of microorganisms: Scaling fungal biodiversity from soil cores to the North American continent 
 
+### TO DO:
+
+* Create `data` and `raw-data` folders
+* Set up subfolders `sequence_metadata` and `soil` in `raw-data`
+* Revise `outdir` objects in `utils.R` to point to subdirectories in `raw-data`, not `data`
+
 ```
 ├── data  # NONE OF THIS DIRECTORY IS PUSHED TO GITHUB - ACCESS ON SERVER (see below)
 |   |
