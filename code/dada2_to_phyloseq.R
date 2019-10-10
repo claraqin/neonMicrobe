@@ -31,6 +31,11 @@ seqtab_labID <- rownames(seqtab.nochim)
 sampledata_ind <- match(seqtab_labID, sampledata_full$internalLabID)
 # Not all sequencing samples have a corresponding sample-data entry!
 
+lee_metadata %>%
+  mutate(match_name = sub("_((ITS)|(16S))_R[12].fastq$", "", fileName)) ->
+  lee_metadata
+sampledata_ind2 <- match(seqtab_labID, lee_metadata$match_name)
+
 sampledata <- sampledata_full[sampledata_ind,]
 rownames(sampledata) <- seqtab_labID
 
