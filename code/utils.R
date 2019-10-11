@@ -13,6 +13,38 @@ preset_outdir_seqmeta = "/afs/cats.ucsc.edu/users/b/claraqin/zhulab/NEON_DoB_ana
 preset_outdir_soil = "/afs/cats.ucsc.edu/users/b/claraqin/zhulab/NEON_DoB_analysis/data/soil"
 preset_checkFileSize = FALSE
 preset_return_data = TRUE
+site_and_date_range_filename = "sites_and_date_range.txt"
+
+## Function to write site and date range parameters. To be called within other functions.
+#
+write_site_and_date_range <- function(writeDir, sites, startYrMo, endYrMo) {
+  write.table(
+    data.frame(x1=c("sites", "startYrMo", "endYrMo"),
+               x2=c(sites, startYrMo, endYrMo)),
+    file = paste(writeDir, site_and_date_range_filename, sep="/"),
+    sep=":", col.names=FALSE, quote=FALSE, row.names=FALSE
+  )
+}
+## END FUNCTION
+
+
+## Function issues warning that metadata has already been downloaded, and indicates the sites
+## and date ranges for which it was downloaded. To be called within other functions.
+#
+warn_already_downloaded <- function(PRNUM, outdir) {
+  stackDir <- paste(outdir, paste0("filesToStack",PRNUM), sep="/")
+  site_and_date_range <- read.table(paste(stackDir, site_and_date_range_filename, sep="/"), 
+                                    header=FALSE, sep=":")
+  warning("Data product ", PRNUM, 
+          " has already been downloaded to ",outdir, 
+          ".\nEnsure that sites / date range of downloaded data was correct,\n",
+          "or else remove the data and re-run your command.\n",
+          "sites:", site_and_date_range[1,2],
+          "  startYrMo:", site_and_date_range[2,2],
+          "  endYrMo:", site_and_date_range[3,2])
+}
+## END FUNCTION
+
 
 ## Function downloads the metadata for NEON marker gene sequencing data products 
 #
@@ -34,9 +66,12 @@ downloadSequenceMetadata <- function(sites = preset_sites, startYrMo = preset_st
                                  savepath=outdir)
     
     stackByTable(stackDir, folder = TRUE)
+    
+    # Write site_and_date_range.txt file to record parameters
+    write_site_and_date_range(stackDir, sites, startYrMo, endYrMo)
+    
   } else {
-    warning("Data product ", PRNUM, " has already been downloaded to ",
-            outdir, ".\nEnsure that sites / date range of downloaded data was correct,\nor else remove them and re-run your command.")
+    warn_already_downloaded(PRNUM, outdir)
   }
   
   if(return_data) { # If not, then simply downloads the data to the outdir
@@ -72,10 +107,9 @@ downloadRawSequenceData <- function(sites = preset_sites, startYrMo = preset_sta
   
   metadata <- downloadSequenceMetadata(sites, startYrMo, endYrMo, outdir, checkFileSize=FALSE, return_data=TRUE)
   
-  # u.urls <- unique(dat$mmg_soilRawDataFiles$rawDataFilePath)
   u.urls <- unique(metadata$rawDataFilePath)
   fileNms <- gsub('^.*\\/', "", u.urls)
-  print(paste("There are", length(u.urls), "unique files to download.") )
+  print(paste("There are", length(u.urls), "unique raw sequence files to download.") )
   
   for(i in 1:length(u.urls)) {
     download.file(url=as.character(u.urls[i]), destfile = ifelse(dir.exists(outdir), 
@@ -133,9 +167,12 @@ downloadRawSoilData <- function(sites = preset_sites, startYrMo = preset_startYr
                                  enddate=endYrMo, package="expanded", check.size=checkFileSize, savepath = outdir)
     
     stackByTable(stackDir_chem, folder = TRUE)
+    
+    # Write site_and_date_range.txt file to record parameters
+    write_site_and_date_range(stackDir_chem, sites, startYrMo, endYrMo)
+    
   } else {
-    warning("Data product ", PRNUM_chem, " has already been downloaded to ",
-            outdir, ".\nEnsure that sites / date range of downloaded data was correct,\nor else remove them and re-run your command.")
+    warn_already_downloaded(PRNUM_chem, outdir)
   }
   
   # Download only if not already downloaded to outdir
@@ -144,9 +181,12 @@ downloadRawSoilData <- function(sites = preset_sites, startYrMo = preset_startYr
                                  enddate=endYrMo, package="expanded", check.size=checkFileSize, savepath = outdir)
     
     stackByTable(stackDir_phys, folder = TRUE)
+    
+    # Write site_and_date_range.txt file to record parameters
+    write_site_and_date_range(stackDir_phys, sites, startYrMo, endYrMo)
+    
   } else {
-    warning("Data product ", PRNUM_phys, " has already been downloaded to ",
-            outdir, ".\nEnsure that sites / date range of downloaded data was correct,\nor else remove them and re-run your command.")
+    warn_already_downloaded(PRNUM_phys, outdir)
   }
   
   if(return_data) { # If not, then simply downloads the data to the outdir
