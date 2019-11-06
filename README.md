@@ -8,10 +8,17 @@
 * Revise `outdir` objects in `utils.R` to point to subdirectories in `raw-data`, not `data`
 
 ```
-├── data  # NONE OF THIS DIRECTORY IS PUSHED TO GITHUB - ACCESS ON SERVER (see below)
+├── data  # processed data - can be read into R using readRDS()
 |   |
-|   ├── metadata
-|   |   └── NEON_soilRawDataFiles.csv  # URL lookup table for NEON fastq downloads
+|   ├── NEON_ITS_phyloseq_DL08-13-2019.Rds  # phyloseq object based on NEON ITS sequences
+|   |                                       # which were downloaded on DL[date]
+|   ├── NEON_ITS_seqtab_nochim_DL08-13-2019.Rds  # sequence table with chimeras removed
+|   |
+|   └── NEON_ITS_taxa_DL08-13-2019.Rds  # taxa table based on UNITE database
+|
+├── raw_data  # NONE OF THIS DIRECTORY IS PUSHED TO GITHUB - ACCESS ON SERVER (see below)
+|   |
+|   ├── sequence_metadata  # metadata for linking ITS sequence data to soil and site data
 |   |
 |   ├── tax_ref  # taxonomic reference tables to match sequences with taxonomy
 |   |   └── sh_general_release_dynamic_02.02.2019.fasta
