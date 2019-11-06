@@ -8,9 +8,9 @@ library(dplyr)
 preset_sites = "all"
 preset_startYrMo = "2011-06"
 preset_endYrMo = format(Sys.Date(), "%Y-%m")
-preset_outdir_sequence = "/afs/cats.ucsc.edu/users/b/claraqin/zhulab/NEON_DoB_analysis/data/Illumina/NEON"
-preset_outdir_seqmeta = "/afs/cats.ucsc.edu/users/b/claraqin/zhulab/NEON_DoB_analysis/data/sequence_metadata"
-preset_outdir_soil = "/afs/cats.ucsc.edu/users/b/claraqin/zhulab/NEON_DoB_analysis/data/soil"
+preset_outdir_sequence = "/afs/cats.ucsc.edu/users/b/claraqin/zhulab/NEON_DoB_analysis/raw_data/Illumina/NEON"
+preset_outdir_seqmeta = "/afs/cats.ucsc.edu/users/b/claraqin/zhulab/NEON_DoB_analysis/raw_data/sequence_metadata"
+preset_outdir_soil = "/afs/cats.ucsc.edu/users/b/claraqin/zhulab/NEON_DoB_analysis/raw_data/soil"
 preset_checkFileSize = FALSE
 preset_return_data = TRUE
 site_and_date_range_filename = "sites_and_date_range.txt"
