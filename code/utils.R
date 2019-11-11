@@ -8,9 +8,9 @@ library(dplyr)
 preset_sites = "all"
 preset_startYrMo = "2011-06"
 preset_endYrMo = format(Sys.Date(), "%Y-%m")
-preset_outdir_sequence = "/afs/cats.ucsc.edu/users/b/claraqin/zhulab/NEON_DoB_analysis/raw_data/Illumina/NEON"
-preset_outdir_seqmeta = "/afs/cats.ucsc.edu/users/b/claraqin/zhulab/NEON_DoB_analysis/raw_data/sequence_metadata"
-preset_outdir_soil = "/afs/cats.ucsc.edu/users/b/claraqin/zhulab/NEON_DoB_analysis/raw_data/soil"
+preset_outdir_sequence = "/data/ZHULAB/NEON_DOB/Illumina/NEON"
+preset_outdir_seqmeta = "/data/ZHULAB/NEON_DOB/sequence_metadata"
+preset_outdir_soil = "/data/ZHULAB/NEON_DOB/soil"
 preset_checkFileSize = FALSE
 preset_return_data = TRUE
 site_and_date_range_filename = "sites_and_date_range.txt"
@@ -18,6 +18,7 @@ site_and_date_range_filename = "sites_and_date_range.txt"
 ## Function to write site and date range parameters. To be called within other functions.
 #
 write_site_and_date_range <- function(writeDir, sites, startYrMo, endYrMo) {
+  # paste("writing in ", writeDir)
   write.table(
     data.frame(x1=c("sites", "startYrMo", "endYrMo"),
                x2=c(sites, startYrMo, endYrMo)),
@@ -32,7 +33,9 @@ write_site_and_date_range <- function(writeDir, sites, startYrMo, endYrMo) {
 ## and date ranges for which it was downloaded. To be called within other functions.
 #
 warn_already_downloaded <- function(PRNUM, outdir) {
+  # print(paste("checking in ", outdir))
   stackDir <- paste(outdir, paste0("filesToStack",PRNUM), sep="/")
+  # print(paste("specifically in ", stackDir))
   site_and_date_range <- read.table(paste(stackDir, site_and_date_range_filename, sep="/"), 
                                     header=FALSE, sep=":")
   warning("Data product ", PRNUM, 

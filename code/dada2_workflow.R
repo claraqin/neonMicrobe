@@ -5,7 +5,7 @@ library(dada2)
 library(ShortRead)
 library(Biostrings)
 
-path <- "/afs/cats.ucsc.edu/users/b/claraqin/zhulab/NEON_DoB_analysis/data/Illumina/NEON/ITS"
+path <- "/data/ZHULAB/NEON_DOB/Illumina/NEON/ITS"
 list.files(path)
 
 # Forward and reverse fastq filenames have format: SAMPLENAME_R1_001.fastq and SAMPLENAME_R2_001.fastq
