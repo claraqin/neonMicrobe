@@ -51,7 +51,7 @@
 
 ## Setup for new collaborators
 
-**None of the data is pushed to this repo. Even if you clone this repo, you will still not be able to access the data.**
+**None of the raw data is pushed to this repo. Even if you clone this repo, you will still not be able to access the data.**
 
 To work with the sequence data, you must create an account on `socs-stats.ucsc.edu` where it is stored. Communicate with Kai Zhu for an account. Then, do the following:
 
