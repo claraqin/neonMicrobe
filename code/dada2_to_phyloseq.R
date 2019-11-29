@@ -1,0 +1,76 @@
+# Merge various NEON data products to link the outputs of the
+# DADA2 pipeline (e.g. non-chimeric sequence table, taxonomic table)
+# to environmental/sample data.
+
+source("./code/utils.R")
+library(phyloseq)
+library(ggplot2)
+
+seqtab.nochim <- readRDS("./code/NEON_ITS_seqtab_nochim_DL08-13-2019.Rds")
+taxa <- readRDS("./code/NEON_ITS_taxa_DL08-13-2019.Rds")
+
+# seqmetadata <- downloadAllSequenceMetadata()
+# 
+# seqmetadata$geneticSampleID <- sub("-DNA[1-3]", "", seqmetadata$dnaSampleID)
+# 
+# seqmetadata %>%
+#   # select(geneticSampleID, rawDataFileName, internalLabID) %>%
+#   # mutate(match_name = sub("_((ITS)|(16S))_R[12].fastq(.tar)?(.gz)?$","", rawDataFileName)) %>% dim()
+#   select(geneticSampleID, internalLabID) %>%
+#   distinct() ->
+#   link_geneticID_labID
+
+soildata <- downloadAllRawSoilData()
+
+# soildata %>%
+#   filter(geneticSampleID != "") %>%
+#   full_join(link_geneticID_labID, by="geneticSampleID") ->
+#   sampledata_full
+
+seqtab_rownames <- rownames(seqtab.nochim)
+
+# sampledata_ind <- match(seqtab_rownames, sampledata_full$internalLabID)
+# # Not all sequencing samples have a corresponding sample-data entry!
+
+# Try again with Lee's custom metadata (TODO: need to operationalize)
+lee_metadata <- read.csv("./code/ITSmetadataMapped.csv")
+lee_metadata %>%
+  mutate(match_name = sub("_((ITS)|(16S))_R[12].fastq$", "", basename(as.character(fileName)))) ->
+  lee_metadata
+sampledata_ind2 <- match(seqtab_rownames, lee_metadata$match_name)
+mean(is.na(sampledata_ind2)) # 0.262
+# Yes, let's go with this one instead of seqmetadata
+
+soildata %>%
+  filter(geneticSampleID != "") %>%
+  full_join(select(lee_metadata, match_name, geneticSampleID), by="geneticSampleID") ->
+  sampledata_full
+sampledata_ind <- match(seqtab_rownames, sampledata_full$match_name)
+
+sampledata <- sampledata_full[sampledata_ind,]
+rownames(sampledata) <- seqtab_rownames
+
+
+ps <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows=FALSE), 
+               sample_data(sampledata), 
+               tax_table(taxa))
+
+# store the DNA sequences of our ASVs in the refseq slot of the phyloseq object, 
+# and then rename our taxa to a short string
+dna <- Biostrings::DNAStringSet(taxa_names(ps))
+names(dna) <- taxa_names(ps)
+ps <- merge_phyloseq(ps, dna)
+taxa_names(ps) <- paste0("ASV", seq(ntaxa(ps)))
+ps
+
+saveRDS(ps, "./code/NEON_ITS_phyloseq_DL08-13-2019.Rds")
+
+# Phyloseq object is ready for analysis
+
+plot_richness(ps, x="collectDate", measures=c("Shannon", "Simpson"), color="siteID")
+
+plot_richness(ps, x="soilTemp", measures=c("Shannon", "Simpson"), color="horizon")
+
+plot_richness(ps, x="decimalLatitude", measures=c("Observed", "Shannon"), color="domainID") + 
+  geom_smooth()
+
