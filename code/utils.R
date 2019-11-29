@@ -7,6 +7,11 @@ library(dplyr)
 # Load parameters from params.R
 source("./code/params.R")
 
+# If preset output directories do not exist, create them
+if(!dir.exists(preset_outdir_sequence)) dir.create(preset_outdir_sequence, recursive=TRUE)
+if(!dir.exists(preset_outdir_seqmeta)) dir.create(preset_outdir_seqmeta, recursive=TRUE)
+if(!dir.exists(preset_outdir_soil)) dir.create(preset_outdir_soil, recursive=TRUE)
+
 ## Function to write site and date range parameters. To be called within other functions.
 #
 write_site_and_date_range <- function(writeDir, sites, startYrMo, endYrMo) {
@@ -60,6 +65,7 @@ downloadSequenceMetadata <- function(sites = preset_sites, startYrMo = preset_st
                                  enddate=endYrMo, package="expanded", check.size=checkFileSize, 
                                  savepath=outdir)
     
+    print(paste("Attempt to stackByTable in", stackDir))
     stackByTable(stackDir, folder = TRUE)
     
     # Write site_and_date_range.txt file to record parameters
