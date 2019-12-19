@@ -4,16 +4,13 @@ library(neonUtilities)
 library(utils)
 library(dplyr)
 
-# Preset parameters for the "All" variants of download functions:
-preset_sites = "all"
-preset_startYrMo = "2011-06"
-preset_endYrMo = format(Sys.Date(), "%Y-%m")
-preset_outdir_sequence = "/data/ZHULAB/NEON_DOB/Illumina/NEON"
-preset_outdir_seqmeta = "/data/ZHULAB/NEON_DOB/sequence_metadata"
-preset_outdir_soil = "/data/ZHULAB/NEON_DOB/soil"
-preset_checkFileSize = FALSE
-preset_return_data = TRUE
-site_and_date_range_filename = "sites_and_date_range.txt"
+# Load parameters from params.R
+source("./code/params.R")
+
+# If preset output directories do not exist, create them
+if(!dir.exists(preset_outdir_sequence)) dir.create(preset_outdir_sequence, recursive=TRUE)
+if(!dir.exists(preset_outdir_seqmeta)) dir.create(preset_outdir_seqmeta, recursive=TRUE)
+if(!dir.exists(preset_outdir_soil)) dir.create(preset_outdir_soil, recursive=TRUE)
 
 ## Function to write site and date range parameters. To be called within other functions.
 #
@@ -68,6 +65,7 @@ downloadSequenceMetadata <- function(sites = preset_sites, startYrMo = preset_st
                                  enddate=endYrMo, package="expanded", check.size=checkFileSize, 
                                  savepath=outdir)
     
+    print(paste("Attempt to stackByTable in", stackDir))
     stackByTable(stackDir, folder = TRUE)
     
     # Write site_and_date_range.txt file to record parameters
