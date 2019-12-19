@@ -32,8 +32,8 @@ for(name in rm_from_fnRs) {
 
 
 # Identify primers
-FWD <- "CTTGGTCATTTAGAGGAAGTAA"  ## CHANGE ME to your forward primer sequence
-REV <- "GCTGCGTTCTTCATCGATGC"  ## CHANGE ME...
+FWD <- "CTTGGTCATTTAGAGGAAGTAA"
+REV <- "GCTGCGTTCTTCATCGATGC"
 
 
 # Get all orientations of primers, just to be safe

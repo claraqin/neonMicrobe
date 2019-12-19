@@ -6,8 +6,8 @@ source("./code/utils.R")
 library(phyloseq)
 library(ggplot2)
 
-seqtab.nochim <- readRDS("./code/NEON_ITS_seqtab_nochim_DL08-13-2019.Rds")
-taxa <- readRDS("./code/NEON_ITS_taxa_DL08-13-2019.Rds")
+seqtab.nochim <- readRDS("./data/NEON_ITS_seqtab_nochim_DL08-13-2019.Rds")
+taxa <- readRDS("./data/NEON_ITS_taxa_DL08-13-2019.Rds")
 
 # seqmetadata <- downloadAllSequenceMetadata()
 # 
