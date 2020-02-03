@@ -3,7 +3,8 @@
 # This script automates the instructions in the "New server setup"
 # page in the GitHub Wiki, EXCEPT that it only downloads ITS data
 # (so far) and it does not perform the operations in the 
-# "Pre-processing" section.
+# "Pre-processing" section. It also does not split files into
+# ITS and 16S subdirectories.
 # Furthermore, this script appends the sequencing run ID to all
 # fastq filenames, so they can be processed by DADA2 in batches
 # corresponding to sequencing runs.
