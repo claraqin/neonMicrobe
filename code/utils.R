@@ -91,10 +91,9 @@ downloadSequenceMetadata <- function(sites = preset_sites, startYrMo = preset_st
 # Wrapper for downloadSequenceMetadata,
 # parameterized for socs-stats.ucsc.edu server,
 # and will pull data up to current month.
-downloadAllSequenceMetadata <- function(sites = preset_sites, startYrMo = preset_startYrMo, endYrMo = preset_endYrMo, 
-                                        outdir = preset_outdir_seqmeta, checkFileSize = preset_checkFileSize, return_data = preset_return_data) {
-  return(downloadSequenceMetadata(sites, startYrMo, endYrMo, 
-                                  outdir, checkFileSize, return_data))
+downloadAllSequenceMetadata <- function() {
+  return(downloadSequenceMetadata(preset_sites, preset_startYrMo, preset_endYrMo, 
+                                  preset_outdir_seqmeta, preset_checkFileSize, preset_return_data))
 }
 
 ## Function downloads the metadata for NEON marker gene sequencing data products 
@@ -106,7 +105,7 @@ downloadRawSequenceData <- function(sites = preset_sites, startYrMo = preset_sta
   # outdir - path to directory to download the data
   # change checkFileSize to FALSE to override file size checks
   
-  metadata <- downloadSequenceMetadata(sites, startYrMo, endYrMo, outdir, checkFileSize=FALSE, return_data=TRUE)
+  metadata <- downloadSequenceMetadata(sites, startYrMo, endYrMo, checkFileSize=FALSE, return_data=TRUE)
   
   u.urls <- unique(metadata$rawDataFilePath)
   fileNms <- gsub('^.*\\/', "", u.urls)
@@ -136,10 +135,9 @@ downloadRawSequenceData <- function(sites = preset_sites, startYrMo = preset_sta
 # Wrapper for downloadRawSequenceData,
 # parameterized for socs-stats.ucsc.edu server,
 # and will pull data up to current month.
-downloadAllRawSequenceData <- function(sites = preset_sites, startYrMo = preset_startYrMo, endYrMo = preset_endYrMo, 
-                                       outdir = preset_outdir_sequence, checkFileSize = preset_checkFileSize, return_data = preset_return_data) {
-  return(downloadRawSequenceData(sites, startYrMo, endYrMo, 
-                                 outdir, checkFileSize, return_data))
+downloadAllRawSequenceData <- function() {
+  return(downloadRawSequenceData(preset_sites, preset_startYrMo, preset_endYrMo, 
+                                 preset_outdir_sequence, preset_checkFileSize, preset_return_data))
 }
 ## END FUNCTION
 
@@ -227,9 +225,8 @@ downloadRawSoilData <- function(sites = preset_sites, startYrMo = preset_startYr
 # Wrapper for downloadRawSoilData,
 # parameterized for socs-stats.ucsc.edu server,
 # and will pull data up to current month.
-downloadAllRawSoilData <- function(sites = preset_sites, startYrMo = preset_startYrMo, endYrMo = preset_endYrMo, 
-                                   outdir = preset_outdir_soil, checkFileSize = preset_checkFileSize, return_data = preset_return_data) {
-return(downloadRawSoilData(sites, startYrMo, endYrMo, 
-                             outdir, checkFileSize, return_data))
+downloadAllRawSoilData <- function() {
+return(downloadRawSoilData(preset_sites, preset_startYrMo, preset_endYrMo, 
+                           preset_outdir_soil, preset_checkFileSize, preset_return_data))
 }
 ## END FUNCTION ##
