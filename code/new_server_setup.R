@@ -44,8 +44,8 @@ for(i in 1:length(zipF[2:6])) { # <-------------------------- TODO: CHANGE TO BE
   file.rename(unzippedF, unzippedF_rename)
 }
 
-list.files(path=file.path(BASE_DIR), recursive=TRUE)
+# list.files(path=file.path(BASE_DIR), recursive=TRUE)
 
 # TODO: remove "hpc" directory
 
-file.remove(list.files(path=BASE_DIR, pattern = "*.fastq$", recursive=TRUE, full.names=TRUE))
+# file.remove(list.files(path=BASE_DIR, pattern = "*.fastq$", recursive=TRUE, full.names=TRUE))
