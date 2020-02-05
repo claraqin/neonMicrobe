@@ -13,8 +13,14 @@ source("./code/params.R")
 
 BASE_DIR <- preset_outdir_sequence
 
-meta <- downloadAllSequenceMetadata()
+# If preset output directories for ITS and 16S data do not exist, create them
+if(!dir.exists(file.path(preset_outdir_sequence, "ITS"))) dir.create(file.path(preset_outdir_sequence, "ITS"), recursive=TRUE)
+if(!dir.exists(file.path(preset_outdir_sequence, "16S"))) dir.create(file.path(preset_outdir_sequence, "16S"), recursive=TRUE)
+
+# Download sequence data and metadata
+meta <- downloadSequenceMetadata()
 file_by_runid <- distinct(meta[,c("rawDataFileName","sequencerRunID")])
+downloadRawSequenceData()
 
 # get all the zip files
 zipF <- list.files(path = BASE_DIR, pattern = "*.gz", full.names = TRUE)
@@ -26,7 +32,7 @@ runIDs <- file_by_runid$sequencerRunID[runID_ind]
 runIDs
 
 # unzip files and append run ID to beginning of basenames
-for(i in 1:length(zipF[2:6])) { # <-------------------------- TODO: CHANGE TO BE FOR ALL FILES
+for(i in 1:length(zipF)) { # <------------------------ TODO: Replace with foreach or map or other parallel process
   # get run ID associated with the zip file
   runID <- runIDs[i]
   
@@ -41,11 +47,12 @@ for(i in 1:length(zipF[2:6])) { # <-------------------------- TODO: CHANGE TO BE
   # rename all unzipped files by appending sequencer run ID
   unzippedF_ITS_rename <- file.path(BASE_DIR, "ITS", paste0("run", runID, "_", basename(unzippedF_ITS)))
   unzippedF_16S_rename <- file.path(BASE_DIR, "16S", paste0("run", runID, "_", basename(unzippedF_16S)))
-  file.rename(unzippedF, unzippedF_rename)
+  if(length(unzippedF_ITS) > 0) file.rename(unzippedF_ITS, unzippedF_ITS_rename)
+  if(length(unzippedF_16S) > 0) file.rename(unzippedF_16S, unzippedF_16S_rename)
 }
 
+# Remove "hpc" directory, where files were moved out of
+unlink(file.path(preset_outdir_sequence, "hpc"), recursive=TRUE)
+
 # list.files(path=file.path(BASE_DIR), recursive=TRUE)
-
-# TODO: remove "hpc" directory
-
 # file.remove(list.files(path=BASE_DIR, pattern = "*.fastq$", recursive=TRUE, full.names=TRUE))

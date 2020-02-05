@@ -6,7 +6,7 @@ source("./code/utils.R")
 library(phyloseq)
 library(ggplot2)
 
-seqtab.nochim <- readRDS("./data/NEON_ITS_seqtab_nochim_DL08-13-2019.Rds")
+seqtab.nochim <- readRDS("./data/NEON_ITS_seqtab_nochim_DL08-13-2019.Rds") # TODO: Modify these to be the files that you're interested in processing.
 taxa <- readRDS("./data/NEON_ITS_taxa_DL08-13-2019.Rds")
 
 # seqmetadata <- downloadAllSequenceMetadata()
@@ -20,7 +20,7 @@ taxa <- readRDS("./data/NEON_ITS_taxa_DL08-13-2019.Rds")
 #   distinct() ->
 #   link_geneticID_labID
 
-soildata <- downloadAllRawSoilData()
+soildata <- downloadRawSoilData()
 
 # soildata %>%
 #   filter(geneticSampleID != "") %>%

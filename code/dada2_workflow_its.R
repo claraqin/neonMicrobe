@@ -3,7 +3,7 @@
 
 # Load parameters from params.R
 source("./code/params.R")
-path <- preset_outdir_sequence
+path <- file.path(preset_outdir_sequence, "ITS")
 
 # Load libraries
 library(dada2)
@@ -16,9 +16,16 @@ library(dplyr)
 runs <- regmatches(list.files(path), gregexpr("^run[A-Za-z0-9]*", list.files(path)))
 unique_runs <- unique(unlist(runs))
 
+# If SMALL_SUBSET == TRUE, run only the first runID
+if (SMALL_SUBSET) {
+  loop_length <- 1
+} else {
+  loop_length <- length(unique_runs)
+}
+
 # TODO: Switch from a for-loop to a foreach, or some other parallel process
 
-for (i in 1:length(unique_runs)) {
+for (i in 1:loop_length) {
   runID <- unique_runs[i]
   
   # Forward and reverse fastq filenames have format: SAMPLENAME_R1_001.fastq and SAMPLENAME_R2_001.fastq
@@ -43,6 +50,12 @@ for (i in 1:length(unique_runs)) {
     fnRs <- fnRs[-which(fnRs == paste0(path, "/", name, "_R2.fastq"))]
   }
   
+  # If SMALL_SUBSET == TRUE,
+  # keep only the first two forward-reverse pairs of sequence files
+  if(SMALL_SUBSET){
+    if(length(fnFs > 2)) fnFs <- fnFs[1:2]
+    if(length(fnRs > 2)) fnRs <- fnRs[1:2]
+  }
   
   # Identify primers
   # PRIMER_ITS_FWD <- "CTTGGTCATTTAGAGGAAGTAA"
@@ -117,7 +130,6 @@ for (i in 1:length(unique_runs)) {
   R2.flags <- paste("-G", PRIMER_ITS_REV, "-A", FWD.RC) 
   # Run Cutadapt
   for(i in seq_along(fnFs.filtN2)) {
-    # for(i in 1:10) {
     system2(CUTADAPT_PATH, args = c(R1.flags, R2.flags, "-n", 2, # -n 2 required to remove FWD and REV from reads
                                "-o", fnFs.cut[i], "-p", fnRs.cut[i], # output files
                                fnFs.filtN2[i], fnRs.filtN2[i], # input files; fnFs.filtN replaced by fnFs.filtN2, etc.
@@ -143,7 +155,6 @@ for (i in 1:length(unique_runs)) {
   R2.flags.swapped <- paste("-G", PRIMER_ITS_FWD, "-A", REV.RC) 
   # Run Cutadapt
   for(i in seq_along(fnFs.cut)) {
-    # for(i in 1:10) {
     system2(CUTADAPT_PATH, args = c(R1.flags.swapped, R2.flags.swapped, "-n", 2, # -n 2 required to remove FWD and REV from reads
                                "-o", fnFs.cut2[i], "-p", fnRs.cut2[i], # output files
                                fnFs.cut[i], fnRs.cut[i], # input files; fnFs.filtN replaced by fnFs.filtN2, etc.
@@ -244,7 +255,7 @@ for (i in 1:length(unique_runs)) {
   rownames(taxa.print) <- NULL
   head(taxa.print)
   
-  saveRDS(seqtab.nochim, paste0("./data/NEON_ITS_seqtab_nochim_DL08-13-2019_", runID, ".Rds"))
+  saveRDS(seqtab.nochim, paste0("./data/NEON_ITS_seqtab_nochim_DL08-13-2019_", runID, ".Rds")) # TODO: May need to include output data file as a parameter in params.R
   saveRDS(taxa, paste0("./data/NEON_ITS_taxa_DL08-13-2019_", runID, ".Rds"))
 }
 
