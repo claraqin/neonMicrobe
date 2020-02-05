@@ -10,6 +10,7 @@
 # corresponding to sequencing runs.
 
 source("./code/params.R")
+source("./code/utils.R")
 
 BASE_DIR <- preset_outdir_sequence
 
