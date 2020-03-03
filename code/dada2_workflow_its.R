@@ -2,7 +2,7 @@
 # Follows https://benjjneb.github.io/dada2/ITS_workflow.html
 
 # Load parameters from params.R
-source("./code/params.R")
+source("./code/params_small_subset.R")
 path <- file.path(preset_outdir_sequence, "ITS")
 
 # Load libraries
@@ -24,6 +24,9 @@ if (SMALL_SUBSET) {
 }
 
 # TODO: Switch from a for-loop to a foreach, or some other parallel process
+
+seqtab_joined <- data.frame(join_id=character(0))
+taxa_joined <- data.frame(join_id=character(0))
 
 for (i in 1:loop_length) {
   runID <- unique_runs[i]
@@ -257,32 +260,23 @@ for (i in 1:loop_length) {
   
   saveRDS(seqtab.nochim, paste0("./data/NEON_ITS_seqtab_nochim_DL08-13-2019_", runID, ".Rds")) # TODO: May need to include output data file as a parameter in params.R
   saveRDS(taxa, paste0("./data/NEON_ITS_taxa_DL08-13-2019_", runID, ".Rds"))
+  
+  suppressMessages(
+    seqtab_joined <- full_join(seqtab_joined, 
+                               rownames_to_column(as.data.frame(seqtab.nochim), var="join_id"))
+  )
+  suppressMessages(
+    taxa_joined <- full_join(taxa_joined, 
+                             rownames_to_column(as.data.frame(taxa), var="join_id"))
+  )
 }
 
-# TO DO: Join the outputs of the sequencing runs to form one combined sequence table
-#        and one combined taxonomy table.
+# Remove "join_id" columns
+seqtab_joined <- select(seqtab_joined, -join_id)
+taxa_joined <- select(taxa_joined, -join_id)
 
-seqtab.nochim_2 <- seqtab.nochim
-taxa_2 <- taxa
+# Saved joined sequence table and joined taxa table
+saveRDS(seqtab_joined, paste0("./data/NEON_ITS_seqtab_nochim_DL08-13-2019_", "test", ".Rds")) # TODO: May need to include output data file as a parameter in params.R
+saveRDS(taxa_joined, paste0("./data/NEON_ITS_taxa_DL08-13-2019_", "test", ".Rds"))
 
-dim(seqtab.nochim_1)
-dim(seqtab.nochim_2)
-
-length(intersect(colnames(seqtab.nochim_1), colnames(seqtab.nochim_2)))
-
-taxa_joined <- rbind(taxa_1, taxa_2)
-dim(taxa_1)
-dim(taxa_2)
-dim(taxa_joined)
-nrow(taxa_1) + nrow(taxa_2)
-head(rownames(taxa_joined))
-tail(rownames(taxa_joined))
-head(colnames(taxa_joined))
-tail(colnames(taxa_joined))
-
-left_join(rownames_to_column(x.tsummary), sto.info, by = ("rowname" = "Symbol"))
-
-# # Save OTU table and taxonomic table as RDS files
-# # to hand off to dada2_to_phyloseq.R
-# saveRDS(seqtab.nochim, "NEON_ITS_seqtab_nochim_DL08-13-2019.Rds")
-# saveRDS(taxa, "NEON_ITS_taxa_DL08-13-2019.Rds")
+# Hand off to dada2_to_phyloseq.R
