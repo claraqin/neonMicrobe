@@ -50,7 +50,7 @@ warn_already_downloaded <- function(PRNUM, outdir) {
 #
 # Metadata is just one table withing DP1.10108 ("Soil microbe marker gene sequences")
 # called "mmg_soilRawDataFiles.csv"
-downloadSequenceMetadata <- function(sites = preset_site, startYrMo = preset_startYrMo, endYrMo = preset_endYrMo, 
+downloadSequenceMetadata <- function(sites = preset_sites, startYrMo = preset_startYrMo, endYrMo = preset_endYrMo, 
                                      outdir = preset_outdir_seqmeta, checkFileSize = preset_checkFileSize, return_data = preset_return_data) {
   # outdir - path to directory to download the data
   # change checkFileSize to FALSE to override file size checks
@@ -92,7 +92,7 @@ downloadSequenceMetadata <- function(sites = preset_site, startYrMo = preset_sta
 # parameterized for socs-stats.ucsc.edu server,
 # and will pull data up to current month.
 downloadAllSequenceMetadata <- function() {
-  return(downloadSequenceMetadata(preset_site, preset_startYrMo, preset_endYrMo, 
+  return(downloadSequenceMetadata(preset_sites, preset_startYrMo, preset_endYrMo, 
                                   preset_outdir_seqmeta, preset_checkFileSize, preset_return_data))
 }
 
@@ -100,7 +100,7 @@ downloadAllSequenceMetadata <- function() {
 ## AND downloads the NEON raw sequence data files
 #
 # Wrapper for downloadSequenceMetadata
-downloadRawSequenceData <- function(sites = preset_site, startYrMo = preset_startYrMo, endYrMo = preset_endYrMo, 
+downloadRawSequenceData <- function(sites = preset_sites, startYrMo = preset_startYrMo, endYrMo = preset_endYrMo, 
                                     outdir = preset_outdir_sequence, checkFileSize = preset_checkFileSize, return_data = preset_return_data) {
   # outdir - path to directory to download the data
   # change checkFileSize to FALSE to override file size checks
@@ -136,7 +136,7 @@ downloadRawSequenceData <- function(sites = preset_site, startYrMo = preset_star
 # parameterized for socs-stats.ucsc.edu server,
 # and will pull data up to current month.
 downloadAllRawSequenceData <- function() {
-  return(downloadRawSequenceData(preset_site, preset_startYrMo, preset_endYrMo, 
+  return(downloadRawSequenceData(preset_sites, preset_startYrMo, preset_endYrMo, 
                                  preset_outdir_sequence, preset_checkFileSize, preset_return_data))
 }
 ## END FUNCTION
@@ -148,7 +148,7 @@ downloadAllRawSequenceData <- function() {
 # Data product are
 # - DP1.10078: "Soil chemical properties (Distributed periodic)"
 # - DP1.10086: "Soil physical properties (Distributed periodic)"
-downloadRawSoilData <- function(sites = preset_site, startYrMo = preset_startYrMo, endYrMo = preset_endYrMo, 
+downloadRawSoilData <- function(sites = preset_sites, startYrMo = preset_startYrMo, endYrMo = preset_endYrMo, 
                                 outdir = preset_outdir_soil, checkFileSize = preset_checkFileSize, return_data = preset_return_data) {
   # outdir - path to directory to download the data. Defaults to the R default directory if none provided
   # change checkFileSize to FALSE to override file size checks
@@ -226,7 +226,7 @@ downloadRawSoilData <- function(sites = preset_site, startYrMo = preset_startYrM
 # parameterized for socs-stats.ucsc.edu server,
 # and will pull data up to current month.
 downloadAllRawSoilData <- function() {
-return(downloadRawSoilData(preset_site, preset_startYrMo, preset_endYrMo, 
+return(downloadRawSoilData(preset_sites, preset_startYrMo, preset_endYrMo, 
                            preset_outdir_soil, preset_checkFileSize, preset_return_data))
 }
 ## END FUNCTION ##
