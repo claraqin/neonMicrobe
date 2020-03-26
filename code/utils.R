@@ -7,11 +7,6 @@ library(dplyr)
 # Load parameters from params.R
 source("./code/params.R")
 
-# If preset output directories do not exist, create them
-if(!dir.exists(preset_outdir_sequence)) dir.create(preset_outdir_sequence, recursive=TRUE)
-if(!dir.exists(preset_outdir_seqmeta)) dir.create(preset_outdir_seqmeta, recursive=TRUE)
-if(!dir.exists(preset_outdir_soil)) dir.create(preset_outdir_soil, recursive=TRUE)
-
 ## Function to write site and date range parameters. To be called within other functions.
 #
 write_site_and_date_range <- function(writeDir, sites, startYrMo, endYrMo) {
@@ -19,7 +14,7 @@ write_site_and_date_range <- function(writeDir, sites, startYrMo, endYrMo) {
   write.table(
     data.frame(x1=c("sites", "startYrMo", "endYrMo"),
                x2=c(sites, startYrMo, endYrMo)),
-    file = paste(writeDir, site_and_date_range_filename, sep="/"),
+    file = paste(writeDir, SITE_AND_DATE_RANGE_FILENAME, sep="/"),
     sep=":", col.names=FALSE, quote=FALSE, row.names=FALSE
   )
 }
@@ -33,7 +28,7 @@ warn_already_downloaded <- function(PRNUM, outdir) {
   # print(paste("checking in ", outdir))
   stackDir <- paste(outdir, paste0("filesToStack",PRNUM), sep="/")
   # print(paste("specifically in ", stackDir))
-  site_and_date_range <- read.table(paste(stackDir, site_and_date_range_filename, sep="/"), 
+  site_and_date_range <- read.table(paste(stackDir, SITE_AND_DATE_RANGE_FILENAME, sep="/"), 
                                     header=FALSE, sep=":")
   warning("Data product ", PRNUM, 
           " has already been downloaded to ",outdir, 
@@ -50,8 +45,8 @@ warn_already_downloaded <- function(PRNUM, outdir) {
 #
 # Metadata is just one table withing DP1.10108 ("Soil microbe marker gene sequences")
 # called "mmg_soilRawDataFiles.csv"
-downloadSequenceMetadata <- function(sites = preset_sites, startYrMo = preset_startYrMo, endYrMo = preset_endYrMo, 
-                                     outdir = preset_outdir_seqmeta, checkFileSize = preset_checkFileSize, return_data = preset_return_data) {
+downloadSequenceMetadata <- function(sites = PRESET_SITES, startYrMo = PRESET_START_YR_MO, endYrMo = PRESET_END_YR_MO, 
+                                     outdir = PRESET_OUTDIR_SEQMETA, checkFileSize = PRESET_CHECK_FILE_SIZE, return_data = PRESET_RETURN_DATA) {
   # outdir - path to directory to download the data
   # change checkFileSize to FALSE to override file size checks
   
@@ -92,16 +87,16 @@ downloadSequenceMetadata <- function(sites = preset_sites, startYrMo = preset_st
 # parameterized for socs-stats.ucsc.edu server,
 # and will pull data up to current month.
 downloadAllSequenceMetadata <- function() {
-  return(downloadSequenceMetadata(preset_sites, preset_startYrMo, preset_endYrMo, 
-                                  preset_outdir_seqmeta, preset_checkFileSize, preset_return_data))
+  return(downloadSequenceMetadata(PRESET_SITES, PRESET_START_YR_MO, PRESET_END_YR_MO, 
+                                  PRESET_OUTDIR_SEQMETA, PRESET_CHECK_FILE_SIZE, PRESET_RETURN_DATA))
 }
 
 ## Function downloads the metadata for NEON marker gene sequencing data products 
 ## AND downloads the NEON raw sequence data files
 #
 # Wrapper for downloadSequenceMetadata
-downloadRawSequenceData <- function(sites = preset_sites, startYrMo = preset_startYrMo, endYrMo = preset_endYrMo, 
-                                    outdir = preset_outdir_sequence, checkFileSize = preset_checkFileSize, return_data = preset_return_data) {
+downloadRawSequenceData <- function(sites = PRESET_SITES, startYrMo = PRESET_START_YR_MO, endYrMo = PRESET_END_YR_MO, 
+                                    outdir = PRESET_OUTDIR_SEQUENCE, checkFileSize = PRESET_CHECK_FILE_SIZE, return_data = PRESET_RETURN_DATA) {
   # outdir - path to directory to download the data
   # change checkFileSize to FALSE to override file size checks
   
@@ -136,8 +131,8 @@ downloadRawSequenceData <- function(sites = preset_sites, startYrMo = preset_sta
 # parameterized for socs-stats.ucsc.edu server,
 # and will pull data up to current month.
 downloadAllRawSequenceData <- function() {
-  return(downloadRawSequenceData(preset_sites, preset_startYrMo, preset_endYrMo, 
-                                 preset_outdir_sequence, preset_checkFileSize, preset_return_data))
+  return(downloadRawSequenceData(PRESET_SITES, PRESET_START_YR_MO, PRESET_END_YR_MO, 
+                                 PRESET_OUTDIR_SEQUENCE, PRESET_CHECK_FILE_SIZE, PRESET_RETURN_DATA))
 }
 ## END FUNCTION
 
@@ -148,8 +143,8 @@ downloadAllRawSequenceData <- function() {
 # Data product are
 # - DP1.10078: "Soil chemical properties (Distributed periodic)"
 # - DP1.10086: "Soil physical properties (Distributed periodic)"
-downloadRawSoilData <- function(sites = preset_sites, startYrMo = preset_startYrMo, endYrMo = preset_endYrMo, 
-                                outdir = preset_outdir_soil, checkFileSize = preset_checkFileSize, return_data = preset_return_data) {
+downloadRawSoilData <- function(sites = PRESET_SITES, startYrMo = PRESET_START_YR_MO, endYrMo = PRESET_END_YR_MO, 
+                                outdir = PRESET_OUTDIR_SOIL, checkFileSize = PRESET_CHECK_FILE_SIZE, return_data = PRESET_RETURN_DATA) {
   # outdir - path to directory to download the data. Defaults to the R default directory if none provided
   # change checkFileSize to FALSE to override file size checks
   
@@ -226,7 +221,18 @@ downloadRawSoilData <- function(sites = preset_sites, startYrMo = preset_startYr
 # parameterized for socs-stats.ucsc.edu server,
 # and will pull data up to current month.
 downloadAllRawSoilData <- function() {
-return(downloadRawSoilData(preset_sites, preset_startYrMo, preset_endYrMo, 
-                           preset_outdir_soil, preset_checkFileSize, preset_return_data))
+return(downloadRawSoilData(PRESET_SITES, PRESET_START_YR_MO, PRESET_END_YR_MO, 
+                           PRESET_OUTDIR_SOIL, PRESET_CHECK_FILE_SIZE, PRESET_RETURN_DATA))
 }
 ## END FUNCTION ##
+
+
+## Function to get all orients of primers for DADA2 workflow
+allOrients <- function(primer) {
+  # Create all orientations of the input sequence
+  require(Biostrings)
+  dna <- DNAString(primer)  # The Biostrings works w/ DNAString objects rather than character vectors
+  orients <- c(Forward = dna, Complement = complement(dna), Reverse = reverse(dna), 
+               RevComp = reverseComplement(dna))
+  return(sapply(orients, toString))  # Convert back to character vector
+}

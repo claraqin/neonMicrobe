@@ -3,7 +3,7 @@
 
 # Load parameters from params.R
 source("./code/params.R")
-path <- file.path(preset_outdir_sequence, "ITS")
+path <- file.path(PRESET_OUTDIR_SEQUENCE, "ITS")
 
 # Load libraries
 library(dada2)
@@ -30,8 +30,7 @@ taxa_joined <- data.frame(join_id=character(0))
 
 
 system.time({
-# for (i in 1:loop_length) { 
-for (i in 7:loop_length) { # <-----------------TODO: Switch this back to 1:loop_length after done timing
+for (i in 1:loop_length) {
   runID <- unique_runs[i]
   print(paste0("Began processing ", runID, " at ", Sys.time()))
   
@@ -65,14 +64,6 @@ for (i in 7:loop_length) { # <-----------------TODO: Switch this back to 1:loop_
   }
   
   # Get all orientations of primers, just to be safe
-  allOrients <- function(primer) {
-    # Create all orientations of the input sequence
-    require(Biostrings)
-    dna <- DNAString(primer)  # The Biostrings works w/ DNAString objects rather than character vectors
-    orients <- c(Forward = dna, Complement = complement(dna), Reverse = reverse(dna), 
-                 RevComp = reverseComplement(dna))
-    return(sapply(orients, toString))  # Convert back to character vector
-  }
   FWD.orients <- allOrients(PRIMER_ITS_FWD)
   REV.orients <- allOrients(PRIMER_ITS_REV)
   
@@ -82,15 +73,10 @@ for (i in 7:loop_length) { # <-----------------TODO: Switch this back to 1:loop_
   system.time({ # 27.9 s on runB69PP (144 files), 77.5 s on runB69RF (173 files)
     out_filtN <- filterAndTrim(fnFs, fnFs.filtN, fnRs, fnRs.filtN, maxN = 0, multithread = TRUE, compress = FALSE)
   })
-  # "Mismatched forward and reverse sequence files" error occurs many times:
-  # One of these is at i=1261
-  # I believe this happens whenever at least one file in the forward-reverse pair
-  # does not pass the "N" filter.
+  print(paste0("Finished pre-filtering sequences in ", runID, " at ", Sys.time()))
   
-  # Only 4392 out of 11049 ITS fastq files passed?
-  
-  # This part deviates from the tutorial, but since not all fastq files passed
-  # the filter, it might make more sense to trim down the filenames for the
+  # This part deviates from the tutorial. Since some samples lose all reads at
+  # the pre-filtering stage, it is useful to trim down the samples for the
   # next step: cutadapt
   fn2_basenames <- list.files(file.path(path, "filtN"), pattern = runID, full.names=FALSE)
   fnFs2 <- file.path(path, fn2_basenames[grep("_R1.fastq", fn2_basenames)])
@@ -109,21 +95,19 @@ for (i in 7:loop_length) { # <-----------------TODO: Switch this back to 1:loop_
     return(sum(nhits > 0))
   }
   if(VERBOSE) {
-    rbind(FWD.ForwardReads = sapply(FWD.orients, primerHits, fn = fnFs.filtN2[[1]]), 
-          FWD.ReverseReads = sapply(FWD.orients, primerHits, fn = fnRs.filtN2[[1]]), 
-          REV.ForwardReads = sapply(REV.orients, primerHits, fn = fnFs.filtN2[[1]]), 
-          REV.ReverseReads = sapply(REV.orients, primerHits, fn = fnRs.filtN2[[1]]))
+    rbind(FWDPrimer.R1.reads = sapply(FWD.orients, primerHits, fn = fnFs.filtN2[[1]]), 
+          FWDPrimer.R2.reads = sapply(FWD.orients, primerHits, fn = fnRs.filtN2[[1]]), 
+          REVPrimer.R1.reads = sapply(REV.orients, primerHits, fn = fnFs.filtN2[[1]]), 
+          REVPrimer.R2.reads = sapply(REV.orients, primerHits, fn = fnRs.filtN2[[1]]))
   }
-  # If you see the reverse-complement of the forward primer in the reverse reads (cells [2,4] and [3,4]),
-  # it's because the ITS region is short and it is reading part of the forward primer.
+  # If you see the reverse-complement of the forward primer in the reverse reads (cell [2,4]),
+  # or the reverse-complement of the reverse primer in the forward reads (cell [3,4]),
+  # it's because the ITS region is short and the read overlaps with the reverse-complement
+  # of the other primer.
+  
+  # TODO: Fix the mixed-orientation reads issue
   
   # Remove primers using cutadapt
-  system.time({ # 0.2 s on runB69PP
-    # suppressMessages({         # TODO: Need to figure out how to suppress messages from system2
-      system2(CUTADAPT_PATH, args = "--version") # Run shell commands from R
-    # })
-  })
-  
   path.cut <- file.path(path, "cutadapt")
   if(!dir.exists(path.cut)) dir.create(path.cut)
   fnFs.cut <- file.path(path.cut, basename(fnFs.filtN2))
@@ -137,9 +121,9 @@ for (i in 7:loop_length) { # <-----------------TODO: Switch this back to 1:loop_
   R2.flags <- paste("-G", PRIMER_ITS_REV, "-A", FWD.RC) 
   
   # Run Cutadapt
-  system.time({ # 212.7 s on runB69PP
+  system.time({ # 212.7 s on runB69PP 
   for(i in seq_along(fnFs.filtN2)) { # MAY BE POSSIBLE TO PARALLELIZE THIS STEP
-    # suppressMessages({
+    # suppressMessages({             # TODO: Need to figure out how to suppress messages from system2
       system2(CUTADAPT_PATH, args = c(R1.flags, R2.flags, "-n", 2, # -n 2 required to remove FWD and REV from reads
                                "-o", fnFs.cut[i], "-p", fnRs.cut[i], # output files
                                fnFs.filtN2[i], fnRs.filtN2[i], # input files; fnFs.filtN replaced by fnFs.filtN2, etc.
@@ -147,16 +131,19 @@ for (i in 7:loop_length) { # <-----------------TODO: Switch this back to 1:loop_
     # })
   }
   })
+  print(paste0("Finished stage 1 (of 2) of primer removal using cutadapt in ", runID, " at ", Sys.time()))
   
   # Count primers in first post-cutadapt sample (should all be 0):
   if(VERBOSE) {
-    rbind(FWD.ForwardReads = sapply(FWD.orients, primerHits, fn = fnFs.cut[[1]]), 
-          FWD.ReverseReads = sapply(FWD.orients, primerHits, fn = fnRs.cut[[1]]), 
-          REV.ForwardReads = sapply(REV.orients, primerHits, fn = fnFs.cut[[1]]), 
-          REV.ReverseReads = sapply(REV.orients, primerHits, fn = fnRs.cut[[1]]))
+    rbind(FWDPrimer.R1.reads = sapply(FWD.orients, primerHits, fn = fnFs.cut[[1]]), 
+          FWDPrimer.R2.reads = sapply(FWD.orients, primerHits, fn = fnRs.cut[[1]]), 
+          REVPrimer.R1.reads = sapply(REV.orients, primerHits, fn = fnFs.cut[[1]]), 
+          REVPrimer.R2.reads = sapply(REV.orients, primerHits, fn = fnRs.cut[[1]]))
   }
   
   # Since they are not all zero, remove all other orientations of primers
+  # EDIT: This is not the best way to handle mixed orientations --
+  #       see Issue #5.
   
   path.cut2 <- file.path(path, "cutadapt2")
   if(!dir.exists(path.cut2)) dir.create(path.cut2)
@@ -179,6 +166,7 @@ for (i in 7:loop_length) { # <-----------------TODO: Switch this back to 1:loop_
     # })
   }
   })
+  print(paste0("Finished stage 2 (of 2) of primer removal using cutadapt in ", runID, " at ", Sys.time()))
   
   # Check primers
   if(VERBOSE) {
@@ -187,7 +175,6 @@ for (i in 7:loop_length) { # <-----------------TODO: Switch this back to 1:loop_
           REV.ForwardReads = sapply(REV.orients, primerHits, fn = fnFs.cut2[[1]]), 
           REV.ReverseReads = sapply(REV.orients, primerHits, fn = fnRs.cut2[[1]]))
   }
-  
   
   # Forward and reverse fastq filenames have the format:
   cutFs <- sort(list.files(path.cut2, pattern = paste0(runID, ".*_R1.fastq"), full.names = TRUE))
@@ -217,6 +204,8 @@ for (i in 7:loop_length) { # <-----------------TODO: Switch this back to 1:loop_
   out <- filterAndTrim(cutFs, filtFs, cutRs, filtRs, maxN = 0, maxEE = c(2, 2), 
                        truncQ = 2, minLen = 50, compress = TRUE, multithread = TRUE)  # on windows, set multithread = FALSE
   })
+  print(paste0("Finished filterAndTrim in ", runID, " at ", Sys.time()))
+  
   # out_maxEE4_df <- as.data.frame(out_maxEE4)
   # out_maxEE4_df$prop.out <- out_maxEE4_df$reads.out / out_maxEE4_df$reads.in
   # out_trunc1_df <- as.data.frame(out_trunc1)
@@ -245,6 +234,7 @@ for (i in 7:loop_length) { # <-----------------TODO: Switch this back to 1:loop_
   # Learn the error rates
   errF <- learnErrors(filtFs.out, multithread = TRUE)
   errR <- learnErrors(filtRs.out, multithread = TRUE)
+  print(paste0("Finished learning error rates in ", runID, " at ", Sys.time()))
   
   # Visualize estimated error rates
   if(VERBOSE) plotErrors(errF, nominalQ = TRUE)
@@ -256,13 +246,16 @@ for (i in 7:loop_length) { # <-----------------TODO: Switch this back to 1:loop_
   sample.names <- unname(sapply(filtFs.out, get.sample.name))
   names(derepFs) <- sample.names
   names(derepRs) <- sample.names
+  print(paste0("Finished dereplication in ", runID, " at ", Sys.time()))
   
   # DADA2's core sample inference algorithm
   dadaFs <- dada(derepFs, err = errF, multithread = TRUE)
   dadaRs <- dada(derepRs, err = errR, multithread = TRUE)
+  print(paste0("Finished DADA2's core sample inference algorithm in ", runID, " at ", Sys.time()))
   
   # Merge pairs
   mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE)
+  print(paste0("Finished merging pairs in ", runID, " at ", Sys.time()))
   
   # Construct sequence table
   seqtab <- makeSequenceTable(mergers)
@@ -270,6 +263,7 @@ for (i in 7:loop_length) { # <-----------------TODO: Switch this back to 1:loop_
   
   # Remove chimeras
   seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
+  print(paste0("Finished removing chimeras in ", runID, " at ", Sys.time()))
   
   # Inspect distribution of sequence lengths
   if(VERBOSE) hist(nchar(getSequences(seqtab.nochim)))
@@ -304,6 +298,7 @@ for (i in 7:loop_length) { # <-----------------TODO: Switch this back to 1:loop_
   path.track <- file.path(path, "track_reads")
   if(!dir.exists(path.track)) dir.create(path.track)
   write.csv(track, file.path(path.track, paste0("track_reads_",runID,".csv")))
+  print(paste0("Finished tracking reads through pipeline in ", runID, " at ", Sys.time()))
   
   ### NOTE: unlike the tutorial, we lost a lot of reads at the "filtN" stage,
   ### which filters out any sequences containing an "N" (ambiguous) base.
@@ -312,7 +307,8 @@ for (i in 7:loop_length) { # <-----------------TODO: Switch this back to 1:loop_
   
   # Assign taxonomy using the UNITE database
   unite.ref <- "./raw_data/tax_ref/sh_general_release_dynamic_02.02.2019.fasta"
-  taxa <- assignTaxonomy(seqtab.nochim, unite.ref, multithread = TRUE, tryRC = TRUE)
+  taxa <- assignTaxonomy(seqtab.nochim, unite.ref, multithread = FALSE, tryRC = TRUE)
+  print(paste0("Finished assigning taxonomy in ", runID, " at ", Sys.time()))
   
   taxa.print <- taxa  # Removing sequence rownames for display only
   rownames(taxa.print) <- NULL
@@ -320,6 +316,7 @@ for (i in 7:loop_length) { # <-----------------TODO: Switch this back to 1:loop_
   
   saveRDS(seqtab.nochim, paste0("./data/NEON_ITS_seqtab_nochim_DL08-13-2019_", runID, ".Rds")) # TODO: May need to include output data file as a parameter in params.R
   saveRDS(taxa, paste0("./data/NEON_ITS_taxa_DL08-13-2019_", runID, ".Rds"))
+  print(paste0("Finished saving seqtab and taxa tables of ", runID, " at ", Sys.time()))
   
   suppressMessages(
     seqtab_joined <- full_join(seqtab_joined, 

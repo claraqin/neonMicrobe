@@ -11,11 +11,16 @@
 source("./code/params.R")
 source("./code/utils.R")
 
-BASE_DIR <- preset_outdir_sequence
+BASE_DIR <- PRESET_OUTDIR_SEQUENCE
+
+# If preset output directories do not exist, create them
+if(!dir.exists(PRESET_OUTDIR_SEQUENCE)) dir.create(PRESET_OUTDIR_SEQUENCE, recursive=TRUE)
+if(!dir.exists(PRESET_OUTDIR_SEQMETA)) dir.create(PRESET_OUTDIR_SEQMETA, recursive=TRUE)
+if(!dir.exists(PRESET_OUTDIR_SOIL)) dir.create(PRESET_OUTDIR_SOIL, recursive=TRUE)
 
 # If preset output directories for ITS and 16S data do not exist, create them
-if(!dir.exists(file.path(preset_outdir_sequence, "ITS"))) dir.create(file.path(preset_outdir_sequence, "ITS"), recursive=TRUE)
-if(!dir.exists(file.path(preset_outdir_sequence, "16S"))) dir.create(file.path(preset_outdir_sequence, "16S"), recursive=TRUE)
+if(!dir.exists(file.path(BASE_DIR, "ITS"))) dir.create(file.path(BASE_DIR, "ITS"), recursive=TRUE)
+if(!dir.exists(file.path(BASE_DIR, "16S"))) dir.create(file.path(BASE_DIR, "16S"), recursive=TRUE)
 
 # Download sequence data and metadata
 meta <- downloadSequenceMetadata()
@@ -52,7 +57,7 @@ for(i in 1:length(zipF)) { # <------------------------ TODO: Replace with foreac
 }
 
 # Remove "hpc" directory, where files were moved out of
-unlink(file.path(preset_outdir_sequence, "hpc"), recursive=TRUE)
+unlink(file.path(BASE_DIR, "hpc"), recursive=TRUE)
 
 # list.files(path=file.path(BASE_DIR), recursive=TRUE)
 # file.remove(list.files(path=BASE_DIR, pattern = "*.fastq$", recursive=TRUE, full.names=TRUE))
