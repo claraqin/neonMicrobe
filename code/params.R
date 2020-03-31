@@ -23,4 +23,19 @@ SMALL_SUBSET = FALSE # If TRUE, all fastq.gz.tar files matching these parameters
                      # pairs of sequence files from the first sequencing run ID will be processed in 
                      # dada2_workflow.R and in following scripts.
 VERBOSE = FALSE # If TRUE, will generate additional output in dada2_workflow_its.R
-# DADA2
+# Whether to use multithreading in DADA2 (Windows users should set to FALSE),
+# or, if integer is provided, how many threads to use
+MULTITHREAD = FALSE
+# filterAndTrim arguments
+MAX_EE_FWD = 2 # max. allowable expected errors in forward reads that pass filter
+MAX_EE_REV = 2 # max. allowable expected errors in reverse reads that pass filter
+TRUNC_Q = 2 # base quality score after which to truncate sequence
+            # NOTE: it may be desirable to set this higher than 2 if the goal
+            # is to increase the proportion of reads passing the filter, as this
+            # would allow fewer "expected errors" to appear in the sequence
+            # (by virtue of having shorter sequences)
+MIN_LEN = 50 # min. allowable length of sequences that pass filter
+             # NOTE: it may be desirable to set this higher to increase the
+             # likelihood of sufficient overlap between read pairs. However,
+             # this is at odds with the incentive for setting TRUNC_Q higher
+             # (see previous)

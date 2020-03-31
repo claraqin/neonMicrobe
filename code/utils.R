@@ -228,6 +228,7 @@ return(downloadRawSoilData(PRESET_SITES, PRESET_START_YR_MO, PRESET_END_YR_MO,
 
 
 ## Function to get all orients of primers for DADA2 workflow
+## (From DADA2 ITS Pipeline Workflow 1.8 Tutorial)
 allOrients <- function(primer) {
   # Create all orientations of the input sequence
   require(Biostrings)
@@ -236,3 +237,33 @@ allOrients <- function(primer) {
                RevComp = reverseComplement(dna))
   return(sapply(orients, toString))  # Convert back to character vector
 }
+## END FUNCTION ##
+
+## Function to count the number of reads in which a primer is found
+## (From DADA2 ITS Pipeline Workflow 1.8 Tutorial)
+primerHits <- function(primer, fn) {
+  nhits <- vcountPattern(primer, sread(readFastq(fn)), fixed = FALSE, max.mismatch = 2)
+  return(sum(nhits > 0))
+}
+## END FUNCTION ##
+
+## Function to count all primer orientations in a fastq file
+## (From DADA2 ITS Pipeline Workflow 1.8 Tutorial)
+## fn_r1: full filename of R1 read
+## fn_r2: full filename of R2 read (complementary to R1; optional arg)
+## primer_fwd: forward primer sequence
+## primer_rev: reverse primer sequence
+count_primer_orients <- function(fn_r1, fn_r2=NULL, primer_fwd, primer_rev) {
+  fwd_orients <- allOrients(primer_fwd)
+  rev_orients <- allOrients(primer_rev)
+  if(is.null(fn_r2)) {
+    rbind(FWDPrimer.R1.reads = sapply(fwd_orients, primerHits, fn = fn_r1), 
+          REVPrimer.R1.reads = sapply(fwd_orients, primerHits, fn = fn_r1))
+  } else {
+    rbind(FWDPrimer.R1.reads = sapply(fwd_orients, primerHits, fn = fn_r1), 
+          FWDPrimer.R2.reads = sapply(fwd_orients, primerHits, fn = fn_r2), 
+          REVPrimer.R1.reads = sapply(rev_orients, primerHits, fn = fn_r1), 
+          REVPrimer.R2.reads = sapply(rev_orients, primerHits, fn = fn_r2))
+  }
+}
+## END FUNCTION ##
