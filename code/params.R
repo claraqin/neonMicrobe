@@ -1,12 +1,13 @@
 # Preset parameters for utils.R, new_server_setup.R, dada2_workflow_its.R, dada2_workflow_16s.R, and reorg_sequence_data.R
 
-## PARAMETERS FOR NEW_SERVER_SETUP
+## PARAMETERS FOR NEW_SERVER_SETUP AND OUTPUTP DIRECTORIES
 PRESET_SITES = "all"
 PRESET_START_YR_MO = "2011-06"
 PRESET_END_YR_MO = format(Sys.Date(), "%Y-%m")
 PRESET_OUTDIR_SEQUENCE = "/data/ZHULAB/NEON_DOB/Illumina/NEON"
 PRESET_OUTDIR_SEQMETA = "/data/ZHULAB/NEON_DOB/sequence_metadata"
 PRESET_OUTDIR_SOIL = "/data/ZHULAB/NEON_DOB/soil"
+PRESET_OUTDIR_DADA2 = "/raid/users/claraqin/zhulab/NEON_soil_microbe_processing/data"
 PRESET_CHECK_FILE_SIZE = FALSE
 PRESET_RETURN_DATA = TRUE
 SITE_AND_DATE_RANGE_FILENAME = "sites_and_date_range.txt"

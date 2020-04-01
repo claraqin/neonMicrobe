@@ -22,6 +22,15 @@ if(!dir.exists(PRESET_OUTDIR_SOIL)) dir.create(PRESET_OUTDIR_SOIL, recursive=TRU
 if(!dir.exists(file.path(BASE_DIR, "ITS"))) dir.create(file.path(BASE_DIR, "ITS"), recursive=TRUE)
 if(!dir.exists(file.path(BASE_DIR, "16S"))) dir.create(file.path(BASE_DIR, "16S"), recursive=TRUE)
 
+# Create intermediary directories for ITS and 16S data in the middle
+# of being processed
+if(!dir.exists(file.path(BASE_DIR, "ITS", "0_unzipped"))) dir.create(file.path(BASE_DIR, "ITS", "0_unzipped"), recursive=TRUE)
+if(!dir.exists(file.path(BASE_DIR, "ITS", "1_filtN"))) dir.create(file.path(BASE_DIR, "ITS", "1_filtN"), recursive=TRUE)
+if(!dir.exists(file.path(BASE_DIR, "ITS", "2_cutadapt"))) dir.create(file.path(BASE_DIR, "ITS", "2_cutadapt"), recursive=TRUE)
+if(!dir.exists(file.path(BASE_DIR, "ITS", "3_filtered"))) dir.create(file.path(BASE_DIR, "ITS", "3_unzipped"), recursive=TRUE)
+if(!dir.exists(file.path(BASE_DIR, "ITS", "4_seqtabs"))) dir.create(file.path(BASE_DIR, "ITS", "4_seqtabs"), recursive=TRUE)
+if(!dir.exists(file.path(BASE_DIR, "ITS", "track_reads"))) dir.create(file.path(BASE_DIR, "ITS", "track_reads"), recursive=TRUE)
+
 # Download sequence data and metadata
 meta <- downloadSequenceMetadata()
 file_by_runid <- distinct(meta[,c("rawDataFileName","sequencerRunID")])
@@ -59,5 +68,6 @@ for(i in 1:length(zipF)) { # <------------------------ TODO: Replace with foreac
 # Remove "hpc" directory, where files were moved out of
 unlink(file.path(BASE_DIR, "hpc"), recursive=TRUE)
 
+# Need to clear all files?
 # list.files(path=file.path(BASE_DIR), recursive=TRUE)
 # file.remove(list.files(path=BASE_DIR, pattern = "*.fastq$", recursive=TRUE, full.names=TRUE))
