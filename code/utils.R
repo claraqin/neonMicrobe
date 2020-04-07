@@ -9,12 +9,13 @@ source("./code/params.R")
 
 ## Function to write site and date range parameters. To be called within other functions.
 #
-write_site_and_date_range <- function(writeDir, sites, startYrMo, endYrMo) {
+write_sample_subset_params <- function(writeDir, sites, startYrMo, endYrMo,
+                                       target_genes, sequencing_runs) {
   # paste("writing in ", writeDir)
   write.table(
-    data.frame(x1=c("sites", "startYrMo", "endYrMo"),
-               x2=c(sites, startYrMo, endYrMo)),
-    file = paste(writeDir, SITE_AND_DATE_RANGE_FILENAME, sep="/"),
+    data.frame(x1=c("sites", "startYrMo", "endYrMo", "target_genes", "sequencing_runs"),
+               x2=c(sites, startYrMo, endYrMo, target_genes, sequencing_runs)),
+    file = paste(writeDir, SAMPLE_SUBSET_PARAMS_FILENAME, sep="/"),
     sep=":", col.names=FALSE, quote=FALSE, row.names=FALSE
   )
 }
@@ -23,12 +24,13 @@ write_site_and_date_range <- function(writeDir, sites, startYrMo, endYrMo) {
 
 ## Function issues warning that metadata has already been downloaded, and indicates the sites
 ## and date ranges for which it was downloaded. To be called within other functions.
-#
+# TODO: May want to consider an "Overwrite? (y/n)" option instead of requiring
+#       user to manually overwrite if they want to redownload.
 warn_already_downloaded <- function(PRNUM, outdir) {
   # print(paste("checking in ", outdir))
   stackDir <- paste(outdir, paste0("filesToStack",PRNUM), sep="/")
   # print(paste("specifically in ", stackDir))
-  site_and_date_range <- read.table(paste(stackDir, SITE_AND_DATE_RANGE_FILENAME, sep="/"), 
+  site_and_date_range <- read.table(paste(stackDir, SAMPLE_SUBSET_PARAMS_FILENAME, sep="/"), 
                                     header=FALSE, sep=":")
   warning("Data product ", PRNUM, 
           " has already been downloaded to ",outdir, 
@@ -46,7 +48,8 @@ warn_already_downloaded <- function(PRNUM, outdir) {
 # Metadata is just one table withing DP1.10108 ("Soil microbe marker gene sequences")
 # called "mmg_soilRawDataFiles.csv"
 downloadSequenceMetadata <- function(sites = PRESET_SITES, startYrMo = PRESET_START_YR_MO, endYrMo = PRESET_END_YR_MO, 
-                                     outdir = PRESET_OUTDIR_SEQMETA, checkFileSize = PRESET_CHECK_FILE_SIZE, return_data = PRESET_RETURN_DATA) {
+                                     outdir = PRESET_OUTDIR_SEQMETA, checkFileSize = PRESET_CHECK_FILE_SIZE, return_data = PRESET_RETURN_DATA,
+                                     target_genes = TARGET_GENE, sequencing_runs = SEQUENCING_RUNS) {
   # outdir - path to directory to download the data
   # change checkFileSize to FALSE to override file size checks
   
@@ -63,8 +66,8 @@ downloadSequenceMetadata <- function(sites = PRESET_SITES, startYrMo = PRESET_ST
     print(paste("Attempt to stackByTable in", stackDir))
     stackByTable(stackDir, folder = TRUE)
     
-    # Write site_and_date_range.txt file to record parameters
-    write_site_and_date_range(stackDir, sites, startYrMo, endYrMo)
+    # Write file that records parameters
+    write_sample_subset_params(stackDir, sites, startYrMo, endYrMo, target_genes, sequencing_runs)
     
   } else {
     warn_already_downloaded(PRNUM, outdir)
@@ -80,23 +83,14 @@ downloadSequenceMetadata <- function(sites = PRESET_SITES, startYrMo = PRESET_ST
 }
 ## END FUNCTION ##
 
-## Function downloads ALL metadata for NEON marker gene sequencing data products,
-## using preset parameters
-# 
-# Wrapper for downloadSequenceMetadata,
-# parameterized for socs-stats.ucsc.edu server,
-# and will pull data up to current month.
-downloadAllSequenceMetadata <- function() {
-  return(downloadSequenceMetadata(PRESET_SITES, PRESET_START_YR_MO, PRESET_END_YR_MO, 
-                                  PRESET_OUTDIR_SEQMETA, PRESET_CHECK_FILE_SIZE, PRESET_RETURN_DATA))
-}
 
 ## Function downloads the metadata for NEON marker gene sequencing data products 
 ## AND downloads the NEON raw sequence data files
 #
 # Wrapper for downloadSequenceMetadata
 downloadRawSequenceData <- function(sites = PRESET_SITES, startYrMo = PRESET_START_YR_MO, endYrMo = PRESET_END_YR_MO, 
-                                    outdir = PRESET_OUTDIR_SEQUENCE, checkFileSize = PRESET_CHECK_FILE_SIZE, return_data = PRESET_RETURN_DATA) {
+                                    outdir = PRESET_OUTDIR_SEQUENCE, checkFileSize = PRESET_CHECK_FILE_SIZE, return_data = PRESET_RETURN_DATA,
+                                    target_genes = TARGET_GENE, sequencing_runs = SEQUENCING_RUNS) {
   # outdir - path to directory to download the data
   # change checkFileSize to FALSE to override file size checks
   
@@ -104,7 +98,29 @@ downloadRawSequenceData <- function(sites = PRESET_SITES, startYrMo = PRESET_STA
   
   u.urls <- unique(metadata$rawDataFilePath)
   fileNms <- gsub('^.*\\/', "", u.urls)
-  print(paste("There are", length(u.urls), "unique raw sequence files to download.") )
+  
+  # If necessary, subset to download only ITS or 16S
+  if(target_genes=="ITS") {
+    fileNms <- fileNms[grep("_ITS_",fileNms)]
+    u.urls <- u.urls[grep("_ITS_",fileNms)]
+    
+  } else if(target_genes=="16S") {
+    fileNms <- fileNms[grep("_16S_",fileNms)]
+    u.urls <- u.urls[grep("_16S_",fileNms)]
+    
+  } else if(target_genes!="all") {
+    stop("Error: unrecognized value for 'target_genes' - check TARGET_GENE parameter")
+  }
+  
+  # If necessary, subset to download specific sequencing runs
+  if(sequencing_runs!="all") {
+    fileNms_runIDs <- sapply(strsplit(basename(fileNms),"_"), function(x) x[2]) # TODO: Can probably be made more robust. Assumes unchanging position of runID in filename
+    keep_ind <- which(fileNms_runIDs %in% sequencing_runs)
+    fileNms <- fileNms[keep_ind]
+    u.urls <- u.urls[keep_ind]
+  }
+  
+  print(paste("There are", length(u.urls), "unique (zipped) raw sequence files to download.") )
   
   for(i in 1:length(u.urls)) {
     download.file(url=as.character(u.urls[i]), destfile = ifelse(dir.exists(outdir), 
@@ -124,19 +140,6 @@ downloadRawSequenceData <- function(sites = PRESET_SITES, startYrMo = PRESET_STA
 ## END FUNCTION ##
 
 
-## Function downloads ALL metadata for NEON marker gene sequencing data products
-## AND downloads ALL NEON raw sequence data, using preset parameters
-#
-# Wrapper for downloadRawSequenceData,
-# parameterized for socs-stats.ucsc.edu server,
-# and will pull data up to current month.
-downloadAllRawSequenceData <- function() {
-  return(downloadRawSequenceData(PRESET_SITES, PRESET_START_YR_MO, PRESET_END_YR_MO, 
-                                 PRESET_OUTDIR_SEQUENCE, PRESET_CHECK_FILE_SIZE, PRESET_RETURN_DATA))
-}
-## END FUNCTION
-
-
 ## Function downloads NEON soil data to be associated with soil microbial
 ## community composition data
 #
@@ -145,8 +148,9 @@ downloadAllRawSequenceData <- function() {
 # - DP1.10086: "Soil physical properties (Distributed periodic)"
 downloadRawSoilData <- function(sites = PRESET_SITES, startYrMo = PRESET_START_YR_MO, endYrMo = PRESET_END_YR_MO, 
                                 outdir = PRESET_OUTDIR_SOIL, checkFileSize = PRESET_CHECK_FILE_SIZE, return_data = PRESET_RETURN_DATA) {
-  # outdir - path to directory to download the data. Defaults to the R default directory if none provided
-  # change checkFileSize to FALSE to override file size checks
+  # TODO: Why does this function sometimes return a few warnings of the form:
+  # 1: In UseMethod("depth") :
+  # no applicable method for 'depth' applied to an object of class "NULL"
   
   PRNUM_chem <- "10078"
   PRNUM_phys <- "10086"
@@ -163,7 +167,7 @@ downloadRawSoilData <- function(sites = PRESET_SITES, startYrMo = PRESET_START_Y
     stackByTable(stackDir_chem, folder = TRUE)
     
     # Write site_and_date_range.txt file to record parameters
-    write_site_and_date_range(stackDir_chem, sites, startYrMo, endYrMo)
+    write_sample_subset_params(stackDir_chem, sites, startYrMo, endYrMo)
     
   } else {
     warn_already_downloaded(PRNUM_chem, outdir)
@@ -177,7 +181,7 @@ downloadRawSoilData <- function(sites = PRESET_SITES, startYrMo = PRESET_START_Y
     stackByTable(stackDir_phys, folder = TRUE)
     
     # Write site_and_date_range.txt file to record parameters
-    write_site_and_date_range(stackDir_phys, sites, startYrMo, endYrMo)
+    write_sample_subset_params(stackDir_phys, sites, startYrMo, endYrMo)
     
   } else {
     warn_already_downloaded(PRNUM_phys, outdir)
@@ -267,3 +271,21 @@ count_primer_orients <- function(fn_r1, fn_r2=NULL, primer_fwd, primer_rev) {
   }
 }
 ## END FUNCTION ##
+
+
+## Function to get all unique filenames of samples with at least some
+## reads remaining after the DADA2 pipeline.
+## dir: Filenames from this directory should be listed
+## trim_to_internal_lab_id: Whether to trim filenames to match format of
+##      "internalLabID" in the mmg_soilRawDataFiles table
+get_fastq_names <- function(dir, trim_to_internal_lab_id=TRUE) {
+  f <- list.files(path = dir, pattern = ".fastq")
+  if(trim_to_internal_lab_id) {
+    f <- sub("^run[A-Za-z0-9]*_", "", f)
+    f <- sub("_((ITS)|(16S))_R[12].fastq(.tar)?(.gz)?(.tar)?", "", f)
+    return(f)
+  } else {
+    return(f)
+  }
+}
+head(get_fastq_names(PATH_FILTERED))

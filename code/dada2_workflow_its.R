@@ -283,7 +283,7 @@ for (i in c(15)) {
 # Takes 38210 s (10 h 36.8 min) to process runB69RF, runB69RN, runB9994, runBDR3T, and runBF8M2 through the for loop
 
 # Save joined sequence table
-saveRDS(seqtab_joined, file.path(PRESET_OUTDIR_DADA2, "NEON_ITS_seqtab_nochim_DL08-13-2019.Rds"))
+saveRDS(seqtab_joined, file.path(PRESET_OUTDIR_DADA2, PRESET_FILENAME_JOINED_SEQTAB))
 
 # Assign taxonomy using the UNITE database
 unite.ref <- "./raw_data/tax_ref/sh_general_release_dynamic_02.02.2019.fasta"
@@ -295,6 +295,6 @@ rownames(taxa.print) <- NULL
 if(VERBOSE) head(taxa.print)
 
 # Saved joined taxa table
-saveRDS(taxa_joined, file.path(PRESET_OUTDIR_DADA2, "NEON_ITS_taxa_DL08-13-2019.Rds"))
+saveRDS(taxa_joined, file.path(PRESET_OUTDIR_DADA2, PRESET_FILENAME_TAXTAB))
 
 # Hand off to dada2_to_phyloseq.R

@@ -6,8 +6,8 @@ source("./code/utils.R")
 library(phyloseq)
 library(ggplot2)
 
-seqtab.nochim <- readRDS("./data/NEON_ITS_seqtab_nochim_DL08-13-2019.Rds") # TODO: Modify these to be the files that you're interested in processing.
-taxa <- readRDS("./data/NEON_ITS_taxa_DL08-13-2019.Rds")
+seqtab.nochim <- readRDS(file.path(PRESET_OUTDIR_DADA2, PRESET_FILENAME_JOINED_SEQTAB)) # TODO: Modify these to be the files that you're interested in processing.
+taxa <- readRDS(file.path(PRESET_OUTDIR_DADA2, PRESET_FILENAME_TAXTAB))
 
 # seqmetadata <- downloadAllSequenceMetadata()
 # 
