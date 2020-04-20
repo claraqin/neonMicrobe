@@ -55,7 +55,7 @@ downloadSequenceMetadata <- function(sites = PRESET_SITES, startYrMo = PRESET_ST
   
   PRNUM <- "10108"
   dpID <- paste("DP1", PRNUM, "001", sep=".")
-  stackDir <- paste(outdir, paste0("filesToStack",PRNUM), sep="/")
+  stackDir <- file.path(outdir, paste0("filesToStack",PRNUM))
   
   # Download only if not already downloaded to outdir
   if(!dir.exists(stackDir)) {
@@ -156,8 +156,8 @@ downloadRawSoilData <- function(sites = PRESET_SITES, startYrMo = PRESET_START_Y
   PRNUM_phys <- "10086"
   dpID_chem <- paste("DP1", PRNUM_chem, "001", sep=".")
   dpID_phys <- paste("DP1", PRNUM_phys, "001", sep=".")
-  stackDir_chem <- paste(outdir, paste0("filesToStack",PRNUM_chem), sep="/")
-  stackDir_phys <- paste(outdir, paste0("filesToStack",PRNUM_phys), sep="/")
+  stackDir_chem <- file.path(outdir, paste0("filesToStack",PRNUM_chem))
+  stackDir_phys <- file.path(outdir, paste0("filesToStack",PRNUM_phys))
   
   # Download only if not already downloaded to outdir
   if(!dir.exists(stackDir_chem)) {
@@ -187,18 +187,13 @@ downloadRawSoilData <- function(sites = PRESET_SITES, startYrMo = PRESET_START_Y
     warn_already_downloaded(PRNUM_phys, outdir)
   }
   
-  if(return_data) { # If not, then simply downloads the data to the outdir
+  if(return_data) { # If FALSE, then simply downloads the data to the outdir
     
-    path_soilCoreCollection <- paste(stackDir_phys, "stackedFiles", 
-                                     "sls_soilCoreCollection.csv", sep="/")
-    path_soilMoisture <- paste(stackDir_phys, "stackedFiles", 
-                               "sls_soilMoisture.csv", sep="/")
-    path_soilpH <- paste(stackDir_phys, "stackedFiles", 
-                         "sls_soilpH.csv", sep="/")
-    # path_bgcSubsampling <- paste(stackDir_phys, "stackedFiles", 
-    #                              "sls_bgcSubsampling.csv", sep="/")
-    path_soilChemistry <- paste(stackDir_chem, "stackedFiles", 
-                                "sls_soilChemistry.csv", sep="/")
+    path_soilCoreCollection <- file.path(stackDir_phys, "stackedFiles", "sls_soilCoreCollection.csv")
+    path_soilMoisture <- file.path(stackDir_phys, "stackedFiles", "sls_soilMoisture.csv")
+    path_soilpH <- file.path(stackDir_phys, "stackedFiles", "sls_soilpH.csv")
+    # path_bgcSubsampling <- file.path(stackDir_phys, "stackedFiles", "sls_bgcSubsampling.csv")
+    path_soilChemistry <- file.path(stackDir_chem, "stackedFiles", "sls_soilChemistry.csv")
     
     dat_soilCoreCollection <- read.delim(path_soilCoreCollection, sep=",", stringsAsFactors=FALSE)
     dat_soilMoisture <- read.delim(path_soilMoisture, sep=",", stringsAsFactors=FALSE)
@@ -207,11 +202,15 @@ downloadRawSoilData <- function(sites = PRESET_SITES, startYrMo = PRESET_START_Y
     
     joining_cols <- c("domainID", "siteID", "plotID", "sampleID")
     
-    select(dat_soilCoreCollection, uid:biomassID, -uid) %>% 
-      full_join(select(dat_soilMoisture, uid:dryMassFraction, -uid), by=joining_cols) %>%
-      full_join(select(dat_soilpH, uid:caclpHRatio, -uid), by=joining_cols) %>%
-      full_join(select(dat_soilChemistry, uid:CNratio, -uid), by=joining_cols) -> 
+    # TODO: Confirm that the selected columns are sufficient for downstream analysis
+    select(dat_soilCoreCollection, domainID, siteID, plotID, namedLocation, plotType, nlcdClass, coreCoordinateX, coreCoordinateY, geodeticDatum, decimalLatitude, decimalLongitude, elevation,
+           sccSamplingProtocolVersion=samplingProtocolVersion, collectDate, sampleTiming, standingWaterDepth, nTransBoutType, sampleID, horizon, soilTemp, litterDepth, sampleTopDepth, sampleBottomDepth,
+           soilSamplingDevice, geneticSampleID, sccDataQF=dataQF) %>% 
+      full_join(select(dat_soilMoisture, all_of(joining_cols), moistureSampleID, smSamplingProtocolVersion=samplingProtocolVersion, soilMoisture, smDataQF), by=joining_cols) %>%
+      full_join(select(dat_soilpH, all_of(joining_cols), pHSampleID, pHSamplingProtocolVersion=samplingProtocolVersion, soilInWaterpH, soilInCaClpH, pHDataQF), by=joining_cols) %>%
+      full_join(select(dat_soilChemistry, all_of(joining_cols), cnSampleID, nitrogenPercent, organicCPercent, CNratio, cnTestMethod=testMethod, cnInstrument=instrument, cnDataQF=dataQF), by=joining_cols) -> 
       dat_soil
+    # TODO: Filter by nTransBoutType to remove incubated samples?
     
     return(dat_soil)
   }
@@ -278,9 +277,10 @@ count_primer_orients <- function(fn_r1, fn_r2=NULL, primer_fwd, primer_rev) {
 ## dir: Filenames from this directory should be listed
 ## trim_to_internal_lab_id: Whether to trim filenames to match format of
 ##      "internalLabID" in the mmg_soilRawDataFiles table
-get_fastq_names <- function(dir, trim_to_internal_lab_id=TRUE) {
-  f <- list.files(path = dir, pattern = ".fastq")
+get_fastq_names <- function(dir, trim_to_internal_lab_id=FALSE) {
+  f <- list.files(path = dir, pattern = ".fastq", full.names = TRUE)
   if(trim_to_internal_lab_id) {
+    f <- basename(f)
     f <- sub("^run[A-Za-z0-9]*_", "", f)
     f <- sub("_((ITS)|(16S))_R[12].fastq(.tar)?(.gz)?(.tar)?", "", f)
     return(f)
@@ -288,4 +288,4 @@ get_fastq_names <- function(dir, trim_to_internal_lab_id=TRUE) {
     return(f)
   }
 }
-head(get_fastq_names(PATH_FILTERED))
+head(get_fastq_names(PATH_FILTERED, TRUE))
