@@ -13,6 +13,9 @@ stackDir_seqmeta <- file.path(PRESET_OUTDIR_SEQMETA, paste0("filesToStack",PRNUM
 stackDir_chem <- file.path(PRESET_OUTDIR_SOIL, paste0("filesToStack",PRNUM_chem))
 stackDir_phys <- file.path(PRESET_OUTDIR_SOIL, paste0("filesToStack",PRNUM_phys))
 
+downloadRawSoilData(return_data=FALSE)
+# Warning: may take a while
+
 path_rawDataFiles <- file.path(stackDir_seqmeta, "stackedFiles", "mmg_soilRawDataFiles.csv")
 path_dnaExtraction <- file.path(stackDir_seqmeta, "stackedFiles", "mmg_soilDnaExtraction.csv")
 path_soilCoreCollection <- paste(stackDir_phys, "stackedFiles", "sls_soilCoreCollection.csv", sep="/")
@@ -20,12 +23,12 @@ path_soilMoisture <- paste(stackDir_phys, "stackedFiles", "sls_soilMoisture.csv"
 path_soilpH <- paste(stackDir_phys, "stackedFiles", "sls_soilpH.csv", sep="/")
 path_soilChemistry <- paste(stackDir_chem, "stackedFiles", "sls_soilChemistry.csv", sep="/")
 
-dat_rawDataFiles <- read.delim(path_rawDataFiles, sep=",", stringsAsFactors=FALSE)
-dat_dnaExtraction <- read.delim(path_dnaExtraction, sep=",", stringsAsFactors=FALSE)
-dat_soilCoreCollection <- read.delim(path_soilCoreCollection, sep=",", stringsAsFactors=FALSE)
-dat_soilMoisture <- read.delim(path_soilMoisture, sep=",", stringsAsFactors=FALSE)
-dat_soilpH <- read.delim(path_soilpH, sep=",", stringsAsFactors=FALSE)
-dat_soilChemistry <- read.delim(path_soilChemistry, sep=",", stringsAsFactors=FALSE)
+dat_rawDataFiles <- read.delim(path_rawDataFiles, sep=",", stringsAsFactors=FALSE, na.strings = c("NA", ""))
+dat_dnaExtraction <- read.delim(path_dnaExtraction, sep=",", stringsAsFactors=FALSE, na.strings = c("NA", ""))
+dat_soilCoreCollection <- read.delim(path_soilCoreCollection, sep=",", stringsAsFactors=FALSE, na.strings = c("NA", ""))
+dat_soilMoisture <- read.delim(path_soilMoisture, sep=",", stringsAsFactors=FALSE, na.strings = c("NA", ""))
+dat_soilpH <- read.delim(path_soilpH, sep=",", stringsAsFactors=FALSE, na.strings = c("NA", ""))
+dat_soilChemistry <- read.delim(path_soilChemistry, sep=",", stringsAsFactors=FALSE, na.strings = c("NA", ""))
 
 # remove analytical replicates
 dat_soilChemistry <- dat_soilChemistry[dat_soilChemistry$analyticalRepNumber == 1,]
@@ -37,9 +40,8 @@ dup %>% arrange(sampleID) %>%
   select(sampleID, analyticalRepNumber, nitrogenPercent, organicCPercent)
 c.only.ind <- which(is.na(dup$nitrogenPercent) & !is.na(dup$organicCPercent))
 n.only.ind <- which(!is.na(dup$nitrogenPercent) & is.na(dup$organicCPercent))
-x <- select(dup[c.only.ind,], -nitrogenPercent)
-y <- select(dup[n.only.ind,], sampleID, nitrogenPercent)
-c_n_merged <- full_join(x,y)
+c_n_merged <- full_join(select(dup[c.only.ind,], -nitrogenPercent),
+                        select(dup[n.only.ind,], sampleID, nitrogenPercent))
 
 # merge back in with rest of C/N data
 dat_soilChemistry <- dat_soilChemistry[!(dat_soilChemistry$sampleID %in% c_n_merged$sampleID),]

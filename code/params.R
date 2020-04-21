@@ -7,17 +7,19 @@
 PRESET_SITES = "all" # Can also be character vector of 4-letter NEON site codes e.g. c('ONAQ','RMNP')
 PRESET_START_YR_MO = "2011-06"
 PRESET_END_YR_MO = format(Sys.Date(), "%Y-%m")
-PRESET_CHECK_FILE_SIZE = FALSE
-PRESET_RETURN_DATA = TRUE
-SAMPLE_SUBSET_PARAMS_FILENAME = "sample_subset_params.txt" # name to give file where subset params are recorded
 TARGET_GENE = "ITS" # Must be "ITS", "16S", or "all"
 SEQUENCING_RUNS = "all" # Can also be character vector of 5-letter NEON sequencing run IDs e.g. c('B69RF','BTP4N')
 if(!(TARGET_GENE %in% c("ITS", "16S", "all"))) warning("TARGET_GENE must be 'ITS', '16S', or 'all'")
+SAMPLE_SUBSET_PARAMS_FILENAME = "sample_subset_params.txt" # name to give file where subset params are recorded
+PRESET_CHECK_FILE_SIZE = FALSE
+PRESET_RETURN_DATA = TRUE
+
 
 # Parameters for output directories and filenames
 PRESET_OUTDIR_SEQUENCE = "/data/ZHULAB/NEON_DOB/Illumina/NEON"
 PRESET_OUTDIR_SEQMETA = "/data/ZHULAB/NEON_DOB/sequence_metadata"
 PRESET_OUTDIR_SOIL = "/data/ZHULAB/NEON_DOB/soil"
+PRESET_OUTDIR_SOIL_DB = "/data/ZHULAB/NEON_DOB" # Database containing both seqmeta and soil data
 PRESET_OUTDIR_DADA2 = "/raid/users/claraqin/zhulab/NEON_soil_microbe_processing/data"
 PRESET_FILENAME_JOINED_SEQTAB = "NEON_ITS_seqtab_nochim_DL08-13-2019.Rds"
 PRESET_FILENAME_TAXTAB = "NEON_ITS_taxa_DL08-13-2019.Rds"

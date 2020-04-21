@@ -2,55 +2,43 @@
 # DADA2 pipeline (e.g. non-chimeric sequence table, taxonomic table)
 # to environmental/sample data.
 
+# Load utilities and create soil database if necessary
 source("./code/utils.R")
+if(!file.exists(file.path(PRESET_OUTDIR_SOIL_DB, "soilDB.db"))) {
+  source("./code/create_soil_database.R")
+}
+
+# Load libraries
 library(phyloseq)
 library(ggplot2)
 
+# Load combined sequence table and taxonomic table
 seqtab.nochim <- readRDS(file.path(PRESET_OUTDIR_DADA2, PRESET_FILENAME_JOINED_SEQTAB)) # TODO: Modify these to be the files that you're interested in processing.
 taxa <- readRDS(file.path(PRESET_OUTDIR_DADA2, PRESET_FILENAME_TAXTAB))
 
-# seqmetadata <- downloadSequenceMetadata()
-# 
-# seqmetadata$geneticSampleID <- sub("-DNA[1-3]", "", seqmetadata$dnaSampleID)
-# 
-# seqmetadata %>%
-#   # select(geneticSampleID, rawDataFileName, internalLabID) %>%
-#   # mutate(match_name = sub("_((ITS)|(16S))_R[12].fastq(.tar)?(.gz)?$","", rawDataFileName)) %>% dim()
-#   select(geneticSampleID, internalLabID) %>%
-#   distinct() ->
-#   link_geneticID_labID
+# Connect to soil database
+con <- dbConnect(RSQLite::SQLite(), file.path(PRESET_OUTDIR_SOIL_DB, "soilDB.db"))
+res <- dbSendQuery(con, "
+  SELECT internalLabID, scc.sampleID, sph.soilInCaClpH, sm.soilMoisture, sch.nitrogenPercent,
+         sch.organicCPercent, sch.CNratio
+  FROM dnaExtraction AS dna
+  INNER JOIN soilCoreCollection AS scc
+     ON dna.geneticSampleID=scc.geneticSampleID
+  LEFT JOIN soilpH AS sph
+     ON sph.sampleID=scc.sampleID
+  LEFT JOIN soilMoisture AS sm
+     ON sm.sampleID=scc.sampleID
+  LEFT JOIN soilChemistry AS sch
+     ON sch.sampleID=scc.sampleID
+")
+res_df <- dbFetch(res)
+apply(res_df, 2, function(x){mean(is.na(x))})
+dbClearResult(res)
 
-soildata <- downloadRawSoilData()
+sampledata <- res_df[match(rownames(seqtab.nochim), res_df$internalLabID),]
+rownames(sampledata) <- rownames(seqtab.nochim)
 
-# soildata %>%
-#   filter(geneticSampleID != "") %>%
-#   full_join(link_geneticID_labID, by="geneticSampleID") ->
-#   sampledata_full
-
-seqtab_internalLabID <- rownames(seqtab.nochim)
-
-# sampledata_ind <- match(seqtab_internalLabID, sampledata_full$internalLabID)
-# # Not all sequencing samples have a corresponding sample-data entry!
-
-# Try again with Lee's custom metadata (TODO: need to operationalize)
-lee_metadata <- read.csv("./code/ITSmetadataMapped.csv")
-lee_metadata %>%
-  mutate(match_name = sub("_((ITS)|(16S))_R[12].fastq$", "", basename(as.character(fileName)))) ->
-  lee_metadata
-sampledata_ind2 <- match(seqtab_internalLabID, lee_metadata$match_name)
-mean(is.na(sampledata_ind2)) # 0.262
-# Yes, let's go with this one instead of seqmetadata
-
-soildata %>%
-  filter(geneticSampleID != "") %>%
-  full_join(select(lee_metadata, match_name, geneticSampleID), by="geneticSampleID") ->
-  sampledata_full
-sampledata_ind <- match(seqtab_internalLabID, sampledata_full$match_name)
-
-sampledata <- sampledata_full[sampledata_ind,]
-rownames(sampledata) <- seqtab_internalLabID
-
-
+# Combine into phyloseq object
 ps <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows=FALSE), 
                sample_data(sampledata), 
                tax_table(taxa))
@@ -94,3 +82,5 @@ write.csv(table(ps_sampledata$siteID, ps_sampledata$year), "./data/sites_by_year
 table(sample_data(ps_2017_06)$siteID)
 
 write.csv(table(ps_sampledata$year, ps_sampledata$mo), "./data/obs_by_year_and_mo.csv")
+
+
