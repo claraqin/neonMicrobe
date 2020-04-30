@@ -271,21 +271,28 @@ count_primer_orients <- function(fn_r1, fn_r2=NULL, primer_fwd, primer_rev) {
 }
 ## END FUNCTION ##
 
-
-## Function to get all unique filenames of samples with at least some
-## reads remaining after the DADA2 pipeline.
-## dir: Filenames from this directory should be listed
-## trim_to_internal_lab_id: Whether to trim filenames to match format of
-##      "internalLabID" in the mmg_soilRawDataFiles table
-get_fastq_names <- function(dir, trim_to_internal_lab_id=FALSE) {
-  f <- list.files(path = dir, pattern = ".fastq", full.names = TRUE)
-  if(trim_to_internal_lab_id) {
-    f <- basename(f)
-    f <- sub("^run[A-Za-z0-9]*_", "", f)
-    f <- sub("_((ITS)|(16S))_R[12].fastq(.tar)?(.gz)?(.tar)?", "", f)
-    return(f)
-  } else {
-    return(f)
-  }
+## Function to get sample names from list of file names, assuming sample name
+## is the four underscore-separated pieces of the file name.
+## Adapted from DADA2 ITS Tutorial (1.8)
+get.sample.name <- function(fname) {
+  paste(strsplit(basename(fname), "_")[[1]][1:4], collapse="_") # TODO: this could be made more robust
 }
-head(get_fastq_names(PATH_FILTERED, TRUE))
+## END FUNCTION ##
+
+# ## Function to get all unique filenames of samples with at least some
+# ## reads remaining after the DADA2 pipeline.
+# ## dir: Filenames from this directory should be listed
+# ## trim_to_internal_lab_id: Whether to trim filenames to match format of
+# ##      "internalLabID" in the mmg_soilRawDataFiles table
+# get_fastq_names <- function(dir, trim_to_internal_lab_id=FALSE) {
+#   f <- list.files(path = dir, pattern = ".fastq", full.names = TRUE)
+#   if(trim_to_internal_lab_id) {
+#     f <- basename(f)
+#     f <- sub("^run[A-Za-z0-9]*_", "", f)
+#     f <- sub("_((ITS)|(16S))_R[12].fastq(.tar)?(.gz)?(.tar)?", "", f)
+#     return(f)
+#   } else {
+#     return(f)
+#   }
+# }
+# ## END FUNCTION

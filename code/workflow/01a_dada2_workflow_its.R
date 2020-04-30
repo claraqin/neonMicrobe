@@ -21,8 +21,9 @@ library(tibble)
 library(dplyr)
 
 # Get all run IDs so you can group by them
-runs <- regmatches(list.files(PATH_ITS), gregexpr("^run[A-Za-z0-9]*", list.files(PATH_ITS)))
-unique_runs <- unique(unlist(runs))
+unique_runs <- unique(unlist(
+  regmatches(list.files(PATH_UNZIPPED), gregexpr("^run[A-Za-z0-9]*", list.files(PATH_UNZIPPED)))
+))
 
 # If SMALL_SUBSET == TRUE, run only the first runID
 if (SMALL_SUBSET) {
@@ -31,10 +32,56 @@ if (SMALL_SUBSET) {
   loop_length <- length(unique_runs)
 }
 
+# Trim primers using cutadapt
+trim_primers <- function(in.fwd, in.rev, out.fwd, out.rev) {
+  FWD.RC <- dada2:::rc(PRIMER_ITS_FWD)
+  REV.RC <- dada2:::rc(PRIMER_ITS_REV)
+  # Trim FWDPrimer and the reverse-complement of REVPrimer off of R1 (forward reads)
+  R1.flags <- paste("-g", PRIMER_ITS_FWD, "-a", REV.RC) 
+  # Trim REVPrimer and the reverse-complement of FWDPrimer off of R2 (reverse reads)
+  R2.flags <- paste("-G", PRIMER_ITS_REV, "-A", FWD.RC) 
+  
+  # Run Cutadapt
+  for(i in seq_along(in.fwd)) {
+    system2(CUTADAPT_PATH, args = c(R1.flags, R2.flags, "-n", 2, # -n 2 required to remove FWD and REV from reads
+                                    "-o", out.fwd[i], "-p", out.rev[i], # output files
+                                    in.fwd[i], in.rev[i], # input files; fnFs.filtN replaced by fnFs.filtN2, etc.
+                                    "--minimum-length", "1"), # min length of cutadapted reads: >0 
+            stdout = FALSE)
+  }
+  
+  # Count primers in first post-cutadapt sample (should all be 0):
+  if(VERBOSE) {
+    count_primer_orients(out.fwd[[1]], out.rev[[1]], PRIMER_ITS_FWD, PRIMER_ITS_REV)
+  }
+}
+
+# runDada2_fwd.reads <- function(filtpath, out.file, seed = NULL, ...){
+#   if (!is.null(seed)) set.seed(seed)
+#   
+#   filtFs <- list.files(filtpath, pattern="fastq.gz|.fastq", full.names=TRUE) # CHANGE if different file extensions
+#   sample.names <- sapply(strsplit(basename(filtFs), "_R"), `[`, 1) # Assumes filename = samplename_RX.fastq.gz
+#   names(filtFs) <- sample.names
+#   # Learn error rates
+#   err <- learnErrors(filtFs, nbases = 1e7, multithread=TRUE, randomize=TRUE)
+#   # Infer sequence variants
+#   dds <- vector("list", length(sample.names))
+#   names(dds) <- sample.names
+#   for(sam in sample.names) {
+#     cat("Processing:", sam, "\n")
+#     derep <- derepFastq(filtFs[[sam]])
+#     dds[[sam]] <- dada(derep, err=err, multithread=TRUE)
+#     cat(paste("Exact sequence variants inferred for sample:",  sam,". \n"))
+#   }
+#   # Construct sequence table and remove chimeras
+#   seqtab <- makeSequenceTable(dds)
+#   cat(paste0("\nDimensions of ESV table:\nSamples: ", dim(seqtab)[1], "\n\nESVs: ",dim(seqtab)[2]))
+#   saveRDS(seqtab, out.file)
+# }
+
 # TODO: Switch from a for-loop to a foreach, or some other parallel process
 # system.time({
-for (i in c(15)) {
-# for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN) and #6 (runBF8M2, which lacks rownames?)
+for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN) and #6 (runBF8M2, which lacks rownames?)
   runID <- unique_runs[i]
   print(paste0("Began processing ", runID, " at ", Sys.time()))
   
@@ -74,13 +121,11 @@ for (i in c(15)) {
   # “pre-filter” the sequences just to remove those with Ns, but perform no other filtering
   fnFs.filtN <- file.path(PATH_FILTN, basename(fnFs)) # Put N-filtered files in filtN/ subdirectory
   fnRs.filtN <- file.path(PATH_FILTN, basename(fnRs))
-  # system.time({ # 27.9 s on runB69PP (144 files), 77.5 s on runB69RF (173 files)
-    out_filtN <- filterAndTrim(fnFs, fnFs.filtN, fnRs, fnRs.filtN, maxN = 0, multithread = MULTITHREAD, compress = FALSE)
-  # })
+  out_filtN <- filterAndTrim(fnFs, fnFs.filtN, fnRs, fnRs.filtN, maxN = 0, multithread = MULTITHREAD, compress = FALSE)
   print(paste0("Finished pre-filtering sequences in ", runID, " at ", Sys.time()))
   
   # This part deviates from the tutorial. Since some samples lose all reads at
-  # the pre-filtering stage, it is useful to trim down the samples for the
+  # the pre-filtering stage, it is useful to trim down the sample list for the
   # next step: cutadapt
   fnFs.filtN <- list.files(PATH_FILTN, pattern = paste0(runID, ".*_R1.fastq"), full.names=TRUE)
   fnRs.filtN <- list.files(PATH_FILTN, pattern = paste0(runID, ".*_R2.fastq"), full.names=TRUE)
@@ -102,70 +147,23 @@ for (i in c(15)) {
   fnFs.cut_mid <- file.path(PATH_CUT, paste0("mid_cutadapt_", basename(fnFs.filtN)))
   fnRs.cut_mid <- file.path(PATH_CUT, paste0("mid_cutadapt_", basename(fnRs.filtN)))
   
-  FWD.RC <- dada2:::rc(PRIMER_ITS_FWD)
-  REV.RC <- dada2:::rc(PRIMER_ITS_REV)
-  # Trim FWDPrimer and the reverse-complement of REVPrimer off of R1 (forward reads)
-  R1.flags <- paste("-g", PRIMER_ITS_FWD, "-a", REV.RC) 
-  # Trim REVPrimer and the reverse-complement of FWDPrimer off of R2 (reverse reads)
-  R2.flags <- paste("-G", PRIMER_ITS_REV, "-A", FWD.RC) 
+  trim_primers(fnFs.filtN, fnRs.filtN, fnFs.cut_mid, fnRs.cut_mid)
   
-  # Run Cutadapt
-  # system.time({ # 212.7 s on runB69PP 
-  for(i in seq_along(fnFs.filtN)) { # MAY BE POSSIBLE TO PARALLELIZE THIS STEP
-      system2(CUTADAPT_PATH, args = c(R1.flags, R2.flags, "-n", 2, # -n 2 required to remove FWD and REV from reads
-                               "-o", fnFs.cut_mid[i], "-p", fnRs.cut_mid[i], # output files
-                               fnFs.filtN[i], fnRs.filtN[i], # input files; fnFs.filtN replaced by fnFs.filtN2, etc.
-                               "--minimum-length", "1"), # min length of cutadapted reads: >0 
-              stdout = FALSE)
-  }
-  # })
-  print(paste0("Finished stage 1 (of 2) of primer removal using cutadapt in ", runID, " at ", Sys.time()))
-  
-  # Count primers in first post-cutadapt sample (should all be 0):
-  if(VERBOSE) {
-    count_primer_orients(fnFs.cut_mid[[1]], fnRs.cut_mid[[1]], PRIMER_ITS_FWD, PRIMER_ITS_REV)
-  }
-  
-  # Since they are not all zero, remove all other orientations of primers
-  # EDIT: This is not the best way to handle mixed orientations --
-  #       see Issue #5.
+  # Since not all primer counts are zero yet, remove all other orientations of primers
   
   fnFs.cut <- file.path(PATH_CUT, sub("mid_cutadapt_", "", basename(fnFs.cut_mid)))
   fnRs.cut <- file.path(PATH_CUT, sub("mid_cutadapt_", "", basename(fnRs.cut_mid)))
   
-  # Trim REV and the reverse-complement of FWD off of R1 (forward reads)
-  R1.flags.swapped <- paste("-g", PRIMER_ITS_REV, "-a", FWD.RC) 
-  # Trim FWD and the reverse-complement of REV off of R2 (reverse reads)
-  R2.flags.swapped <- paste("-G", PRIMER_ITS_FWD, "-A", REV.RC) 
-  
-  # Run Cutadapt
-  # system.time({ # 162.6 s on runB69PP
-  for(i in seq_along(fnFs.cut_mid)) { # MAY BE POSSIBLE TO PARALLELIZE THIS STEP
-    system2(CUTADAPT_PATH, args = c(R1.flags.swapped, R2.flags.swapped, "-n", 2, # -n 2 required to remove FWD and REV from reads
-                               "-o", fnFs.cut[i], "-p", fnRs.cut[i], # output files
-                               fnFs.cut_mid[i], fnRs.cut_mid[i], # input files; fnFs.filtN replaced by fnFs.filtN2, etc.
-                               "--minimum-length", "1"), # min length of cutadapted reads: >0 
-            stdout = FALSE)
-  }
-  # })
-  print(paste0("Finished stage 2 (of 2) of primer removal using cutadapt in ", runID, " at ", Sys.time()))
+  trim_primers(fnFs.cut_mid, fnRs.cut_mid, fnFs.cut, fnRs.cut)
   
   # Remove intermediary files associated with first step of cutadapt
   file.remove(list.files(path=PATH_CUT, pattern = "mid_cutadapt_", full.names=TRUE))
-  
-  # Check primers
-  if(VERBOSE) {
-    count_primer_orients(fnFs.cut[[1]], fnRs.cut[[1]], PRIMER_ITS_FWD, PRIMER_ITS_REV)
-  }
   
   # Forward and reverse fastq filenames have the format:
   cutFs <- sort(list.files(PATH_CUT, pattern = paste0(runID, ".*_R1.fastq"), full.names = TRUE))
   cutRs <- sort(list.files(PATH_CUT, pattern = paste0(runID, ".*_R2.fastq"), full.names = TRUE))
   
-  # Extract sample names, assuming filenames have format:
-  get.sample.name <- function(fname) {
-    paste(strsplit(basename(fname), "_")[[1]][1:4], collapse="_") # TODO: this could be made more robust
-  }
+  # Extract sample names, assuming filenames have correct format:
   sample.names <- unname(sapply(cutFs, get.sample.name))
   if(VERBOSE) head(sample.names)
   
@@ -199,16 +197,16 @@ for (i in c(15)) {
   filtRs.out <- list.files(PATH_FILTERED, pattern = paste0(runID, ".*_R2.fastq"), full.names=TRUE)
   
   # Learn the error rates
-  errF <- learnErrors(filtFs.out, multithread = MULTITHREAD)
-  errR <- learnErrors(filtRs.out, multithread = MULTITHREAD)
+  errF <- learnErrors(filtFs.out, multithread=MULTITHREAD, nbases = 1e7, randomize=TRUE)
+  errR <- learnErrors(filtRs.out, multithread=MULTITHREAD, nbases = 1e7, randomize=TRUE)
   print(paste0("Finished learning error rates in ", runID, " at ", Sys.time()))
   
   # Visualize estimated error rates
   if(VERBOSE) plotErrors(errF, nominalQ = TRUE)
   
   # Dereplicate identical reads
-  derepFs <- derepFastq(filtFs.out, verbose = TRUE)
-  derepRs <- derepFastq(filtRs.out, verbose = TRUE)
+  derepFs <- derepFastq(filtFs.out)
+  derepRs <- derepFastq(filtRs.out)
   # Name the derep-class objects by the sample names
   sample.names <- unname(sapply(filtFs.out, get.sample.name))
   names(derepFs) <- sample.names
@@ -223,6 +221,8 @@ for (i in c(15)) {
   # Merge pairs
   mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE)
   print(paste0("Finished merging pairs in ", runID, " at ", Sys.time()))
+  rm(derepFs)
+  rm(derepRs)
   
   # Construct sequence table
   seqtab <- makeSequenceTable(mergers)

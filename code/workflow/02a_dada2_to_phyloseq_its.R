@@ -19,8 +19,13 @@ taxa <- readRDS(file.path(PRESET_OUTDIR_DADA2, PRESET_FILENAME_TAXTAB))
 # Connect to soil database
 con <- dbConnect(RSQLite::SQLite(), file.path(PRESET_OUTDIR_SOIL_DB, "soilDB.db"))
 res <- dbSendQuery(con, "
-  SELECT internalLabID, scc.sampleID, sph.soilInCaClpH, sm.soilMoisture, sch.nitrogenPercent,
-         sch.organicCPercent, sch.CNratio
+  SELECT internalLabID, scc.namedLocation, scc.domainID, scc.siteID, scc.plotID,
+         scc. plotType, scc.nlcdClass, scc.collectDate, scc.sampleTiming,
+         scc.standingWaterDepth, scc.soilTemp, scc.horizon,
+         scc.sampleID, sph.soilInCaClpH, sm.soilMoisture, sch.nitrogenPercent,
+         sch.organicCPercent, sch.CNratio,
+         scc.utmZone, scc.adjNorthing, scc.adjEasting, scc.adjDecimalLatitude,
+         scc.adjDecimalLongitude, scc.adjElevation
   FROM dnaExtraction AS dna
   INNER JOIN soilCoreCollection AS scc
      ON dna.geneticSampleID=scc.geneticSampleID
@@ -34,8 +39,10 @@ res <- dbSendQuery(con, "
 res_df <- dbFetch(res)
 apply(res_df, 2, function(x){mean(is.na(x))})
 dbClearResult(res)
+dbDisconnect(con)
 
 sampledata <- res_df[match(rownames(seqtab.nochim), res_df$internalLabID),]
+sampledata <- sampledata[, -which(names(sampledata)=="internalLabID")]
 rownames(sampledata) <- rownames(seqtab.nochim)
 
 # Combine into phyloseq object
@@ -53,34 +60,23 @@ ps
 
 saveRDS(ps, "./data/NEON_ITS_phyloseq_DL08-13-2019.Rds")
 
-# Phyloseq object is ready for analysis
-
-plot_richness(ps, x="collectDate", measures=c("Shannon", "Simpson"), color="siteID")
-
-plot_richness(ps, x="soilTemp", measures=c("Shannon", "Simpson"), color="horizon")
-
-plot_richness(ps, x="decimalLatitude", measures=c("Observed", "Shannon"), color="domainID") + 
-  geom_smooth()
-
-# Subset for 2018 data
-dates <- get_variable(ps, "collectDate.x")
-dates_yr <- as.integer(format(as.Date(dates, format="%Y-%m-%dT%H:%MZ"), "%Y"))
-dates_mo <- as.integer(format(as.Date(dates, format="%Y-%m-%dT%H:%MZ"), "%m"))
-sample_data(ps)$year <- dates_yr
-sample_data(ps)$mo <- dates_mo
-ps_2017 <- subset_samples(ps, year == "2017")
-rm(ps_2017)
-ps_2017_06 <- subset_samples(ps, year == "2017" & mo == "6")
-
-saveRDS(ps_2017_06, "./data/NEON_ITS_phyloseq_subset_2017_06.Rds")
-
-
-
-
-write.csv(table(ps_sampledata$siteID, ps_sampledata$year), "./data/sites_by_year.csv")
-
-table(sample_data(ps_2017_06)$siteID)
-
-write.csv(table(ps_sampledata$year, ps_sampledata$mo), "./data/obs_by_year_and_mo.csv")
-
-
+# # Phyloseq object is ready for analysis
+# 
+# plot_richness(ps, x="collectDate", measures=c("Shannon", "Simpson"), color="siteID")
+# 
+# plot_richness(ps, x="soilTemp", measures=c("Shannon", "Simpson"), color="horizon")
+# 
+# plot_richness(ps, x="decimalLatitude", measures=c("Observed", "Shannon"), color="domainID") + 
+#   geom_smooth()
+# 
+# # Subset for 2018 data
+# dates <- get_variable(ps, "collectDate.x")
+# dates_yr <- as.integer(format(as.Date(dates, format="%Y-%m-%dT%H:%MZ"), "%Y"))
+# dates_mo <- as.integer(format(as.Date(dates, format="%Y-%m-%dT%H:%MZ"), "%m"))
+# sample_data(ps)$year <- dates_yr
+# sample_data(ps)$mo <- dates_mo
+# ps_2017 <- subset_samples(ps, year == "2017")
+# rm(ps_2017)
+# ps_2017_06 <- subset_samples(ps, year == "2017" & mo == "6")
+# 
+# saveRDS(ps_2017_06, "./data/NEON_ITS_phyloseq_subset_2017_06.Rds")
