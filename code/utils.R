@@ -14,7 +14,7 @@ write_sample_subset_params <- function(writeDir, sites, startYrMo, endYrMo,
   # paste("writing in ", writeDir)
   write.table(
     data.frame(x1=c("sites", "startYrMo", "endYrMo", "target_genes", "sequencing_runs"),
-               x2=c(sites, startYrMo, endYrMo, target_genes, sequencing_runs)),
+               x2=c(paste0(sites, collapse=","), startYrMo, endYrMo, paste0(target_genes, collapse=","), paste0(sequencing_runs, collapse=","))),
     file = paste(writeDir, SAMPLE_SUBSET_PARAMS_FILENAME, sep="/"),
     sep=":", col.names=FALSE, quote=FALSE, row.names=FALSE
   )
@@ -94,7 +94,11 @@ downloadRawSequenceData <- function(sites = PRESET_SITES, startYrMo = PRESET_STA
   # outdir - path to directory to download the data
   # change checkFileSize to FALSE to override file size checks
   
-  metadata <- downloadSequenceMetadata(sites, startYrMo, endYrMo, checkFileSize=FALSE, return_data=TRUE)
+  metadata <- downloadSequenceMetadata(sites, startYrMo, endYrMo, checkFileSize=FALSE, 
+                                       return_data=TRUE)
+  # TODO: May be less confusing to make a variant of downloadSequenceMetadata()
+  # to be clear that you are not re-downloading the data; just retrieving
+  # it from your local file system.
   
   u.urls <- unique(metadata$rawDataFilePath)
   fileNms <- gsub('^.*\\/', "", u.urls)
@@ -113,7 +117,12 @@ downloadRawSequenceData <- function(sites = PRESET_SITES, startYrMo = PRESET_STA
   }
   
   # If necessary, subset to download specific sequencing runs
-  if(sequencing_runs!="all") {
+  if(length(sequencing_runs)>1) {
+    fileNms_runIDs <- sapply(strsplit(basename(fileNms),"_"), function(x) x[2]) # TODO: Can probably be made more robust. Assumes unchanging position of runID in filename
+    keep_ind <- which(fileNms_runIDs %in% sequencing_runs)
+    fileNms <- fileNms[keep_ind]
+    u.urls <- u.urls[keep_ind]
+  } else if(sequencing_runs!="all") {
     fileNms_runIDs <- sapply(strsplit(basename(fileNms),"_"), function(x) x[2]) # TODO: Can probably be made more robust. Assumes unchanging position of runID in filename
     keep_ind <- which(fileNms_runIDs %in% sequencing_runs)
     fileNms <- fileNms[keep_ind]

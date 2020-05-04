@@ -8,19 +8,18 @@ PRESET_SITES = "all" # Can also be character vector of 4-letter NEON site codes 
 PRESET_START_YR_MO = "2011-06"
 PRESET_END_YR_MO = format(Sys.Date(), "%Y-%m")
 TARGET_GENE = "ITS" # Must be "ITS", "16S", or "all"
-SEQUENCING_RUNS = "all" # Can also be character vector of 5-letter NEON sequencing run IDs e.g. c('B69RF','BTP4N')
-if(!(TARGET_GENE %in% c("ITS", "16S", "all"))) warning("TARGET_GENE must be 'ITS', '16S', or 'all'")
+SEQUENCING_RUNS = c('C25G9', 'B69PP') # Can also be character vector of 5-letter NEON sequencing run IDs e.g. c('B69RF','BTP4N')
 SAMPLE_SUBSET_PARAMS_FILENAME = "sample_subset_params.txt" # name to give file where subset params are recorded
 PRESET_CHECK_FILE_SIZE = FALSE
 PRESET_RETURN_DATA = TRUE
 
 
 # Parameters for output directories and filenames
-PRESET_OUTDIR_SEQUENCE = "/data/ZHULAB/NEON_DOB/Illumina/NEON"
-PRESET_OUTDIR_SEQMETA = "/data/ZHULAB/NEON_DOB/sequence_metadata"
-PRESET_OUTDIR_SOIL = "/data/ZHULAB/NEON_DOB/soil"
+PRESET_OUTDIR_SEQUENCE = "/data/ZHULAB/NEON_DOB/Illumina/NEON/test" # for sequence data (fastq files)
+PRESET_OUTDIR_SEQMETA = "/data/ZHULAB/NEON_DOB/sequence_metadata/test" # for sequence metadata
+PRESET_OUTDIR_SOIL = "/data/ZHULAB/NEON_DOB/soil/test" # for soil data
 PRESET_OUTDIR_SOIL_DB = "/data/ZHULAB/NEON_DOB" # Database containing both seqmeta and soil data
-PRESET_OUTDIR_DADA2 = "/raid/users/claraqin/zhulab/NEON_soil_microbe_processing/data"
+PRESET_OUTDIR_DADA2 = "/raid/users/claraqin/zhulab/NEON_soil_microbe_processing/data" # for phyloseq outputs
 PRESET_FILENAME_JOINED_SEQTAB = "NEON_ITS_seqtab_nochim_DL08-13-2019.Rds"
 PRESET_FILENAME_TAXTAB = "NEON_ITS_taxa_DL08-13-2019.Rds"
 
@@ -59,3 +58,6 @@ MIN_LEN = 50 # min. allowable length of reads that pass filter
              # likelihood of sufficient overlap between read pairs. However,
              # this is at odds with the incentive for setting TRUNC_Q higher
              # (see previous)
+
+# VALIDITY CHECKS (do not modify)
+if(!(TARGET_GENE %in% c("ITS", "16S", "all"))) warning("TARGET_GENE must be 'ITS', '16S', or 'all'")

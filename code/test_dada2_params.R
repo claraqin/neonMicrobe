@@ -1,14 +1,20 @@
 # test_dada2_params.R
 #
+# DOWNLOAD WORKAROUND VERSION -- THIS TAKES AS INPUT A DIRECTORY
+# CONTAINING FASTQ FILES TO BE TESTED UPON. YOU SHOULD STILL UPDATE
+# params.R TO MATCH YOUR LOCAL FILE STRUCTURE, BUT YOU DO NOT NEED
+# TO RUN 00_new_server_setup.R BEFORE RUNNING THIS SCRIPT. IN
+# ADDITION, YOU WILL NEED TO DECOMPRESS THE 'C25G9_sample.zip' FILE,
+# AVAILABLE AT THE LINK BELOW, AND PASTE ITS CONTENTS INTO 'PATH_CUT',
+# DEFINED ON LINE 61.
+#
+# LINK TO SAMPLE FILES: https://drive.google.com/file/d/1sIyp3_Ne1vF7qLf-racqoyNbEL_1qZGL/view?usp=sharing
+#
 # This script tests the effects of various filterAndTrim and dada2 parameters on
 # - proportion / number of reads remaining in a sample
 # - diversity estimates of a sample
 # - taxonomic resolution of a sample
-# 
-# Before running this script, you need to have downloaded at least the data
-# associated with sequencing run B69PP. You can do this by setting the 'SEQUENCING_RUNS'
-# parameter to 'B69PP' in the params.R file, making other adjustments to the parameters
-# as needed, and then running 00_new_server_setup.R.
+
 
 # Load parameters from params.R, tools from utils.R
 source("./code/params.R")
@@ -21,6 +27,32 @@ library(Biostrings)
 library(tibble)
 library(dplyr)
 library(vegan)
+
+### TEMPORARY ############
+# Create required directories
+if(!dir.exists(PRESET_OUTDIR_SEQUENCE)) dir.create(PRESET_OUTDIR_SEQUENCE, recursive=TRUE)
+if(!dir.exists(PRESET_OUTDIR_SEQMETA)) dir.create(PRESET_OUTDIR_SEQMETA, recursive=TRUE)
+if(!dir.exists(PRESET_OUTDIR_SOIL)) dir.create(PRESET_OUTDIR_SOIL, recursive=TRUE)
+
+# If preset output directories for ITS and 16S data do not exist, create them
+if(!dir.exists(file.path(BASE_DIR, "ITS"))) dir.create(file.path(BASE_DIR, "ITS"), recursive=TRUE)
+if(!dir.exists(file.path(BASE_DIR, "16S"))) dir.create(file.path(BASE_DIR, "16S"), recursive=TRUE)
+
+# Create intermediary directories for ITS and 16S data in the middle
+# of being processed
+if(!dir.exists(file.path(BASE_DIR, "ITS", "0_unzipped"))) dir.create(file.path(BASE_DIR, "ITS", "0_unzipped"), recursive=TRUE)
+if(!dir.exists(file.path(BASE_DIR, "ITS", "1_filtN"))) dir.create(file.path(BASE_DIR, "ITS", "1_filtN"), recursive=TRUE)
+if(!dir.exists(file.path(BASE_DIR, "ITS", "2_cutadapt"))) dir.create(file.path(BASE_DIR, "ITS", "2_cutadapt"), recursive=TRUE)
+if(!dir.exists(file.path(BASE_DIR, "ITS", "3_filtered"))) dir.create(file.path(BASE_DIR, "ITS", "3_unzipped"), recursive=TRUE)
+if(!dir.exists(file.path(BASE_DIR, "ITS", "4_seqtabs"))) dir.create(file.path(BASE_DIR, "ITS", "4_seqtabs"), recursive=TRUE)
+if(!dir.exists(file.path(BASE_DIR, "ITS", "track_reads"))) dir.create(file.path(BASE_DIR, "ITS", "track_reads"), recursive=TRUE)
+if(!dir.exists(file.path(BASE_DIR, "16S", "0_unzipped"))) dir.create(file.path(BASE_DIR, "16S", "0_unzipped"), recursive=TRUE)
+if(!dir.exists(file.path(BASE_DIR, "16S", "1_filtN"))) dir.create(file.path(BASE_DIR, "16S", "1_filtN"), recursive=TRUE)
+if(!dir.exists(file.path(BASE_DIR, "16S", "2_cutadapt"))) dir.create(file.path(BASE_DIR, "16S", "2_cutadapt"), recursive=TRUE)
+if(!dir.exists(file.path(BASE_DIR, "16S", "3_filtered"))) dir.create(file.path(BASE_DIR, "16S", "3_unzipped"), recursive=TRUE)
+if(!dir.exists(file.path(BASE_DIR, "16S", "4_seqtabs"))) dir.create(file.path(BASE_DIR, "16S", "4_seqtabs"), recursive=TRUE)
+if(!dir.exists(file.path(BASE_DIR, "16S", "track_reads"))) dir.create(file.path(BASE_DIR, "16S", "track_reads"), recursive=TRUE)
+### END TEMPORARY SECTION ########
 
 # Generate filepath names
 PATH_ITS <- file.path(PRESET_OUTDIR_SEQUENCE, "ITS")

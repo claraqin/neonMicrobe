@@ -49,7 +49,6 @@ zipF
 # get the sequencer run ID associated with each zip file
 runID_ind <- match(basename(zipF), file_by_runid[,"rawDataFileName"])
 runIDs <- file_by_runid$sequencerRunID[runID_ind]
-runIDs
 
 # unzip files and append run ID to beginning of basenames
 for(i in 1:length(zipF)) { # <------------------------ TODO: Replace with foreach or map or other parallel process
