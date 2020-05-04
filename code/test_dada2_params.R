@@ -30,16 +30,12 @@ library(vegan)
 
 ### TEMPORARY ############
 # Create required directories
+BASE_DIR <- PRESET_OUTDIR_SEQUENCE
 if(!dir.exists(PRESET_OUTDIR_SEQUENCE)) dir.create(PRESET_OUTDIR_SEQUENCE, recursive=TRUE)
 if(!dir.exists(PRESET_OUTDIR_SEQMETA)) dir.create(PRESET_OUTDIR_SEQMETA, recursive=TRUE)
 if(!dir.exists(PRESET_OUTDIR_SOIL)) dir.create(PRESET_OUTDIR_SOIL, recursive=TRUE)
-
-# If preset output directories for ITS and 16S data do not exist, create them
 if(!dir.exists(file.path(BASE_DIR, "ITS"))) dir.create(file.path(BASE_DIR, "ITS"), recursive=TRUE)
 if(!dir.exists(file.path(BASE_DIR, "16S"))) dir.create(file.path(BASE_DIR, "16S"), recursive=TRUE)
-
-# Create intermediary directories for ITS and 16S data in the middle
-# of being processed
 if(!dir.exists(file.path(BASE_DIR, "ITS", "0_unzipped"))) dir.create(file.path(BASE_DIR, "ITS", "0_unzipped"), recursive=TRUE)
 if(!dir.exists(file.path(BASE_DIR, "ITS", "1_filtN"))) dir.create(file.path(BASE_DIR, "ITS", "1_filtN"), recursive=TRUE)
 if(!dir.exists(file.path(BASE_DIR, "ITS", "2_cutadapt"))) dir.create(file.path(BASE_DIR, "ITS", "2_cutadapt"), recursive=TRUE)
@@ -66,12 +62,13 @@ PATH_TEST <- file.path(PATH_ITS, "test")
 
 # Get all run IDs so you can group by them
 unique_runs <- unique(unlist(
-  regmatches(list.files(PATH_UNZIPPED), gregexpr("^run[A-Za-z0-9]*", list.files(PATH_UNZIPPED)))
+  # regmatches(list.files(PATH_UNZIPPED), gregexpr("^run[A-Za-z0-9]*", list.files(PATH_UNZIPPED)))
+  regmatches(list.files(PATH_CUT), gregexpr("^run[A-Za-z0-9]*", list.files(PATH_CUT)))
 ))
 
 ##############
 # Track proportion of reads remaining after filterAndTrim under different params
-i = 18
+i = 1
 # This is an arbitrary selection; higher-quality runs include runBTJKN (#15), runC25G9 (#18), runC3CN4 (#19)
 runID <- unique_runs[i]
 runID
@@ -79,8 +76,8 @@ cutFs <- sort(list.files(PATH_CUT, pattern = paste0(runID, ".*_R1.fastq"), full.
 cutRs <- sort(list.files(PATH_CUT, pattern = paste0(runID, ".*_R2.fastq"), full.names = TRUE))
 
 # To cut down on computation time, select 5 samples from the run:
-cutFs <- cutFs[round(quantile(1:length(cutFs)))]
-cutRs <- cutRs[round(quantile(1:length(cutRs)))]
+if(length(cutFs) > 5) cutFs <- cutFs[round(quantile(1:length(cutFs)))]
+if(length(cutRs) > 5) cutRs <- cutRs[round(quantile(1:length(cutRs)))]
 
 # Plot quality profiles
 for (sample_no in 1:length(cutFs)) {
