@@ -84,8 +84,8 @@ cutFs <- sort(list.files(PATH_CUT, pattern = paste0(runID, ".*_R1.fastq"), full.
 cutRs <- sort(list.files(PATH_CUT, pattern = paste0(runID, ".*_R2.fastq"), full.names = TRUE))
 
 # To cut down on computation time, select 5 samples from the run:
-cutFs <- cutFs[round(quantile(1:length(cutFs)))]
-cutRs <- cutRs[round(quantile(1:length(cutRs)))]
+if(length(cutFs) > 5) cutFs <- cutFs[round(quantile(1:length(cutFs)))]
+if(length(cutFs) > 5) cutRs <- cutRs[round(quantile(1:length(cutRs)))]
 
 # Plot quality profiles
 for (sample_no in 1:length(cutFs)) {
