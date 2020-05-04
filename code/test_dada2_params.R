@@ -43,6 +43,43 @@ i = 18
 # This is an arbitrary selection; higher-quality runs include runBTJKN (#15), runC25G9 (#18), runC3CN4 (#19)
 runID <- unique_runs[i]
 runID
+
+## The following lines are a condensed version of pieces from
+## 01a_data2_workflow_its.R. They are not the focus of this
+## script, so you can gloss over them for now.
+fnFs <- sort(list.files(PATH_UNZIPPED, pattern=paste0(runID, ".*_R1.fastq"), full.names = TRUE)) # If set to be FALSE, then working directory must contain the files
+fnRs <- sort(list.files(PATH_UNZIPPED, pattern=paste0(runID, ".*_R2.fastq"), full.names = TRUE))
+basefilenames_Fs <- sub("_R1.fastq","",basename(fnFs))
+basefilenames_Rs <- sub("_R2.fastq","",basename(fnRs))
+rm_from_fnFs <- basefilenames_Fs[which(!(basefilenames_Fs %in% basefilenames_Rs))]
+rm_from_fnRs <- basefilenames_Rs[which(!(basefilenames_Rs %in% basefilenames_Fs))]
+for(name in rm_from_fnFs) {
+  if(VERBOSE) print(paste(name, "does not have an R2 counterpart. Omitting from this analysis."))
+  fnFs <- fnFs[-which(fnFs == paste0(PATH_UNZIPPED, "/", name, "_R1.fastq"))]
+}
+for(name in rm_from_fnRs) {
+  if(VERBOSE) print(paste(name, "does not have an R1 counterpart. Omitting from this analysis."))
+  fnRs <- fnRs[-which(fnRs == paste0(PATH_UNZIPPED, "/", name, "_R2.fastq"))]
+}
+rm(rm_from_fnFs)
+rm(rm_from_fnRs)
+FWD.orients <- allOrients(PRIMER_ITS_FWD)
+REV.orients <- allOrients(PRIMER_ITS_REV)
+fnFs.filtN <- file.path(PATH_FILTN, basename(fnFs)) # Put N-filtered files in filtN/ subdirectory
+fnRs.filtN <- file.path(PATH_FILTN, basename(fnRs))
+out_filtN <- filterAndTrim(fnFs, fnFs.filtN, fnRs, fnRs.filtN, maxN = 0, multithread = MULTITHREAD, compress = FALSE)
+fnFs.filtN <- list.files(PATH_FILTN, pattern = paste0(runID, ".*_R1.fastq"), full.names=TRUE)
+fnRs.filtN <- list.files(PATH_FILTN, pattern = paste0(runID, ".*_R2.fastq"), full.names=TRUE)
+fnFs.cut_mid <- file.path(PATH_CUT, paste0("mid_cutadapt_", basename(fnFs.filtN)))
+fnRs.cut_mid <- file.path(PATH_CUT, paste0("mid_cutadapt_", basename(fnRs.filtN)))
+trim_primers(fnFs.filtN, fnRs.filtN, fnFs.cut_mid, fnRs.cut_mid)
+fnFs.cut <- file.path(PATH_CUT, sub("mid_cutadapt_", "", basename(fnFs.cut_mid)))
+fnRs.cut <- file.path(PATH_CUT, sub("mid_cutadapt_", "", basename(fnRs.cut_mid)))
+trim_primers(fnFs.cut_mid, fnRs.cut_mid, fnFs.cut, fnRs.cut)
+file.remove(list.files(path=PATH_CUT, pattern = "mid_cutadapt_", full.names=TRUE))
+## END OF LINES FROM 01a_dada2_workflow_its.R ##
+
+# Get names of files to pass into filterAndTrim
 cutFs <- sort(list.files(PATH_CUT, pattern = paste0(runID, ".*_R1.fastq"), full.names = TRUE))
 cutRs <- sort(list.files(PATH_CUT, pattern = paste0(runID, ".*_R2.fastq"), full.names = TRUE))
 
