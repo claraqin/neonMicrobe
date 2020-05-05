@@ -85,55 +85,87 @@ for (sample_no in 1:length(cutFs)) {
                           plotQualityProfile(cutRs[[sample_no]]), nrow=1)  
 }
 
-# filterAndTrim using different sets of parameters
-param_sets <- c("default","maxEE5","truncQ10","maxEE5_truncQ10")
-params <- matrix(c(2,2,2,50,
-                   5,5,2,50,
-                   2,2,10,50,
-                   5,5,10,50), 
-                 nrow=4, byrow=TRUE,
-                 dimnames = list(param_sets,
-                                 c("maxEE.F", "maxEE.R", "truncQ", "minLen")))
+# Generalize previous version's setup to allow testing filterAndTrim on
+# multiple sets of parameters at a time. The following tests 25 sets at a time:
+grid <- expand.grid(2^seq(1,5), 2^seq(1,5))
+params <- matrix(
+  c(grid[,1],     # maxEE.F
+    grid[,1],     # maxEE.R
+    grid[,2],     # truncQ
+    rep(50, nrow(grid))), # minLen (constant, for now)
+  byrow=FALSE, ncol=4,
+  dimnames = list(NULL, c("maxEE.F", "maxEE.R", "truncQ", "minLen"))
+)
+params
 
-out0 <- filterAndTrim(fwd = cutFs, filt = file.path(PATH_TEST, param_sets[1], basename(cutFs)), 
-                      rev = cutRs, filt.rev = file.path(PATH_TEST, param_sets[1], basename(cutRs)), 
-                      compress = TRUE, multithread = TRUE, maxN = 0,
-                      maxEE = params[1,1:2], truncQ = params[1,3], minLen = params[1,4])
-out_maxEE5 <- filterAndTrim(cutFs, file.path(PATH_TEST, param_sets[2], basename(cutFs)), cutRs, file.path(PATH_TEST, param_sets[2], basename(cutRs)), compress = TRUE, multithread = TRUE, maxN = 0,
-                            maxEE = params[2,1:2], truncQ = params[2,3], minLen = params[2,4])
-out_truncQ10 <- filterAndTrim(cutFs, file.path(PATH_TEST, param_sets[3], basename(cutFs)), cutRs, file.path(PATH_TEST, param_sets[3], basename(cutRs)), compress = TRUE, multithread = TRUE, maxN = 0,
-                              maxEE = params[3,1:2], truncQ = params[3,3], minLen = params[3,4])
-out_maxEE5_truncQ10 <- filterAndTrim(cutFs, file.path(PATH_TEST, param_sets[4], basename(cutFs)), cutRs, file.path(PATH_TEST, param_sets[4], basename(cutRs)), compress = TRUE, multithread = TRUE, maxN = 0,
-                                     maxEE = params[4,1:2], truncQ = params[4,3], minLen = params[4,4])
+param_sets <- apply(params, 1, function(x) paste(c(rbind(c("maxEE.F", "maxEE.R", "truncQ", "minLen"), x)), collapse="_"))
 
-out0_df <- as.data.frame(out0) %>% mutate(prop.out = reads.out / reads.in)
-out_maxEE5_df <- as.data.frame(out_maxEE5) %>% mutate(prop.out = reads.out / reads.in)
-out_truncQ10_df <- as.data.frame(out_truncQ10) %>% mutate(prop.out = reads.out / reads.in)
-out_maxEE5_truncQ10_df <- as.data.frame(out_maxEE5_truncQ10) %>% mutate(prop.out = reads.out / reads.in)
+# Create output filenames:
+# Since there are 25 parameter sets, and 5 files in the sample,
+# each list has 25 list elements, and each list element consists of 5 filenames.
+filtFs <- lapply(param_sets, function(x) file.path(PATH_TEST, x, basename(cutFs)))
+filtRs <- lapply(param_sets, function(x) file.path(PATH_TEST, x, basename(cutRs)))
 
-# Number/proportion of reads remaining
-out0_df
-out_maxEE5_df
-out_truncQ10_df
-out_maxEE5_truncQ10_df
+# Run filterAndTrim on samples with all 25 parameter sets
+list_out <- list()
+for (i in 1:nrow(params)) {
+  out <- filterAndTrim(
+    fwd = cutFs, filt = filtFs[[i]], rev = cutRs, filt.rev = filtRs[[i]], 
+    compress = TRUE, multithread = TRUE, maxN = 0,
+    maxEE = params[i,1:2], truncQ = params[i,3], minLen = params[i,4]
+  )
+  list_out[[i]] <- as.data.frame(out) %>% mutate(prop.out = reads.out / reads.in)
+}
 
+names(list_out) <- param_sets
+
+# Summarize and plot number/proportion of reads remaining
+library(ggplot2)
+
+# for disaggregated number of reads remaining
+data.frame(
+  maxEE = rep(params[,1], each=5),
+  truncQ = rep(params[,3], each=5),
+  reads.out = unlist(lapply(list_out, function(x) x[,"reads.out"]))
+) %>%
+  ggplot(aes(x=maxEE, y=truncQ, col=reads.out)) +
+  geom_jitter() +
+  scale_colour_gradient(low="blue", high="red")
+
+# for median number of reads remaining
+data.frame(
+  maxEE = params[,1],
+  truncQ = params[,3],
+  reads.out = unlist(lapply(list_out, function(x) median(x[,"reads.out"])))
+) %>%
+  ggplot(aes(x=maxEE, y=truncQ, col=reads.out)) +
+  geom_point() +
+  scale_colour_gradient(low="blue", high="red")
+
+# for median proportion of reads remaining
+data.frame(
+  maxEE = params[,1],
+  truncQ = params[,3],
+  prop.out = unlist(lapply(list_out, function(x) median(x[,"prop.out"])))
+) %>%
+  ggplot(aes(x=maxEE, y=truncQ, col=prop.out)) +
+  geom_point() +
+  scale_colour_gradient(low="blue", high="red") +
+  ggtitle("Median proportion of reads remaining\nafter filterAndTrim") +
+  xlab("maxEE: after truncation, max allowable expected errors") +
+  ylab("truncQ: quality score at which point to truncate read")
+
+# These plots don't tell us much, because there is no guarantee that 
+# any of these reads are of sufficient quality to be assigned taxonomy,
+# or that they will merge.
 
 ###############
 # Run parts of dada2 (post-filterAndTrim) to see downstream effects on merging, 
 # taxonomic resolution, diversity
 
-# Get filenames
-filtFs <- list(file.path(PATH_TEST, param_sets[1], basename(cutFs)),
-               file.path(PATH_TEST, param_sets[2], basename(cutFs)),
-               file.path(PATH_TEST, param_sets[3], basename(cutFs)),
-               file.path(PATH_TEST, param_sets[4], basename(cutFs)))
+# Ensure that all of the output filenames exist
 filtFs <- lapply(filtFs, function(x) { x <- x[file.exists(x)] })
-filtRs <- list(file.path(PATH_TEST, param_sets[1], basename(cutRs)),
-               file.path(PATH_TEST, param_sets[2], basename(cutRs)),
-               file.path(PATH_TEST, param_sets[3], basename(cutRs)),
-               file.path(PATH_TEST, param_sets[4], basename(cutRs)))
 filtRs <- lapply(filtRs, function(x) { x <- x[file.exists(x)] })
-
 
 n_merged <- list()
 prop_merged <- list()
@@ -165,6 +197,10 @@ for(i in 1:length(filtFs)) {
   dadaRs <- dada(derepRs, err = errR, multithread = MULTITHREAD)
   print(paste0("Finished DADA2's core sample inference algorithm in ", params[i], " at ", Sys.time()))
   
+  ## TODO: Record intermediate metric here: the number of
+  ##       sequence variants partitioned from the full set
+  ##       of reads after the denoising algorithm.
+  
   # Merge pairs
   mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE, returnRejects=TRUE)
   print(paste0("Finished merging pairs in ", param_sets[i], " at ", Sys.time()))
@@ -191,7 +227,7 @@ for(i in 1:length(filtFs)) {
   print(paste0("Finished removing chimeras in ", param_sets[i], " at ", Sys.time()))
   
   # Inspect distribution of sequence lengths
-  hist(nchar(getSequences(seqtab.nochim)))
+  # hist(nchar(getSequences(seqtab.nochim)))
   
   seqtabs[[i]] <- seqtab.nochim
 }
@@ -199,10 +235,46 @@ names(n_merged) <- param_sets
 names(prop_merged) <- param_sets
 names(seqtabs) <- param_sets
 
-n_merged
-prop_merged
+n_merged # This is the number of ASVs (as partitioned by dada) that successfully merged
+prop_merged # This is proportion of ASVs (as partitioned by dada) that successfully merged
 
+# Rate of successfully merged ASVs per pre-filterAndTrim read
+# (Not sure if this is meaningful -- treats denoising algorithm as a black box)
+merged_variants_per_input_read <- lapply(n_merged, function(x) x/list_out[[1]][,"reads.in"])
+merged_variants_per_input_read
 
+# Summarize and plot the proportion of ASVs that successfully merged
+data.frame(
+  maxEE = params[,1],
+  truncQ = params[,3],
+  prop.merged = unlist(lapply(prop_merged, function(x) median(x)))
+) %>%
+  ggplot(aes(x=maxEE, y=truncQ, col=prop.merged)) +
+  geom_point() +
+  scale_colour_gradient(low="blue", high="red") +
+  ggtitle("Median proportion of ASVs successfully merged") +
+  xlab("maxEE: after truncation, max allowable expected errors") +
+  ylab("truncQ: quality score at which point to truncate read")
+
+# Summarize and plot the rate of merged ASVs per pre-filter read
+# (Not sure if this is meaningful -- treats denoising algorithm as a black box)
+data.frame(
+  maxEE = params[,1],
+  truncQ = params[,3],
+  rate.merged = unlist(lapply(merged_variants_per_input_read, function(x) median(x)))
+) %>%
+  ggplot(aes(x=maxEE, y=truncQ, col=rate.merged)) +
+  geom_point() +
+  scale_colour_gradient(low="blue", high="red") +
+  ggtitle("Median rate of successfully merged ASVs\nper input read") +
+  xlab("maxEE: after truncation, max allowable expected errors") +
+  ylab("truncQ: quality score at which point to truncate read")
+
+# These results indicate that the best parameters for ensuring
+# a high number of successfully merged ASVs are low values
+# for truncQ (2-8) and any values for maxEE (2-32)
+
+##################
 # What's the best way to evaluate effects on diversity estimates?
 # Do the parameters affect the shape of the rarefaction curves,
 # or just the sequencing depth?
