@@ -32,13 +32,15 @@ warn_already_downloaded <- function(PRNUM, outdir) {
   # print(paste("specifically in ", stackDir))
   site_and_date_range <- read.table(paste(stackDir, SAMPLE_SUBSET_PARAMS_FILENAME, sep="/"), 
                                     header=FALSE, sep=":")
-  warning("Data product ", PRNUM, 
-          " has already been downloaded to ",outdir, 
-          ".\nEnsure that sites / date range of downloaded data was correct,\n",
-          "or else remove the data and re-run your command.\n",
-          "sites:", site_and_date_range[1,2],
-          "  startYrMo:", site_and_date_range[2,2],
-          "  endYrMo:", site_and_date_range[3,2])
+  print(paste0("Warning: Data product ", PRNUM, 
+               " has already been downloaded to ", outdir, 
+               ". Ensure that the following describes your intended data subset, ",
+               "or else stop the current process and re-run with overwrite==TRUE. ",
+               "  sites:", site_and_date_range[1,2],
+               "  startYrMo:", site_and_date_range[2,2],
+               "  endYrMo:", site_and_date_range[3,2],
+               "  target_genes:", site_and_date_range[4,2],
+               "  sequencing_runs:", site_and_date_range[5,2]))
 }
 ## END FUNCTION
 
