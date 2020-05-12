@@ -49,28 +49,42 @@ warn_already_downloaded <- function(PRNUM, outdir) {
 # called "mmg_soilRawDataFiles.csv"
 downloadSequenceMetadata <- function(sites = PRESET_SITES, startYrMo = PRESET_START_YR_MO, endYrMo = PRESET_END_YR_MO, 
                                      outdir = PRESET_OUTDIR_SEQMETA, checkFileSize = PRESET_CHECK_FILE_SIZE, return_data = PRESET_RETURN_DATA,
-                                     target_genes = TARGET_GENE, sequencing_runs = SEQUENCING_RUNS) {
-  # outdir - path to directory to download the data
-  # change checkFileSize to FALSE to override file size checks
-  
+                                     target_genes = TARGET_GENE, sequencing_runs = SEQUENCING_RUNS,
+                                     overwrite = FALSE) {
   PRNUM <- "10108"
   dpID <- paste("DP1", PRNUM, "001", sep=".")
   stackDir <- file.path(outdir, paste0("filesToStack",PRNUM))
   
-  # Download only if not already downloaded to outdir
+  # If there is NO previous download at stackDir
   if(!dir.exists(stackDir)) {
     neonUtilities::zipsByProduct(dpID, site=sites, startdate=startYrMo, 
                                  enddate=endYrMo, package="expanded", check.size=checkFileSize, 
                                  savepath=outdir)
     
-    print(paste("Attempt to stackByTable in", stackDir))
+    # print(paste("Attempt to stackByTable in", stackDir))
     stackByTable(stackDir, folder = TRUE)
     
     # Write file that records parameters
     write_sample_subset_params(stackDir, sites, startYrMo, endYrMo, target_genes, sequencing_runs)
     
+    # If there IS a previous download at stackDir
   } else {
-    warn_already_downloaded(PRNUM, outdir)
+    # If overwrite==TRUE,
+    if(overwrite) {
+      # delete existing directory
+      unlink(stackDir, recursive=TRUE)
+      # and re-download data
+      neonUtilities::zipsByProduct(dpID, site=sites, startdate=startYrMo, 
+                                   enddate=endYrMo, package="expanded", check.size=checkFileSize, 
+                                   savepath=outdir)
+      # print(paste("Attempt to stackByTable in", stackDir))
+      stackByTable(stackDir, folder = TRUE)
+      write_sample_subset_params(stackDir, sites, startYrMo, endYrMo, target_genes, sequencing_runs)
+      
+      # If overwrite==FALSE (default)
+    } else {
+      warn_already_downloaded(PRNUM, outdir)
+    }
   }
   
   if(return_data) { # If not, then simply downloads the data to the outdir
@@ -86,19 +100,13 @@ downloadSequenceMetadata <- function(sites = PRESET_SITES, startYrMo = PRESET_ST
 
 ## Function downloads the metadata for NEON marker gene sequencing data products 
 ## AND downloads the NEON raw sequence data files
-#
-# Wrapper for downloadSequenceMetadata
 downloadRawSequenceData <- function(sites = PRESET_SITES, startYrMo = PRESET_START_YR_MO, endYrMo = PRESET_END_YR_MO, 
                                     outdir = PRESET_OUTDIR_SEQUENCE, checkFileSize = PRESET_CHECK_FILE_SIZE, return_data = PRESET_RETURN_DATA,
-                                    target_genes = TARGET_GENE, sequencing_runs = SEQUENCING_RUNS) {
-  # outdir - path to directory to download the data
-  # change checkFileSize to FALSE to override file size checks
+                                    target_genes = TARGET_GENE, sequencing_runs = SEQUENCING_RUNS,
+                                    overwrite = FALSE) {
   
-  metadata <- downloadSequenceMetadata(sites, startYrMo, endYrMo, checkFileSize=FALSE, 
-                                       return_data=TRUE)
-  # TODO: May be less confusing to make a variant of downloadSequenceMetadata()
-  # to be clear that you are not re-downloading the data; just retrieving
-  # it from your local file system.
+  metadata <- downloadSequenceMetadata(sites, startYrMo, endYrMo, checkFileSize=FALSE, return_data=TRUE,
+                                       overwrite=overwrite)
   
   u.urls <- unique(metadata$rawDataFilePath)
   fileNms <- gsub('^.*\\/', "", u.urls)
@@ -117,12 +125,7 @@ downloadRawSequenceData <- function(sites = PRESET_SITES, startYrMo = PRESET_STA
   }
   
   # If necessary, subset to download specific sequencing runs
-  if(length(sequencing_runs)>1) {
-    fileNms_runIDs <- sapply(strsplit(basename(fileNms),"_"), function(x) x[2]) # TODO: Can probably be made more robust. Assumes unchanging position of runID in filename
-    keep_ind <- which(fileNms_runIDs %in% sequencing_runs)
-    fileNms <- fileNms[keep_ind]
-    u.urls <- u.urls[keep_ind]
-  } else if(sequencing_runs!="all") {
+  if(sequencing_runs!="all") {
     fileNms_runIDs <- sapply(strsplit(basename(fileNms),"_"), function(x) x[2]) # TODO: Can probably be made more robust. Assumes unchanging position of runID in filename
     keep_ind <- which(fileNms_runIDs %in% sequencing_runs)
     fileNms <- fileNms[keep_ind]
@@ -156,7 +159,8 @@ downloadRawSequenceData <- function(sites = PRESET_SITES, startYrMo = PRESET_STA
 # - DP1.10078: "Soil chemical properties (Distributed periodic)"
 # - DP1.10086: "Soil physical properties (Distributed periodic)"
 downloadRawSoilData <- function(sites = PRESET_SITES, startYrMo = PRESET_START_YR_MO, endYrMo = PRESET_END_YR_MO, 
-                                outdir = PRESET_OUTDIR_SOIL, checkFileSize = PRESET_CHECK_FILE_SIZE, return_data = PRESET_RETURN_DATA) {
+                                outdir = PRESET_OUTDIR_SOIL, checkFileSize = PRESET_CHECK_FILE_SIZE, return_data = PRESET_RETURN_DATA,
+                                overwrite = FALSE) {
   # TODO: Why does this function sometimes return a few warnings of the form:
   # 1: In UseMethod("depth") :
   # no applicable method for 'depth' applied to an object of class "NULL"
@@ -168,7 +172,7 @@ downloadRawSoilData <- function(sites = PRESET_SITES, startYrMo = PRESET_START_Y
   stackDir_chem <- file.path(outdir, paste0("filesToStack",PRNUM_chem))
   stackDir_phys <- file.path(outdir, paste0("filesToStack",PRNUM_phys))
   
-  # Download only if not already downloaded to outdir
+  # If there is NO previous download at stackDir_chem
   if(!dir.exists(stackDir_chem)) {
     neonUtilities::zipsByProduct(dpID_chem, site=sites, startdate=startYrMo, 
                                  enddate=endYrMo, package="expanded", check.size=checkFileSize, savepath = outdir)
@@ -178,11 +182,26 @@ downloadRawSoilData <- function(sites = PRESET_SITES, startYrMo = PRESET_START_Y
     # Write site_and_date_range.txt file to record parameters
     write_sample_subset_params(stackDir_chem, sites, startYrMo, endYrMo)
     
+    # If there IS a previous download at stackDir_chem
   } else {
-    warn_already_downloaded(PRNUM_chem, outdir)
+    # If overwrite==TRUE,
+    if(overwrite) {
+      # delete existing directory
+      unlink(stackDir_chem, recursive=TRUE)
+      # and re-download data
+      neonUtilities::zipsByProduct(dpID_chem, site=sites, startdate=startYrMo, 
+                                   enddate=endYrMo, package="expanded", check.size=checkFileSize, 
+                                   savepath=outdir)
+      stackByTable(stackDir_chem, folder = TRUE)
+      write_sample_subset_params(stackDir_chem, sites, startYrMo, endYrMo)
+      
+      # If overwrite==FALSE (default)
+    } else {
+      warn_already_downloaded(PRNUM_chem, outdir)
+    }
   }
   
-  # Download only if not already downloaded to outdir
+  # If there is NO previous download at stackDir_phys
   if(!dir.exists(stackDir_phys)) {
     neonUtilities::zipsByProduct(dpID_phys, site=sites, startdate=startYrMo, 
                                  enddate=endYrMo, package="expanded", check.size=checkFileSize, savepath = outdir)
@@ -192,8 +211,23 @@ downloadRawSoilData <- function(sites = PRESET_SITES, startYrMo = PRESET_START_Y
     # Write site_and_date_range.txt file to record parameters
     write_sample_subset_params(stackDir_phys, sites, startYrMo, endYrMo)
     
+    # If there IS a previous download at stackDir_phys
   } else {
-    warn_already_downloaded(PRNUM_phys, outdir)
+    # If overwrite==TRUE,
+    if(overwrite) {
+      # delete existing directory
+      unlink(stackDir_phys, recursive=TRUE)
+      # and re-download data
+      neonUtilities::zipsByProduct(dpID_phys, site=sites, startdate=startYrMo, 
+                                   enddate=endYrMo, package="expanded", check.size=checkFileSize, 
+                                   savepath=outdir)
+      stackByTable(stackDir_phys, folder = TRUE)
+      write_sample_subset_params(stackDir_phys, sites, startYrMo, endYrMo)
+      
+      # If overwrite==FALSE (default)
+    } else {
+      warn_already_downloaded(PRNUM_phys, outdir)
+    }
   }
   
   if(return_data) { # If FALSE, then simply downloads the data to the outdir
