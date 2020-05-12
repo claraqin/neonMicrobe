@@ -8,19 +8,18 @@ PRESET_SITES = "all" # Can also be character vector of 4-letter NEON site codes 
 PRESET_START_YR_MO = "2011-06"
 PRESET_END_YR_MO = format(Sys.Date(), "%Y-%m")
 TARGET_GENE = "ITS" # Must be "ITS", "16S", or "all"
-SEQUENCING_RUNS = "all" # Can also be character vector of 5-letter NEON sequencing run IDs e.g. c('B69RF','BTP4N')
-if(!(TARGET_GENE %in% c("ITS", "16S", "all"))) warning("TARGET_GENE must be 'ITS', '16S', or 'all'")
+SEQUENCING_RUNS = c('C25G9', 'B69PP') # Can also be character vector of 5-letter NEON sequencing run IDs e.g. c('B69RF','BTP4N')
 SAMPLE_SUBSET_PARAMS_FILENAME = "sample_subset_params.txt" # name to give file where subset params are recorded
 PRESET_CHECK_FILE_SIZE = FALSE
 PRESET_RETURN_DATA = TRUE
 
 
 # Parameters for output directories and filenames
-PRESET_OUTDIR_SEQUENCE = "/data/ZHULAB/NEON_DOB/Illumina/NEON"
-PRESET_OUTDIR_SEQMETA = "/data/ZHULAB/NEON_DOB/sequence_metadata"
-PRESET_OUTDIR_SOIL = "/data/ZHULAB/NEON_DOB/soil"
+PRESET_OUTDIR_SEQUENCE = "/data/ZHULAB/NEON_DOB/Illumina/NEON/test" # for sequence data (fastq files)
+PRESET_OUTDIR_SEQMETA = "/data/ZHULAB/NEON_DOB/sequence_metadata/test" # for sequence metadata
+PRESET_OUTDIR_SOIL = "/data/ZHULAB/NEON_DOB/soil/test" # for soil data
 PRESET_OUTDIR_SOIL_DB = "/data/ZHULAB/NEON_DOB" # Database containing both seqmeta and soil data
-PRESET_OUTDIR_DADA2 = "/raid/users/claraqin/zhulab/NEON_soil_microbe_processing/data"
+PRESET_OUTDIR_DADA2 = "/raid/users/claraqin/zhulab/NEON_soil_microbe_processing/data" # for phyloseq outputs
 PRESET_FILENAME_JOINED_SEQTAB = "NEON_ITS_seqtab_nochim_DL08-13-2019.Rds"
 PRESET_FILENAME_TAXTAB = "NEON_ITS_taxa_DL08-13-2019.Rds"
 
@@ -35,9 +34,9 @@ CUTADAPT_PATH = "/afs/cats.ucsc.edu/users/b/claraqin/.local/bin/cutadapt"
 
 # Whether to download and process only a small subset
 SMALL_SUBSET = FALSE # If TRUE, all fastq.gz.tar files matching these parameters will still be downloaded,
-                     # and all fastq files within them will be unzipped, but only the first 2 forward-reverse
-                     # pairs of sequence files from the first sequencing run ID will be processed in 
-                     # dada2_workflow.R and in following scripts.
+# and all fastq files within them will be unzipped, but only the first 2 forward-reverse
+# pairs of sequence files from the first sequencing run ID will be processed in 
+# dada2_workflow.R and in following scripts.
 
 # Whether to generate additional output in dada2_workflow_its.R
 VERBOSE = FALSE
@@ -50,12 +49,15 @@ MULTITHREAD = FALSE
 MAX_EE_FWD = 2 # max. allowable expected errors in forward reads that pass filter
 MAX_EE_REV = 2 # max. allowable expected errors in reverse reads that pass filter
 TRUNC_Q = 2 # base quality score after which to truncate sequence
-            # NOTE: it may be desirable to set this higher than 2 if the goal
-            # is to increase the proportion of reads passing the filter, as this
-            # would allow fewer "expected errors" to appear in the sequence
-            # (by virtue of having shorter reads)
+# NOTE: it may be desirable to set this higher than 2 if the goal
+# is to increase the proportion of reads passing the filter, as this
+# would allow fewer "expected errors" to appear in the sequence
+# (by virtue of having shorter reads)
 MIN_LEN = 50 # min. allowable length of reads that pass filter
-             # NOTE: it may be desirable to set this higher to increase the
-             # likelihood of sufficient overlap between read pairs. However,
-             # this is at odds with the incentive for setting TRUNC_Q higher
-             # (see previous)
+# NOTE: it may be desirable to set this higher to increase the
+# likelihood of sufficient overlap between read pairs. However,
+# this is at odds with the incentive for setting TRUNC_Q higher
+# (see previous)
+
+# VALIDITY CHECKS (do not modify)
+if(!(TARGET_GENE %in% c("ITS", "16S", "all"))) warning("TARGET_GENE must be 'ITS', '16S', or 'all'")
