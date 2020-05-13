@@ -110,43 +110,46 @@ downloadRawSequenceData <- function(sites = PRESET_SITES, startYrMo = PRESET_STA
   metadata <- downloadSequenceMetadata(sites, startYrMo, endYrMo, checkFileSize=FALSE, return_data=TRUE,
                                        overwrite=overwrite)
   
+  
+  # If necessary, subset to download specific sequencing runs
+  if(length(sequencing_runs) > 1) {
+    if(!any(sequencing_runs=="all")) {
+      metadata <- filter(metadata, sequencerRunID %in% sequencing_runs)
+    }
+  }
+  
   u.urls <- unique(metadata$rawDataFilePath)
   fileNms <- gsub('^.*\\/', "", u.urls)
   
   # If necessary, subset to download only ITS or 16S
-  if(target_genes=="ITS") {
-    fileNms <- fileNms[grep("_ITS_",fileNms)]
-    u.urls <- u.urls[grep("_ITS_",fileNms)]
-    
-  } else if(target_genes=="16S") {
-    fileNms <- fileNms[grep("_16S_",fileNms)]
-    u.urls <- u.urls[grep("_16S_",fileNms)]
-    
-  } else if(target_genes!="all") {
-    stop("Error: unrecognized value for 'target_genes' - check TARGET_GENE parameter")
-  }
-  
-  # If necessary, subset to download specific sequencing runs
-  if(sequencing_runs!="all") {
-    fileNms_runIDs <- sapply(strsplit(basename(fileNms),"_"), function(x) x[2]) # TODO: Can probably be made more robust. Assumes unchanging position of runID in filename
-    keep_ind <- which(fileNms_runIDs %in% sequencing_runs)
-    fileNms <- fileNms[keep_ind]
-    u.urls <- u.urls[keep_ind]
+  if(length(target_genes)==1) {
+    if(target_genes=="ITS") {
+      keep_ind <- grep("_ITS_",fileNms)
+      fileNms <- fileNms[keep_ind]
+      u.urls <- u.urls[keep_ind]
+    }
+    if(target_genes=="16S") {
+      keep_ind <- grep("_16S_",fileNms)
+      fileNms <- fileNms[keep_ind]
+      u.urls <- u.urls[keep_ind]
+    }
+  } else {
+    stop("Error: This implementation only allows 'TARGET_GENE' parameters of length 1")
   }
   
   print(paste("There are", length(u.urls), "unique (zipped) raw sequence files to download.") )
   
   for(i in 1:length(u.urls)) {
-    download.file(url=as.character(u.urls[i]), destfile = ifelse(dir.exists(outdir), 
-                                                                 paste(outdir, fileNms[i], sep="/"), 
-                                                                 paste(getwd(), fileNms[i], sep="/" )) ) 
+    download.file(url=as.character(u.urls[i]), destfile = ifelse(dir.exists(outdir),
+                                                                 paste(outdir, fileNms[i], sep="/"),
+                                                                 paste(getwd(), fileNms[i], sep="/" )) )
     if(dir.exists(outdir)) {
       print(paste("Finished downloading", paste(outdir, fileNms[i], sep="/")))
     } else {
       print(paste("Finished downloading", paste(getwd(), fileNms[i], sep="/" )))
     }
   }
-  
+
   if(return_data) {
     return(metadata)
   }
