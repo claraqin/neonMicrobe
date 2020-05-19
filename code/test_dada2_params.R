@@ -28,6 +28,7 @@ library(tibble)
 library(dplyr)
 library(vegan)
 library(phyloseq)
+library(ggplot2)
 
 ### TEMPORARY ############
 # Create required directories
@@ -256,11 +257,6 @@ names(dadaFs_list) <- param_sets
 names(dadaRs_list) <- param_sets
 names(seqtabs) <- param_sets
 
-# Save the lists
-saveRDS(dadaFs_list, "./data/sensitivity_dadaFs_list.Rds")
-saveRDS(dadaRs_list, "./data/sensitivity_dadaRs_list.Rds")
-saveRDS(seqtabs, "./data/sensitivity_seqtabs_list.Rds")
-
 n_merged # This is the number of ASVs (as partitioned by dada) that successfully merged
 prop_merged # This is proportion of ASVs (as partitioned by dada) that successfully merged
 # The below is the proportion of forward reads that were assigned an ASV
@@ -360,25 +356,35 @@ taxas.print <- taxas[[1]]
 rownames(taxas.print) <- NULL
 head(taxas.print)
 
+# Save the lists
+saveRDS(dadaFs_list, "./data/sensitivity_dadaFs_list.Rds")
+saveRDS(dadaRs_list, "./data/sensitivity_dadaRs_list.Rds")
+saveRDS(seqtabs, "./data/sensitivity_seqtabs_list.Rds")
 saveRDS(taxas, "./data/sensitivity_taxas.Rds")
+
+# Load the lists
+# dadaFs_list <- readRDS("./data/sensitivity_dadaFs_list.Rds")
+# dadaRs_list <- readRDS("./data/sensitivity_dadaRs_list.Rds")
+# seqtabs <- readRDS("./data/sensitivity_seqtabs_list.Rds")
+# taxas <- readRDS("./data/sensitivity_taxas.Rds")
 
 
 ###################
 # Evaluate effects on taxonomic resolution.
 # What's the best way to evaluate taxonomic resolution?
 # Number of taxa without a species-level assignment?
-physeqs <- list()
+physeqs <- list() # Create a list of physeq objects
 abund_spp_classification <- list() # Total abundance of ASVs with species-level classifications
-# prop_spp_classification <- list() # Proportion-by-abundance of ASVs with species-level classification
+prop_spp_classification <- list() # Proportion-by-abundance of ASVs with species-level classification
 n_spp_classification <- list() # Number of unique ASVs with species-level classification
 for(i in 1:length(seqtabs)) {
   physeqs[[i]] <- phyloseq(otu_table(seqtabs[[i]],taxa_are_rows=FALSE), tax_table(taxas[[i]]))
   abund_spp_classification[[i]] <- sum(otu_table(subset_taxa(physeqs[[i]], !is.na(Species))))
-  # prop_spp_classification[[i]] <- abund_spp_classification[[i]] / sum(otu_table(physeqs[[i]]))
+  prop_spp_classification[[i]] <- abund_spp_classification[[i]] / sum(otu_table(physeqs[[i]]))
   n_spp_classification[[i]] <- sum(!is.na(tax_table(physeqs[[i]])[,"Species"]))
 }
 abund_spp_classification
-# prop_spp_classification
+prop_spp_classification
 n_spp_classification
 
 # Remake summary_df with additional columns
@@ -386,10 +392,11 @@ summary_df <-
   data.frame(
     maxEE = params[,1],
     truncQ = params[,3],
-    prop.Fs.mapped = unlist(lapply(prop_Fs_mapped_to_asv, function(x) median(unlist(x)))),
-    prop.merged = unlist(lapply(prop_merged, function(x) median(x))),
-    rate.merged = unlist(lapply(merged_variants_per_input_read, function(x) median(x))),
+    # prop.Fs.mapped = unlist(lapply(prop_Fs_mapped_to_asv, function(x) median(unlist(x)))),
+    # prop.merged = unlist(lapply(prop_merged, function(x) median(x))),
+    # rate.merged = unlist(lapply(merged_variants_per_input_read, function(x) median(x))),
     abund.spp.classification = unlist(abund_spp_classification),
+    prop.spp.classification = unlist(prop_spp_classification),
     n.spp.classification = unlist(n_spp_classification)
   )
 
@@ -402,7 +409,6 @@ summary_df %>%
   ggtitle("Abundance of ASVs with species-level\nclassifications") +
   xlab("maxEE: after truncation, max allowable expected errors") +
   ylab("truncQ: quality score at which point to truncate read")
-
 # Two-dim versions
 summary_df %>%
   ggplot(aes(x=maxEE, y=abund.spp.classification)) +
@@ -418,6 +424,29 @@ summary_df %>%
   xlab("truncQ: quality score at which point to truncate read") +
   ylab("Total abundance of spp-level ASVs")
 
+# Plot the proportion (weighted by abundance) of ASVs with species-level classifications
+summary_df %>%
+  ggplot(aes(x=maxEE, y=truncQ, col=prop.spp.classification)) +
+  geom_point() +
+  scale_colour_gradient(low="blue", high="red") +
+  ggtitle("Proportion of unique ASVs with\nspecies-level classifications") +
+  xlab("maxEE: after truncation, max allowable expected errors") +
+  ylab("truncQ: quality score at which point to truncate read")
+# Two-dim versions
+summary_df %>%
+  ggplot(aes(x=maxEE, y=prop.spp.classification)) +
+  geom_point(alpha=0.6) +
+  ggtitle("Proportion of unique ASVs with\nspecies-level classifications") +
+  xlab("maxEE: after truncation, max allowable expected errors") +
+  ylab("Abundance-weighted proportion of spp-level ASVs")
+summary_df %>%
+  ggplot(aes(x=truncQ, y=prop.spp.classification, col=maxEE)) +
+  geom_point(alpha=0.6) +
+  scale_colour_gradient(low="blue", high="red") +
+  ggtitle("Proportion of unique ASVs with\nspecies-level classifications") +
+  xlab("truncQ: quality score at which point to truncate read") +
+  ylab("Abundance-weighted proportion of spp-level ASVs")
+
 # Plot the number of unique ASVs with species-level classification
 summary_df %>%
   ggplot(aes(x=maxEE, y=truncQ, col=n.spp.classification)) +
@@ -426,7 +455,6 @@ summary_df %>%
   ggtitle("Number of unique ASVs with\nspecies-level classifications") +
   xlab("maxEE: after truncation, max allowable expected errors") +
   ylab("truncQ: quality score at which point to truncate read")
-
 # Two-dim versions
 summary_df %>%
   ggplot(aes(x=maxEE, y=n.spp.classification)) +
@@ -441,6 +469,12 @@ summary_df %>%
   ggtitle("Number of unique ASVs with\nspecies-level classifications") +
   xlab("truncQ: quality score at which point to truncate read") +
   ylab("No. unique spp-level ASVs")
+
+# FINDING: This is intuitive; as filtering parameters become more
+# stringent, the proportion of ASVs which are assigned to the species
+# level increases. However, this does not mean that the absolute
+# number of spp-identified ASVs increases; only the spp identification 
+# rate.
 
 ##################
 # What's the best way to evaluate effects on diversity estimates?
@@ -458,30 +492,139 @@ rarecurve(seqtabs[[4]], sample=50)
 estimate_richness(physeqs[[1]])
 # Ben Callahan recommends not using diversity estimates that rely on singletons.
 # This leaves Shannon and Simpson's indices. https://github.com/benjjneb/dada2/issues/214
-estimate_richness(physeqs[[1]], measures=c("Shannon"))
-estimate_richness(physeqs[[1]], measures=c("Shannon"), split=FALSE) # aggregate into one measure
+estimate_richness(physeqs[[1]], measures=c("Observed","Shannon"))
+estimate_richness(physeqs[[1]], measures=c("Observed","Shannon"), split=FALSE) # aggregate into one measure
 
+obsrich_list <- list()
 shannon_list <- list()
 for(i in 1:length(physeqs)) {
-  shannon_list[[i]] <- suppressWarnings(estimate_richness(physeqs[[i]], measures=c("Shannon"), split=FALSE)[1,1])
+  div <- suppressWarnings(
+    estimate_richness(physeqs[[i]], measures=c("Observed","Shannon"), split=FALSE)
+  )
+  obsrich_list[[i]] <- div[1,1]
+  shannon_list[[i]] <- div[1,2]
 }
 
-# Remake summary_df with additional columns (Shannon index)
+# Remake summary_df with additional columns (observed richness, Shannon index)
 summary_df <- 
   data.frame(
     maxEE = params[,1],
     truncQ = params[,3],
     prop.Fs.mapped = unlist(lapply(prop_Fs_mapped_to_asv, function(x) median(unlist(x)))),
-    prop.merged = unlist(lapply(prop_merged, function(x) median(x))),
-    rate.merged = unlist(lapply(merged_variants_per_input_read, function(x) median(x))),
+    # prop.merged = unlist(lapply(prop_merged, function(x) median(x))),
+    # rate.merged = unlist(lapply(merged_variants_per_input_read, function(x) median(x))),
     abund.spp.classification = unlist(abund_spp_classification),
     n.spp.classification = unlist(n_spp_classification),
+    obs.rich = unlist(obsrich_list),
     shannon.div = unlist(shannon_list)
   )
 summary_df %>%
+  ggplot(aes(x=truncQ, y=obs.rich, col=maxEE)) +
+  geom_jitter(alpha=0.6) +
+  scale_colour_gradient(low="blue", high="red") +
+  ggtitle("Observed richness of aggregated samples") +
+  xlab("truncQ: quality score at which point to truncate read") +
+  ylab("Observed richness")
+summary_df %>%
   ggplot(aes(x=truncQ, y=shannon.div, col=maxEE)) +
-  geom_point(alpha=0.6) +
+  geom_jitter(alpha=0.6) +
   scale_colour_gradient(low="blue", high="red") +
   ggtitle("Shannon diversity of aggregated samples") +
   xlab("truncQ: quality score at which point to truncate read") +
   ylab("Shannon diversity (H)")
+
+##############
+# Evaluate effects on beta-diversity inference, 
+# using ordinations and permANOVA
+
+# First rename each seqtab to reflect the params that created it
+seqtabs_renamed <- seqtabs
+for(i in 1:length(seqtabs_renamed)) {
+  rownames(seqtabs_renamed[[i]]) <- paste0(param_sets[i], "_", c("a","b","c","d","e"))
+}
+# Then combine all seqtabs into ONE physeq
+seqtab_joined <- mergeSequenceTables(tables=seqtabs_renamed)
+
+# Sample data (parameters)
+sampledata <- as.data.frame(params[rep(seq(1,25), each=5),]) %>%
+  mutate(sample = rep(rownames(seqtabs[[1]]), 25)) %>%
+  select(sample, maxEE.F:minLen)
+rownames(sampledata) <- rownames(seqtab_joined)
+
+# Taxa table
+taxa_joined <- assignTaxonomy(seqtab_joined, unite.ref, multithread = MULTITHREAD, tryRC = TRUE)
+
+physeq_joined <- phyloseq(otu_table(seqtab_joined,taxa_are_rows=FALSE),
+                          sample_data(sampledata),
+                          tax_table(taxa_joined))
+
+# Ordinate
+ordination <- ordinate(physeq_joined, "NMDS", "bray", k=2)
+plot(ordination)
+# plot_ordination(physeq_joined, ordination, type="samples")
+
+# Distances between samples within the same parameter set
+vegdist(seqtabs[[1]])
+vegdist(seqtabs[[25]]) 
+
+# Distances between parameter sets for the same sample
+vegdist(seqtab_joined[seq(from=1, to=125, by=5),])
+hist(vegdist(seqtab_joined[seq(from=1, to=125, by=5),]))
+
+# FINDING: Within the same parameter set, very little overlap between 
+# samples (BCdist ~ 1). Across different parameter sets, large differences 
+# emerge from the same sample (0 < BCdist < 0.7)
+
+# Test this again, but aggregating to the species level, so that
+# BCdist of samples with the same parameter sets is << 1.
+
+physeq_joined_spp <- tax_glom(physeq_joined, taxrank="Species")
+
+physeqs_spp <- list()
+for(i in 1:length(physeqs)) {
+  physeqs_spp[[i]] <- tax_glom(physeqs[[i]], taxrank="Species")
+}
+names(physeqs_spp) <- param_sets
+
+# Plot ordination
+ordination_spp <- ordinate(physeq_joined_spp, "NMDS", "bray", k=2)
+plot(ordination_spp)
+
+# Distances between samples in the same parameter set
+lapply(physeqs_spp, function(x) range(vegdist(otu_table(x)), na.rm = TRUE))
+# as compared to non-agglomerated dataset
+lapply(physeqs, function(x) range(vegdist(otu_table(x)), na.rm = TRUE))
+
+# Distances between parameter sets for the same sample
+vegdist(otu_table(physeq_joined_spp)[seq(from=1, to=125, by=5),])
+hist(vegdist(otu_table(physeq_joined_spp)[seq(from=1, to=125, by=5),]))
+# The finding re: distances is upheld, regardless of spp agglomeration
+
+# Plot ordination of each sample across different parameter sets!
+par(mfrow=c(2,3))
+for(i in 1:5) {
+  sample <- get_variable(physeq_joined_spp, "sample")[i]
+  ps.subset <- subset_samples(physeq_joined_spp, sample=sample, sample_sums(physeq_joined_spp) > 0)
+  ordination.subset <- ordinate(ps.subset, "NMDS", "bray", k=2)
+  plot(ordination.subset, main=sample)
+}
+
+
+# Perform permANOVA
+?adonis
+ps_joined_dist <- vegdist(otu_table(physeq_joined))
+adonis(ps_joined_dist ~ maxEE.F + truncQ,
+       data = sampledata, # <-- sample_data(physeq_joined) 
+       strata = sampledata$sample,
+       permutations=999)
+
+# Try again with spp-agglomerated version
+ps_joined_spp_dist <- vegdist(otu_table(subset_samples(physeq_joined_spp, sample_sums(physeq_joined_spp) > 0)))
+adonis(ps_joined_spp_dist ~ maxEE.F + truncQ,
+       data = sampledata[sample_sums(physeq_joined_spp) > 0,], 
+       strata = sampledata$sample[sample_sums(physeq_joined_spp) > 0],
+       permutations=999)
+
+# FINDING: Where there are compositional differences between parameter 
+# sets, the differences are due to truncQ, not maxEE
+
