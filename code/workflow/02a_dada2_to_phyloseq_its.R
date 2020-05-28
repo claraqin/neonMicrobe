@@ -11,6 +11,7 @@ if(!file.exists(file.path(PRESET_OUTDIR_SOIL_DB, "soilDB.db"))) {
 # Load libraries
 library(phyloseq)
 library(ggplot2)
+library(RSQLite)
 
 # Load combined sequence table and taxonomic table
 seqtab.nochim <- readRDS(file.path(PRESET_OUTDIR_DADA2, PRESET_FILENAME_JOINED_SEQTAB)) # TODO: Modify these to be the files that you're interested in processing.

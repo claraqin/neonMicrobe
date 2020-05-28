@@ -1,0 +1,441 @@
+---
+title: "Plot DADA2 sensitivity tests"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = "/raid/users/claraqin/zhulab/NEON_soil_microbe_processing")
+```
+
+# Load data, libraries, and parameters
+
+```{r}
+runIDs <- c("B69PP", "C25G9")
+
+cutFs <- readRDS("./data/sensitivity_cutFs.Rds")
+cutRs <- readRDS("./data/sensitivity_cutRs.Rds")
+params <- readRDS("./data/sensitivity_params.Rds")
+out_list <- readRDS("./data/sensitivity_filterAndTrim_out_list.Rds")
+prop_Fs_mapped_to_asv <- readRDS("./data/sensitivity_prop_Fs_mapped.Rds")
+# dadaFs_list <- readRDS("./data/sensitivity_dadaFs_list.Rds")
+# dadaRs_list <- readRDS("./data/sensitivity_dadaRs_list.Rds")
+seqtabs <- readRDS("./data/sensitivity_seqtabs_list.Rds")
+taxas <- readRDS("./data/sensitivity_taxas.Rds")
+n_merged <- readRDS("./data/sensitivity_n_merged.Rds")
+prop_merged <- readRDS("./data/sensitivity_prop_merged.Rds")
+taxa_joined <- readRDS("./data/sensitivity_taxa_joined.Rds")
+
+param_sets <- apply(params, 1, function(x) paste(c(rbind(c("maxEE.F", "maxEE.R", "truncQ"), x)), collapse="_"))
+
+source("./code/params.R")
+
+PATH_ITS <- file.path(PRESET_OUTDIR_SEQUENCE, "ITS")
+PATH_UNZIPPED <- file.path(PATH_ITS, "0_unzipped")
+PATH_FILTN <- file.path(PATH_ITS, "1_filtN")
+PATH_CUT <- file.path(PATH_ITS, "2_cutadapt")
+PATH_FILTERED <- file.path(PATH_ITS, "3_filtered")
+PATH_SEQTABS <- file.path(PATH_ITS, "4_seqtabs")
+PATH_TRACK <- file.path(PATH_ITS, "track_reads")
+PATH_TEST <- file.path(PATH_ITS, "test")
+
+filtFs <- lapply(param_sets, function(x) file.path(PATH_TEST, x, basename(cutFs)))
+filtRs <- lapply(param_sets, function(x) file.path(PATH_TEST, x, basename(cutRs)))
+
+suppressMessages({
+  library(dada2)
+  library(ShortRead)
+  library(Biostrings)
+  library(tibble)
+  library(dplyr)
+  library(vegan)
+  library(phyloseq)
+  library(ggplot2)
+  library(stringr)
+})
+
+theme_set(theme_bw())
+```
+
+
+# Plot outputs of filterAndTrim
+
+Number of reads remaining after filterAndTrim:
+
+```{r}
+library(ggplot2)
+
+filterAndTrim_out <- 
+  data.frame(
+    runID = rep(rep(runIDs, each=50), 16),
+    maxEE = rep(params[,1], each=100),
+    truncQ = rep(params[,3], each=100),
+    n.in = unlist(lapply(out_list, function(x) x[,"reads.in"])),
+    n.out = unlist(lapply(out_list, function(x) x[,"reads.out"])),
+    prop.out = unlist(lapply(out_list, function(x) x[,"prop.out"]))
+)
+
+filterAndTrim_out %>%
+  ggplot(aes(x=factor(truncQ), y=prop.out, fill=factor(maxEE))) +
+  geom_boxplot() +
+  facet_grid(runID~.)
+```
+
+`truncQ=8` seems to be the best option. Unclear what `maxEE` value is best, because values that are too high could fail to remove low-quality reads.
+
+Is there a relationship between number of input reads and proportion of reads remaining?
+
+```{r}
+filterAndTrim_out %>%
+  ggplot(aes(x=n.in, y=prop.out, col=runID)) +
+  geom_point(alpha=0.5) + 
+  geom_smooth(method='lm', formula = y~x)
+```
+
+Yes, there is. That means that the samples with more reads are also the samples with the higher quality reads.
+
+Still, there is no guarantee that any of these output reads are of sufficient quality to be assigned taxonomy, or that they will merge.
+
+# Plot outputs of DADA algorithm
+
+## Note:
+
+**This section and all subsequent sections should be re-run so that the DADA error rate estimation and denoising algorithm occurs separately for each sequencing run. At the moment, the process handles both run B69PP and run C25G9 together; these should probably be processed independently of each other.**
+
+```{r}
+# prop_Fs_mapped_to_asv <- lapply(dadaFs_list, function(x) lapply(x, function(y) mean(!is.na(y$map))))
+
+paramset_index <- unlist(lapply(seq_along(prop_merged), function(i) { rep(i, length(prop_merged[[i]]))}))
+dada_out <-
+  data.frame(
+    runID = unlist(lapply(
+      prop_merged, function(x) str_extract(names(x), paste0("(", runIDs, ")", collapse="|"))
+      )),
+    maxEE = params[paramset_index, 1],
+    truncQ = params[paramset_index, 3],
+    prop.Fs.mapped = unlist(prop_Fs_mapped_to_asv),
+    prop.merged = unlist(prop_merged)
+  )
+```
+
+Plot the proportion of forward reads that were assigned to an ASV in the DADA denoising algorithm (out of the reads which have been filtered and dereplicated):
+
+```{r}
+dada_out %>%
+  ggplot(aes(x=factor(truncQ), y=prop.Fs.mapped, fill=factor(maxEE))) +
+  geom_boxplot() +
+  facet_grid(runID~.)
+```
+
+Plot the proportion of unique ASVs that successfully merged (out of the unique ASVs that have been denoised):
+
+```{r}
+dada_out %>%
+  ggplot(aes(x=factor(truncQ), y=prop.merged, fill=factor(maxEE))) +
+  geom_boxplot() +
+  facet_grid(runID~.)
+```
+
+From the results so far, we know that higher values of `truncQ` and `maxEE` allow *more* reads to pass `filterAndTrim()`, but *fewer* reads to make it through the next steps. Can we integrate the outputs of all these steps to see the rate of **merged ASVs per input read**?
+
+Plot rate of merged ASVs per pre-filter read:
+
+```{r}
+sample_ind <- lapply(n_merged, function(x) match(names(x), sub("_R(1|2).fastq$", "", basename(cutFs))))
+dada_out$merged.variants.per.read <- unlist(lapply(seq_along(n_merged), function(i) n_merged[[i]]/out_list[[i]][sample_ind[[i]],"reads.in"]))
+
+dada_out %>%
+  ggplot(aes(x=factor(truncQ), y=merged.variants.per.read, fill=factor(maxEE))) +
+  geom_boxplot() +
+  facet_grid(runID~.)
+```
+
+**Question:** It has previously been stated that this metric may not be the best to use, because it is also a function of the variation between reads (more variation --> more unique sequence variants identified by the DADA algorithm). However, since each processing run (each parameter set) starts with the same input data, isn't the variation between reads held constant across processing runs?
+
+
+# Plot effects on taxonomic assignment
+
+```{r}
+physeqs <- list() # Create a list of physeq objects
+prop_spp_classification <- list() # Proportion of unique ASVs with species-level classification
+abund_spp_classification <- list() # Total abundance of ASVs with species-level classifications
+abundweight_prop_spp_classification <- list() # Proportion-by-abundance of ASVs with species-level classification
+n_spp_classification <- list() # Number of unique ASVs with species-level classification
+for(i in 1:length(seqtabs)) {
+  physeqs[[i]] <- phyloseq(otu_table(seqtabs[[i]],taxa_are_rows=FALSE), tax_table(taxas[[i]]))
+  prop_spp_classification[[i]] <- mean(!is.na(tax_table(physeqs[[i]])[,"Species"]))
+  abund_spp_classification[[i]] <- sum(otu_table(subset_taxa(physeqs[[i]], !is.na(Species))))
+  abundweight_prop_spp_classification[[i]] <- abund_spp_classification[[i]] / sum(otu_table(physeqs[[i]]))
+  n_spp_classification[[i]] <- sum(!is.na(tax_table(physeqs[[i]])[,"Species"]))
+}
+
+assigntax_out <- 
+  data.frame(
+    maxEE = params[,1],
+    truncQ = params[,3],
+    prop.spp.classification = unlist(prop_spp_classification),
+    abund.weight.prop.spp.classification = unlist(abundweight_prop_spp_classification),
+    n.spp.classification = unlist(n_spp_classification)
+  )
+```
+
+Plot the proportion of unique taxonomic assignments that went down to the species level:
+
+```{r}
+assigntax_out %>%
+  ggplot(aes(x=factor(truncQ), y=prop.spp.classification, color=factor(maxEE))) +
+  geom_point()
+```
+
+Plot the abundance-weighted proportion, and the number, of unique taxonomic assignments that went down to the species level.
+
+```{r}
+gridExtra::grid.arrange(
+  assigntax_out %>%
+  ggplot(aes(x=factor(truncQ), y=abund.weight.prop.spp.classification, color=factor(maxEE))) +
+  geom_point(stat="identity"),
+  assigntax_out %>%
+  ggplot(aes(x=factor(truncQ), y=n.spp.classification, color=factor(maxEE))) +
+  geom_point(stat="identity"),
+  nrow=1
+)
+```
+
+
+# Plot effects on diversity estimates
+
+```{r}
+obsrich_list <- list()
+shannon_list <- list()
+for(i in 1:length(physeqs)) {
+  div <- suppressWarnings(
+    estimate_richness(physeqs[[i]], measures=c("Observed","Shannon"))
+  )
+  obsrich_list[[i]] <- div[,"Observed"]
+  shannon_list[[i]] <- div[,"Shannon"]
+}
+
+paramset_index <- unlist(lapply(seq_along(obsrich_list), function(i) { rep(i, length(obsrich_list[[i]]))}))
+diversity_out <- 
+  data.frame(
+    runID = unlist(lapply(
+      physeqs, function(x) str_extract(sample_names(x), paste0("(", runIDs, ")", collapse="|"))
+      )),
+    maxEE = params[paramset_index, 1],
+    truncQ = params[paramset_index, 3],
+    obs.richness = unlist(obsrich_list),
+    shannon.div = unlist(shannon_list)
+  )
+```
+
+Plot observed richness: 
+
+(Note: DADA2 does not allow singletons, so this measure should not be used directly for ecological inference.)
+
+```{r}
+diversity_out %>%
+  ggplot(aes(x=factor(truncQ), y=obs.richness, fill=factor(maxEE))) +
+  geom_boxplot() +
+  facet_grid(runID~.)
+```
+
+Plot Shannon diversity:
+
+```{r}
+diversity_out %>%
+  ggplot(aes(x=factor(truncQ), y=shannon.div, fill=factor(maxEE))) +
+  geom_boxplot() +
+  facet_grid(runID~.)
+```
+
+It seems like the parameters make little difference in the diversity estimates. For observed richness, though, low values of `truncQ` result in slightly higher estimates.
+
+
+# Plot effects on beta-diversity
+
+First, create phyloseq object to combine sequence tables across all parameter sets:
+
+```{r}
+# First rename each seqtab to reflect the params that created it.
+# Then combine all seqtabs into ONE physeq
+seqtabs_renamed <- seqtabs
+for(i in 1:length(seqtabs_renamed)) {
+  rownames(seqtabs_renamed[[i]]) <- paste0(param_sets[i], "_", rownames(seqtabs[[i]]))
+}
+seqtab_joined <- mergeSequenceTables(tables=seqtabs_renamed)
+rm(seqtabs_renamed)
+
+# Sample data (parameters)
+paramset_index <- unlist(lapply(seq_along(seqtabs), function(i) { rep(i, nrow(seqtabs[[i]]))}))
+sampledata <- as.data.frame(params[paramset_index,]) %>%
+  mutate(sample = unname(unlist(lapply(seqtabs, rownames))))
+rownames(sampledata) <- rownames(seqtab_joined)
+
+# Taxa
+# taxa_joined <- assignTaxonomy(seqtab_joined, unite.ref, multithread = MULTITHREAD, tryRC = TRUE)
+taxa_joined <- readRDS("./data/sensitivity_taxa_joined.Rds")
+
+# Combine elements into physeq
+physeq_joined <- phyloseq(otu_table(seqtab_joined,taxa_are_rows=FALSE),
+                          sample_data(sampledata),
+                          tax_table(taxa_joined))
+
+# Remove samples with zero total counts
+physeq_joined_nonzero <- prune_samples(sample_sums(physeq_joined) > 0, physeq_joined)
+```
+
+Plot ordination:
+
+```{r}
+# ordination <- ordinate(physeq_joined_nonzero, "NMDS", "bray", k=2)
+# saveRDS(ordination, "./data/sensitivity_ordination.Rds")
+ordination <- readRDS("./data/sensitivity_ordination.Rds")
+plot_ordination(physeq_joined_nonzero, ordination, type="samples",
+                col="truncQ")
+```
+
+The far-right outliers come from two samples (runB69PP_BMI_Plate4WellH3_ITS and runB69PP_BMI_Plate4WellH1_ITS), but they are also notable in that they have `truncQ = 16`. Therefore, this plot demonstrates that `truncQ < 16` is necessary to avoid extreme outliers.
+
+Zoom in on plot around (0,0):
+
+```{r}
+plot_ordination(physeq_joined_nonzero, ordination, type="samples",
+                col="truncQ") +
+  coord_cartesian(xlim=c(-0.096, -0.09), ylim=c(-0.002, 0.001))
+```
+
+Within the main point cloud, there is no apparent effect of `truncQ` on inferred community composition.
+
+Color some samples to see how closely they cluster:
+
+```{r}
+select_samples <- c("runB69PP_BMI_Plate13WellA8_ITS", "runB69PP_BMI_Plate13WellC11_ITS",
+                    "runC25G9_BMI_Plate68WellC12_ITS", "runC25G9_BMI_Plate68WellE1_ITS")
+select_sample_ind <- match(get_variable(physeq_joined_nonzero, "sample"), select_samples)
+sample_data(physeq_joined_nonzero)[,"sample_select"] <- select_samples[select_sample_ind]
+
+plot_ordination(physeq_joined_nonzero, ordination, type="samples",
+                col="sample_select") +
+  coord_cartesian(xlim=c(-0.096, -0.09), ylim=c(-0.002, 0.001))
+```
+
+It looks like samples don't necessarily form clusters that are distinguishable from the rest of the variation.
+
+Confirm with PERMANOVA: How does dissimilarity between samples compare to dissimilarity between parameter sets for a given sample? (These can take several minutes to run, so the corresponding output is pasted below each code chunk.)
+
+```{r eval=FALSE}
+ps_joined_dist <- vegdist(otu_table(physeq_joined_nonzero))
+
+adonis(ps_joined_dist ~ maxEE.F + truncQ + sample,
+       data = as(sample_data(physeq_joined_nonzero), "data.frame"),
+       permutations=999)
+```
+
+```
+Call:
+adonis(formula = ps_joined_dist ~ maxEE.F + truncQ + sample,      data = as(sample_data(physeq_joined_nonzero), "data.frame"),      permutations = 999) 
+
+Permutation: free
+Number of permutations: 999
+
+Terms added sequentially (first to last)
+
+            Df SumsOfSqs MeanSqs F.Model      R2 Pr(>F)    
+maxEE.F      1      0.03  0.0298   1.036 0.00004  0.376    
+truncQ       1      0.46  0.4570  15.890 0.00060  0.001 ***
+sample      98    714.68  7.2926 253.541 0.94393  0.001 ***
+Residuals 1459     41.97  0.0288         0.05543           
+Total     1559    757.13                 1.00000           
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+```
+
+Re-run, with a version that permutes within "strata", i.e. only within samples:
+
+```{r eval=FALSE}
+adonis(ps_joined_dist ~ maxEE.F + truncQ,
+       data = as(sample_data(physeq_joined_nonzero), "data.frame"),
+       strata = get_variable(physeq_joined_nonzero, "sample"),
+       permutations=999)
+```
+
+```
+Call:
+adonis(formula = ps_joined_dist ~ maxEE.F + truncQ, data = as(sample_data(physeq_joined_nonzero),      "data.frame"), permutations = 999, strata = get_variable(physeq_joined_nonzero,      "sample")) 
+
+Blocks:  strata 
+Permutation: free
+Number of permutations: 999
+
+Terms added sequentially (first to last)
+
+            Df SumsOfSqs MeanSqs F.Model      R2 Pr(>F)    
+maxEE.F      1      0.03 0.02980 0.06132 0.00004  0.391    
+truncQ       1      0.46 0.45704 0.94050 0.00060  0.001 ***
+Residuals 1557    756.64 0.48596         0.99936           
+Total     1559    757.13                 1.00000           
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+```
+
+In conclusion, different parameter sets could lead to different inferences about beta-diversity.
+
+## Re-run beta-diversity analyses without outlier samples
+
+```{r eval=FALSE}
+rm_samples <- c("runB69PP_BMI_Plate13WellA12_ITS", "runB69PP_BMI_Plate4WellH3_ITS", "runB69PP_BMI_Plate4WellH1_ITS")
+
+physeq_joined_nonzero_rmoutliers <- subset_samples(physeq_joined_nonzero, !(get_variable(physeq_joined_nonzero, "sample") %in% rm_samples))
+
+ps_joined_rmoutliers_dist <- vegdist(otu_table(physeq_joined_nonzero_rmoutliers))
+
+adonis(ps_joined_rmoutliers_dist ~ maxEE.F + truncQ + sample,
+       data = as(sample_data(physeq_joined_nonzero_rmoutliers), "data.frame"),
+       permutations=999)
+```
+
+```
+Call:
+adonis(formula = ps_joined_rmoutliers_dist ~ maxEE.F + truncQ +      sample, data = as(sample_data(physeq_joined_nonzero_rmoutliers),      "data.frame"), permutations = 999) 
+
+Permutation: free
+Number of permutations: 999
+
+Terms added sequentially (first to last)
+
+            Df SumsOfSqs MeanSqs F.Model      R2 Pr(>F)    
+maxEE.F      1      0.03  0.0291   1.086 0.00004  0.256    
+truncQ       1      0.40  0.4025  15.011 0.00054  0.001 ***
+sample      95    705.87  7.4302 277.119 0.94766  0.001 ***
+Residuals 1438     38.56  0.0268         0.05176           
+Total     1535    744.85                 1.00000           
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+```
+
+```{r eval=FALSE}
+adonis(ps_joined_rmoutliers_dist ~ maxEE.F + truncQ,
+       data = as(sample_data(physeq_joined_nonzero_rmoutliers), "data.frame"),
+       strata = get_variable(physeq_joined_nonzero_rmoutliers, "sample"),
+       permutations=999)
+```
+
+```
+Call:
+adonis(formula = ps_joined_rmoutliers_dist ~ maxEE.F + truncQ,      data = as(sample_data(physeq_joined_nonzero_rmoutliers),          "data.frame"), permutations = 999, strata = get_variable(physeq_joined_nonzero_rmoutliers,          "sample")) 
+
+Blocks:  strata 
+Permutation: free
+Number of permutations: 999
+
+Terms added sequentially (first to last)
+
+            Df SumsOfSqs MeanSqs F.Model      R2 Pr(>F)    
+maxEE.F      1      0.03 0.02912 0.05997 0.00004  0.288    
+truncQ       1      0.40 0.40247 0.82882 0.00054  0.001 ***
+Residuals 1533    744.42 0.48560         0.99942           
+Total     1535    744.85                 1.00000           
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+```
+
+Even after removing outlier samples, `truncQ` still has a strong effect on community composition, whereas `maxEE` does not. Between-sample variation is still much greater than between-parameter-set variation.

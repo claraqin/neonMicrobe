@@ -10,7 +10,7 @@ source("./code/params.R")
 ## Function to write site and date range parameters. To be called within other functions.
 #
 write_sample_subset_params <- function(writeDir, sites, startYrMo, endYrMo,
-                                       target_genes, sequencing_runs) {
+                                       target_genes="", sequencing_runs="") {
   # paste("writing in ", writeDir)
   write.table(
     data.frame(x1=c("sites", "startYrMo", "endYrMo", "target_genes", "sequencing_runs"),
@@ -27,20 +27,20 @@ write_sample_subset_params <- function(writeDir, sites, startYrMo, endYrMo,
 # TODO: May want to consider an "Overwrite? (y/n)" option instead of requiring
 #       user to manually overwrite if they want to redownload.
 warn_already_downloaded <- function(PRNUM, outdir) {
-  # print(paste("checking in ", outdir))
   stackDir <- paste(outdir, paste0("filesToStack",PRNUM), sep="/")
-  # print(paste("specifically in ", stackDir))
-  site_and_date_range <- read.table(paste(stackDir, SAMPLE_SUBSET_PARAMS_FILENAME, sep="/"), 
-                                    header=FALSE, sep=":")
   print(paste0("Warning: Data product ", PRNUM, 
-               " has already been downloaded to ", outdir, 
-               ". Ensure that the following describes your intended data subset, ",
-               "or else stop the current process and re-run with overwrite==TRUE. ",
-               "  sites:", site_and_date_range[1,2],
-               "  startYrMo:", site_and_date_range[2,2],
-               "  endYrMo:", site_and_date_range[3,2],
-               "  target_genes:", site_and_date_range[4,2],
-               "  sequencing_runs:", site_and_date_range[5,2]))
+               " has already been downloaded to ", outdir, "."))
+  if(file.exists(file.path(paste(stackDir, SAMPLE_SUBSET_PARAMS_FILENAME, sep="/")))) {
+    site_and_date_range <- read.table(paste(stackDir, SAMPLE_SUBSET_PARAMS_FILENAME, sep="/"), 
+                                      header=FALSE, sep=":")
+    print(paste0("Ensure that the following describes your intended data subset, ",
+                 "or else stop the current process and re-run with overwrite==TRUE. ",
+                 "  sites:", site_and_date_range[1,2],
+                 "  startYrMo:", site_and_date_range[2,2],
+                 "  endYrMo:", site_and_date_range[3,2],
+                 "  target_genes:", site_and_date_range[4,2],
+                 "  sequencing_runs:", site_and_date_range[5,2]))
+  }
 }
 ## END FUNCTION
 

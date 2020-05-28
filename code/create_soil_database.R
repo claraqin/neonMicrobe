@@ -13,7 +13,7 @@ stackDir_seqmeta <- file.path(PRESET_OUTDIR_SEQMETA, paste0("filesToStack",PRNUM
 stackDir_chem <- file.path(PRESET_OUTDIR_SOIL, paste0("filesToStack",PRNUM_chem))
 stackDir_phys <- file.path(PRESET_OUTDIR_SOIL, paste0("filesToStack",PRNUM_phys))
 
-downloadRawSoilData(return_data=FALSE)
+downloadRawSoilData(return_data=FALSE, overwrite=TRUE)
 # Warning: may take a while
 
 path_rawDataFiles <- file.path(stackDir_seqmeta, "stackedFiles", "mmg_soilRawDataFiles.csv")
@@ -90,11 +90,11 @@ dat_soilCoreCollection <- getLocTOS(dat_soilCoreCollection, "sls_soilCoreCollect
 
 # Create database connection
 con <- dbConnect(RSQLite::SQLite(), file.path(PRESET_OUTDIR_SOIL_DB, "soilDB.db"))
-dbWriteTable(con, "rawDataFiles", dat_rawDataFiles)
-dbWriteTable(con, "dnaExtraction", dat_dnaExtraction)
-dbWriteTable(con, "soilCoreCollection", dat_soilCoreCollection)
-dbWriteTable(con, "soilMoisture", dat_soilMoisture)
-dbWriteTable(con, "soilpH", dat_soilpH)
-dbWriteTable(con, "soilChemistry", dat_soilChemistry)
+dbWriteTable(con, "rawDataFiles", dat_rawDataFiles, overwrite=TRUE)
+dbWriteTable(con, "dnaExtraction", dat_dnaExtraction, overwrite=TRUE)
+dbWriteTable(con, "soilCoreCollection", dat_soilCoreCollection, overwrite=TRUE)
+dbWriteTable(con, "soilMoisture", dat_soilMoisture, overwrite=TRUE)
+dbWriteTable(con, "soilpH", dat_soilpH, overwrite=TRUE)
+dbWriteTable(con, "soilChemistry", dat_soilChemistry, overwrite=TRUE)
 dbListTables(con)
 
