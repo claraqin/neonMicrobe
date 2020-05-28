@@ -53,6 +53,7 @@ TRUNC_Q = 2 # base quality score after which to truncate sequence
 # is to increase the proportion of reads passing the filter, as this
 # would allow fewer "expected errors" to appear in the sequence
 # (by virtue of having shorter reads)
+
 MIN_LEN = 50 # min. allowable length of reads that pass filter
 # NOTE: it may be desirable to set this higher to increase the
 # likelihood of sufficient overlap between read pairs. However,
