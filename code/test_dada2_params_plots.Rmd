@@ -9,6 +9,8 @@ knitr::opts_knit$set(root.dir = "/raid/users/claraqin/zhulab/NEON_soil_microbe_p
 
 # Load data, libraries, and parameters
 
+The .Rds files listed below are created by `test_dada2_params.R`. To save yourself (substantial) processing time, you can download them directly from this link: https://drive.google.com/file/d/1Mc_ty_s-dNgBUKjlcW0BuV4gLZM4SFqO/view?usp=sharing
+
 ```{r}
 runIDs <- c("B69PP", "C25G9")
 
@@ -97,7 +99,7 @@ Still, there is no guarantee that any of these output reads are of sufficient qu
 
 # Plot outputs of DADA algorithm
 
-## Note:
+### Note:
 
 **This section and all subsequent sections should be re-run so that the DADA error rate estimation and denoising algorithm occurs separately for each sequencing run. At the moment, the process handles both run B69PP and run C25G9 together; these should probably be processed independently of each other.**
 
@@ -249,6 +251,40 @@ diversity_out %>%
 
 It seems like the parameters make little difference in the diversity estimates. For observed richness, though, low values of `truncQ` result in slightly higher estimates.
 
+### Confirm results with ANOVA
+
+First, test observed richness:
+
+```{r}
+obsrich_aov <- aov(obs.richness ~ truncQ + maxEE + runID, data=diversity_out)
+plot(obsrich_aov)
+```
+
+Normality assumption does not *quite* hold.
+
+Check summary anyway:
+
+```{r}
+summary(obsrich_aov)
+```
+
+Now, test Shannon diversity:
+
+```{r}
+shannon_aov <- aov(shannon.div ~ truncQ + maxEE + runID, data=diversity_out)
+plot(shannon_aov)
+```
+
+Normality assumption holds quite well.
+
+Check summary:
+
+```{r}
+summary(shannon_aov)
+```
+
+In conclusion, **`truncQ` has a small but very significant effect on diversity estimates, with higher estimates at lower values of `truncQ`.** On the other hand, `maxEE` has no effect on diversity estimates.
+
 
 # Plot effects on beta-diversity
 
@@ -379,7 +415,7 @@ Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’
 
 In conclusion, different parameter sets could lead to different inferences about beta-diversity.
 
-## Re-run beta-diversity analyses without outlier samples
+### Re-run beta-diversity analyses without outlier samples
 
 ```{r eval=FALSE}
 rm_samples <- c("runB69PP_BMI_Plate13WellA12_ITS", "runB69PP_BMI_Plate4WellH3_ITS", "runB69PP_BMI_Plate4WellH1_ITS")
