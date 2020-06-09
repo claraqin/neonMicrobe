@@ -7,9 +7,26 @@ output: html_document
 knitr::opts_knit$set(root.dir = "/raid/users/claraqin/zhulab/NEON_soil_microbe_processing")
 ```
 
+The purpose of this R Markdown document is to demonstrate the effects of various DADA2 quality filtering parameter combinations on the outputs of the DADA2 pipeline, and ultimately, on the ecological inference. Specifically, this script asks the following:
+
+* What are the effects of quality filtering parameters on volume of remaining reads?
+* What are the effects of quality filtering parameters on merging success?
+* What are the effects of quality filtering parameters on taxonomic assignment?
+* What are the effects of quality filtering parameters on alpha and beta diversity metrics?
+
+The parameters that we vary to observe their downstream effects include the following:
+
+* `truncQ`: Each read will be truncated at the first base pair for which the quality score is equal or less than `truncQ`; default 2.
+* `maxEE`: After truncation, reads with higher than `maxEE` expected errors will be discarded. Expected errors are calculated from the nominal definition of the quality score: EE = sum(10^(-Q/10)).
+
+Because we are interested in variation in these benchmark metrics across different parameter sets, we refer to this analysis as a **sensitivity analysis**.
+
+This script only produces the plots and tables associated with the sensitivity analysis. The statistical computation takes place in a partner script, `test_dada2_params.R`, which is available to collaborators in the NEON Soil Microbe Methods project [here](https://github.com/claraqin/NEON_soil_microbe_processing/blob/master/code/test_dada2_params.R). This script reads in the outputs of `test_dada2_params.R` via the `readRDS` function. See below for instructions on accessing the associated the .Rds files.
+
+
 # Load data, libraries, and parameters
 
-The .Rds files listed below are created by `test_dada2_params.R`. To save yourself (substantial) processing time, you can download them directly from this link: https://drive.google.com/file/d/1Mc_ty_s-dNgBUKjlcW0BuV4gLZM4SFqO/view?usp=sharing
+The .Rds files listed below are created by `test_dada2_params.R`. If you have access to `test_dada2_params.R` you can run it yourself. However, you can save yourself (substantial) processing time by downloading them directly from this link: https://drive.google.com/file/d/1Mc_ty_s-dNgBUKjlcW0BuV4gLZM4SFqO/view?usp=sharing (EDIT: You will also have to download the .Rds files associated with the separated-run version: https://drive.google.com/file/d/1G0G6Kf2HCyAVJTQpByUuIrXiTvuVdL2O/view?usp=sharing). Once downloaded, move the contents to the `./data` subdirectory.
 
 ```{r}
 runIDs <- c("B69PP", "C25G9")
@@ -30,18 +47,6 @@ taxa_joined <- readRDS("./data/sensitivity_taxa_joined.Rds")
 param_sets <- apply(params, 1, function(x) paste(c(rbind(c("maxEE.F", "maxEE.R", "truncQ"), x)), collapse="_"))
 
 source("./code/params.R")
-
-PATH_ITS <- file.path(PRESET_OUTDIR_SEQUENCE, "ITS")
-PATH_UNZIPPED <- file.path(PATH_ITS, "0_unzipped")
-PATH_FILTN <- file.path(PATH_ITS, "1_filtN")
-PATH_CUT <- file.path(PATH_ITS, "2_cutadapt")
-PATH_FILTERED <- file.path(PATH_ITS, "3_filtered")
-PATH_SEQTABS <- file.path(PATH_ITS, "4_seqtabs")
-PATH_TRACK <- file.path(PATH_ITS, "track_reads")
-PATH_TEST <- file.path(PATH_ITS, "test")
-
-filtFs <- lapply(param_sets, function(x) file.path(PATH_TEST, x, basename(cutFs)))
-filtRs <- lapply(param_sets, function(x) file.path(PATH_TEST, x, basename(cutRs)))
 
 suppressMessages({
   library(dada2)
@@ -103,6 +108,8 @@ Still, there is no guarantee that any of these output reads are of sufficient qu
 
 **This section and all subsequent sections should be re-run so that the DADA error rate estimation and denoising algorithm occurs separately for each sequencing run. At the moment, the process handles both run B69PP and run C25G9 together; these should probably be processed independently of each other.**
 
+**EDIT: For sequencing runs processed separately, go to final section.**
+
 ```{r}
 # prop_Fs_mapped_to_asv <- lapply(dadaFs_list, function(x) lapply(x, function(y) mean(!is.na(y$map))))
 
@@ -125,7 +132,9 @@ Plot the proportion of forward reads that were assigned to an ASV in the DADA de
 dada_out %>%
   ggplot(aes(x=factor(truncQ), y=prop.Fs.mapped, fill=factor(maxEE))) +
   geom_boxplot() +
-  facet_grid(runID~.)
+  facet_grid(runID~.) ->
+  p_prop_mapped
+p_prop_mapped
 ```
 
 Plot the proportion of unique ASVs that successfully merged (out of the unique ASVs that have been denoised):
@@ -134,7 +143,9 @@ Plot the proportion of unique ASVs that successfully merged (out of the unique A
 dada_out %>%
   ggplot(aes(x=factor(truncQ), y=prop.merged, fill=factor(maxEE))) +
   geom_boxplot() +
-  facet_grid(runID~.)
+  facet_grid(runID~.) ->
+  p_prop_merged
+p_prop_merged
 ```
 
 From the results so far, we know that higher values of `truncQ` and `maxEE` allow *more* reads to pass `filterAndTrim()`, but *fewer* reads to make it through the next steps. Can we integrate the outputs of all these steps to see the rate of **merged ASVs per input read**?
@@ -148,7 +159,9 @@ dada_out$merged.variants.per.read <- unlist(lapply(seq_along(n_merged), function
 dada_out %>%
   ggplot(aes(x=factor(truncQ), y=merged.variants.per.read, fill=factor(maxEE))) +
   geom_boxplot() +
-  facet_grid(runID~.)
+  facet_grid(runID~.) ->
+  p_rate_merged
+p_rate_merged
 ```
 
 **Question:** It has previously been stated that this metric may not be the best to use, because it is also a function of the variation between reads (more variation --> more unique sequence variants identified by the DADA algorithm). However, since each processing run (each parameter set) starts with the same input data, isn't the variation between reads held constant across processing runs?
@@ -203,7 +216,7 @@ gridExtra::grid.arrange(
 ```
 
 
-# Plot effects on diversity estimates
+# Plot effects on alpha-diversity estimates
 
 ```{r}
 obsrich_list <- list()
@@ -237,7 +250,9 @@ Plot observed richness:
 diversity_out %>%
   ggplot(aes(x=factor(truncQ), y=obs.richness, fill=factor(maxEE))) +
   geom_boxplot() +
-  facet_grid(runID~.)
+  facet_grid(runID~.) ->
+  p_obsrich
+p_obsrich
 ```
 
 Plot Shannon diversity:
@@ -246,7 +261,9 @@ Plot Shannon diversity:
 diversity_out %>%
   ggplot(aes(x=factor(truncQ), y=shannon.div, fill=factor(maxEE))) +
   geom_boxplot() +
-  facet_grid(runID~.)
+  facet_grid(runID~.) ->
+  p_shannon
+p_shannon
 ```
 
 It seems like the parameters make little difference in the diversity estimates. For observed richness, though, low values of `truncQ` result in slightly higher estimates.
@@ -256,6 +273,7 @@ It seems like the parameters make little difference in the diversity estimates. 
 First, test observed richness:
 
 ```{r}
+par(mfrow=c(2,2))
 obsrich_aov <- aov(obs.richness ~ truncQ + maxEE + runID, data=diversity_out)
 plot(obsrich_aov)
 ```
@@ -265,6 +283,7 @@ Normality assumption does not *quite* hold.
 Check summary anyway:
 
 ```{r}
+par(mfrow=c(1,1))
 summary(obsrich_aov)
 ```
 
@@ -272,6 +291,7 @@ Now, test Shannon diversity:
 
 ```{r}
 shannon_aov <- aov(shannon.div ~ truncQ + maxEE + runID, data=diversity_out)
+par(mfrow=c(2,2))
 plot(shannon_aov)
 ```
 
@@ -280,6 +300,7 @@ Normality assumption holds quite well.
 Check summary:
 
 ```{r}
+par(mfrow=c(1,1))
 summary(shannon_aov)
 ```
 
@@ -331,6 +352,20 @@ plot_ordination(physeq_joined_nonzero, ordination, type="samples",
 
 The far-right outliers come from two samples (runB69PP_BMI_Plate4WellH3_ITS and runB69PP_BMI_Plate4WellH1_ITS), but they are also notable in that they have `truncQ = 16`. Therefore, this plot demonstrates that `truncQ < 16` is necessary to avoid extreme outliers.
 
+Check: Are there other signs that these samples would have been outliers? For instance, do they have unusually low sequencing depth?
+
+```{r, fig.width=5, fig.height=3}
+hist(sample_sums(physeq_joined_nonzero))
+```
+
+```{r, fig.width=5, fig.height=3}
+outliers <- c("runB69PP_BMI_Plate4WellH3_ITS", "runB69PP_BMI_Plate4WellH1_ITS")
+physeq_joined_beta_outliers <- subset_samples(physeq_joined_nonzero, get_variable(physeq_joined_nonzero, "sample") %in% outliers)
+hist(sample_sums(physeq_joined_beta_outliers))
+```
+
+Beta-diversity outliers have extremely low sequencing depth! So yes they would have been removed in the pre-analysis stage anyway. (See below for re-analysis with low-depth samples removed.)
+
 Zoom in on plot around (0,0):
 
 ```{r}
@@ -360,34 +395,6 @@ Confirm with PERMANOVA: How does dissimilarity between samples compare to dissim
 
 ```{r eval=FALSE}
 ps_joined_dist <- vegdist(otu_table(physeq_joined_nonzero))
-
-adonis(ps_joined_dist ~ maxEE.F + truncQ + sample,
-       data = as(sample_data(physeq_joined_nonzero), "data.frame"),
-       permutations=999)
-```
-
-```
-Call:
-adonis(formula = ps_joined_dist ~ maxEE.F + truncQ + sample,      data = as(sample_data(physeq_joined_nonzero), "data.frame"),      permutations = 999) 
-
-Permutation: free
-Number of permutations: 999
-
-Terms added sequentially (first to last)
-
-            Df SumsOfSqs MeanSqs F.Model      R2 Pr(>F)    
-maxEE.F      1      0.03  0.0298   1.036 0.00004  0.376    
-truncQ       1      0.46  0.4570  15.890 0.00060  0.001 ***
-sample      98    714.68  7.2926 253.541 0.94393  0.001 ***
-Residuals 1459     41.97  0.0288         0.05543           
-Total     1559    757.13                 1.00000           
----
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
-```
-
-Re-run, with a version that permutes within "strata", i.e. only within samples:
-
-```{r eval=FALSE}
 adonis(ps_joined_dist ~ maxEE.F + truncQ,
        data = as(sample_data(physeq_joined_nonzero), "data.frame"),
        strata = get_variable(physeq_joined_nonzero, "sample"),
@@ -413,51 +420,56 @@ Total     1559    757.13                 1.00000
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 ```
 
-In conclusion, different parameter sets could lead to different inferences about beta-diversity.
+In conclusion, different parameter sets could lead to different inferences about beta-diversity.\
 
 ### Re-run beta-diversity analyses without outlier samples
 
+We can remove outliers by removing samples with very low sequencing depths. Let's remove all samples with sequencing depth below 1000, to be very lenient.
+
+```{r}
+mean(sample_sums(physeq_joined_nonzero) < 1000)
+```
+
+The minimum depth requirement removes ~28% of all samples. 
+
+```{r}
+physeq_joined_nonzero_mindepth <- subset_samples(physeq_joined_nonzero, sample_sums(physeq_joined_nonzero) >= 1000)
+```
+
+Ordinate:
+
+```{r}
+# ordination_mindepth <- ordinate(physeq_joined_nonzero_mindepth, "NMDS", "bray", k=2)
+# saveRDS(ordination_mindepth, "./data/sensitivity_ordination_mindepth.Rds")
+ordination_mindepth <- readRDS("./data/sensitivity_ordination_mindepth.Rds")
+plot_ordination(physeq_joined_nonzero_mindepth, ordination_mindepth, type="samples",
+                col="truncQ")
+```
+
+Effect of `truncQ` is not visible from NMDS.
+
+Clustering by sample ID?
+
+```{r}
+plot_ordination(physeq_joined_nonzero_mindepth, ordination_mindepth, type="samples",
+                col="sample_select")
+```
+
+Yes, the by-sample clustering is visible in an NMDS graph.
+
+Now confirm effects of parameters on beta diversity by PERMANOVA:
+
 ```{r eval=FALSE}
-rm_samples <- c("runB69PP_BMI_Plate13WellA12_ITS", "runB69PP_BMI_Plate4WellH3_ITS", "runB69PP_BMI_Plate4WellH1_ITS")
-
-physeq_joined_nonzero_rmoutliers <- subset_samples(physeq_joined_nonzero, !(get_variable(physeq_joined_nonzero, "sample") %in% rm_samples))
-
-ps_joined_rmoutliers_dist <- vegdist(otu_table(physeq_joined_nonzero_rmoutliers))
-
-adonis(ps_joined_rmoutliers_dist ~ maxEE.F + truncQ + sample,
-       data = as(sample_data(physeq_joined_nonzero_rmoutliers), "data.frame"),
+ps_joined_mindepth_dist <- vegdist(otu_table(physeq_joined_nonzero_mindepth))
+adonis(ps_joined_mindepth_dist ~ maxEE.F + truncQ,
+       data = as(sample_data(physeq_joined_nonzero_mindepth), "data.frame"),
+       strata = get_variable(physeq_joined_nonzero_mindepth, "sample"),
        permutations=999)
 ```
 
 ```
 Call:
-adonis(formula = ps_joined_rmoutliers_dist ~ maxEE.F + truncQ +      sample, data = as(sample_data(physeq_joined_nonzero_rmoutliers),      "data.frame"), permutations = 999) 
-
-Permutation: free
-Number of permutations: 999
-
-Terms added sequentially (first to last)
-
-            Df SumsOfSqs MeanSqs F.Model      R2 Pr(>F)    
-maxEE.F      1      0.03  0.0291   1.086 0.00004  0.256    
-truncQ       1      0.40  0.4025  15.011 0.00054  0.001 ***
-sample      95    705.87  7.4302 277.119 0.94766  0.001 ***
-Residuals 1438     38.56  0.0268         0.05176           
-Total     1535    744.85                 1.00000           
----
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
-```
-
-```{r eval=FALSE}
-adonis(ps_joined_rmoutliers_dist ~ maxEE.F + truncQ,
-       data = as(sample_data(physeq_joined_nonzero_rmoutliers), "data.frame"),
-       strata = get_variable(physeq_joined_nonzero_rmoutliers, "sample"),
-       permutations=999)
-```
-
-```
-Call:
-adonis(formula = ps_joined_rmoutliers_dist ~ maxEE.F + truncQ,      data = as(sample_data(physeq_joined_nonzero_rmoutliers),          "data.frame"), permutations = 999, strata = get_variable(physeq_joined_nonzero_rmoutliers,          "sample")) 
+adonis(formula = ps_joined_mindepth_dist ~ maxEE.F + truncQ,      data = as(sample_data(physeq_joined_nonzero_mindepth), "data.frame"),      permutations = 999, strata = get_variable(physeq_joined_nonzero_mindepth,          "sample")) 
 
 Blocks:  strata 
 Permutation: free
@@ -466,12 +478,177 @@ Number of permutations: 999
 Terms added sequentially (first to last)
 
             Df SumsOfSqs MeanSqs F.Model      R2 Pr(>F)    
-maxEE.F      1      0.03 0.02912 0.05997 0.00004  0.288    
-truncQ       1      0.40 0.40247 0.82882 0.00054  0.001 ***
-Residuals 1533    744.42 0.48560         0.99942           
-Total     1535    744.85                 1.00000           
+maxEE.F      1      0.05 0.04930 0.10245 0.00009  0.324    
+truncQ       1      0.35 0.34803 0.72328 0.00064  0.001 ***
+Residuals 1124    540.85 0.48119         0.99927           
+Total     1126    541.25                 1.00000           
 ---
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 ```
 
-Even after removing outlier samples, `truncQ` still has a strong effect on community composition, whereas `maxEE` does not. Between-sample variation is still much greater than between-parameter-set variation.
+Even after removing outlier samples, `truncQ` still has a significant (but small) effect on community composition, whereas `maxEE` has no effect. Between-sample variation is still much greater than between-parameter-set variation.
+
+
+# Plot outputs of DADA algorithm, separating sequencing runs
+
+```{r}
+# Load data from test_dada2_params.R for separated runs
+prop_Fs_mapped_to_asv <- readRDS( "./data/sensitivity_prop_Fs_mapped_seprun.Rds")
+# dadaFs_list <- readRDS("./data/sensitivity_dadaFs_list_seprun.Rds")
+# dadaRs_list <- readRDS("./data/sensitivity_dadaRs_list_seprun.Rds")
+seqtabs <- readRDS("./data/sensitivity_seqtabs_list_seprun.Rds")
+# taxas <- readRDS("./data/sensitivity_taxas.Rds")
+n_merged <- readRDS("./data/sensitivity_n_merged_seprun.Rds")
+prop_merged <- readRDS("./data/sensitivity_prop_merged_seprun.Rds")
+
+dada_out_seprun <- list()
+for(j in 1:length(prop_merged)) {
+  paramset_index <- unlist(lapply(seq_along(prop_merged[[j]]), function(i) { rep(i, length(prop_merged[[j]][[i]]))}))
+  dada_out_seprun[[j]] <-
+    data.frame(
+      runID = runIDs[[j]],
+      maxEE = params[paramset_index, 1],
+      truncQ = params[paramset_index, 3],
+      prop.Fs.mapped = unlist(prop_Fs_mapped_to_asv[[j]]),
+      prop.merged = unlist(prop_merged[[j]])
+    )
+}
+```
+
+Plot the proportion of forward reads that were assigned to an ASV in the DADA denoising algorithm (out of the reads which have been filtered and dereplicated):
+
+```{r}
+dada_out_seprun[[1]] %>%
+  ggplot(aes(x=factor(truncQ), y=prop.Fs.mapped, fill=factor(maxEE))) +
+  geom_boxplot() +
+  facet_grid(runID~.) ->
+  p_mapped1
+dada_out_seprun[[2]] %>%
+  ggplot(aes(x=factor(truncQ), y=prop.Fs.mapped, fill=factor(maxEE))) +
+  geom_boxplot() +
+  facet_grid(runID~.) ->
+  p_mapped2
+gridExtra::grid.arrange(p_mapped1, p_mapped2, nrow=2)
+```
+
+Plot the proportion of unique ASVs that successfully merged (out of the unique ASVs that have been denoised):
+
+```{r}
+dada_out_seprun[[1]] %>%
+  ggplot(aes(x=factor(truncQ), y=prop.merged, fill=factor(maxEE))) +
+  geom_boxplot() +
+  facet_grid(runID~.) ->
+  p_merged1
+dada_out_seprun[[2]] %>%
+  ggplot(aes(x=factor(truncQ), y=prop.merged, fill=factor(maxEE))) +
+  geom_boxplot() +
+  facet_grid(runID~.) ->
+  p_merged2
+gridExtra::grid.arrange(p_merged1, p_merged2)
+```
+
+
+# Plot effects on diversity estimates, separating sequencing runs
+
+For now, we don't have taxa tables yet. 
+
+```{r}
+physeqs_seprun <- list(list(),list()) # List of two lists: each sub-list is a different sequencing run
+for(j in 1:length(runIDs)) {
+  for(i in 1:length(seqtabs[[j]])) {
+    physeqs_seprun[[j]][[i]] <- phyloseq(otu_table(seqtabs[[j]][[i]],taxa_are_rows=FALSE))
+  }
+}
+
+obsrich_list_seprun <- list(list(), list())
+shannon_list_seprun <- list(list(), list())
+for(j in 1:length(runIDs)) {
+  for(i in 1:length(physeqs_seprun[[j]])) {
+    div <- suppressWarnings(
+      estimate_richness(physeqs_seprun[[j]][[i]], measures=c("Observed","Shannon"))
+    )
+    obsrich_list_seprun[[j]][[i]] <- div[,"Observed"]
+    shannon_list_seprun[[j]][[i]] <- div[,"Shannon"]
+  }
+}
+
+diversity_out_seprun <- list()
+for(j in 1:length(runIDs)) {
+  paramset_index <- unlist(lapply(seq_along(obsrich_list_seprun[[j]]), function(i) { rep(i, length(obsrich_list_seprun[[j]][[i]]))}))
+diversity_out_seprun[[j]] <- 
+  data.frame(
+    runID = runIDs[j],
+    maxEE = params[paramset_index, 1],
+    truncQ = params[paramset_index, 3],
+    obs.richness = unlist(obsrich_list_seprun[[j]]),
+    shannon.div = unlist(shannon_list_seprun[[j]])
+  )
+}
+```
+
+Plot observed richness: 
+
+(Note: DADA2 does not allow singletons, so this measure should not be used directly for ecological inference.)
+
+```{r}
+diversity_out_seprun[[1]] %>%
+  ggplot(aes(x=factor(truncQ), y=obs.richness, fill=factor(maxEE))) +
+  geom_boxplot() +
+  facet_grid(runID~.) ->
+  p_obsrich1
+diversity_out_seprun[[2]] %>%
+  ggplot(aes(x=factor(truncQ), y=obs.richness, fill=factor(maxEE))) +
+  geom_boxplot() +
+  facet_grid(runID~.) ->
+  p_obsrich2
+gridExtra::grid.arrange(p_obsrich1, p_obsrich2)
+```
+
+Plot Shannon diversity:
+
+```{r}
+diversity_out_seprun[[1]] %>%
+  ggplot(aes(x=factor(truncQ), y=shannon.div, fill=factor(maxEE))) +
+  geom_boxplot() +
+  facet_grid(runID~.) ->
+  p_shannon1
+diversity_out_seprun[[2]] %>%
+  ggplot(aes(x=factor(truncQ), y=shannon.div, fill=factor(maxEE))) +
+  geom_boxplot() +
+  facet_grid(runID~.) ->
+  p_shannon2
+gridExtra::grid.arrange(p_shannon1, p_shannon2)
+```
+
+Compare with plots where sequencing runs were processed together:
+
+```{r}
+gridExtra::grid.arrange(p_obsrich, 
+                        gridExtra::grid.arrange(p_obsrich1, p_obsrich2, nrow=2), nrow=1)
+```
+
+```{r}
+gridExtra::grid.arrange(p_shannon, 
+                        gridExtra::grid.arrange(p_shannon1, p_shannon2, nrow=2), nrow=1)
+```
+
+Any differences between pooled-run and seperated-run processes must be very small. Confirm with ANOVA:
+
+```{r}
+diversity_out$seperate_seq_runs <- FALSE
+diversity_out_seprun[[1]]$seperate_seq_runs <- TRUE
+diversity_out_seprun[[2]]$seperate_seq_runs <- TRUE
+
+diversity_test_sep <- rbind(diversity_out, diversity_out_seprun[[1]], diversity_out_seprun[[2]])
+diversity_test_sep_obsrich <- aov(obs.richness ~ maxEE + truncQ + runID + seperate_seq_runs, 
+                              data = diversity_test_sep)
+summary(diversity_test_sep_obsrich)
+```
+
+```{r}
+diversity_test_sep_shannon <- aov(shannon.div ~ maxEE + truncQ + runID + seperate_seq_runs, 
+                              data = diversity_test_sep)
+summary(diversity_test_sep_shannon)
+```
+
+Confirmed: In the case of performing inference on alpha diversity, it does not matter whether you pool the runs together in the DADA algorithm or run the DADA algorithm on the runs separately.

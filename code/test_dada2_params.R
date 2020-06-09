@@ -131,21 +131,34 @@ names(out_list) <- param_sets
 filtFs <- lapply(filtFs, function(x) { x <- x[file.exists(x)] })
 filtRs <- lapply(filtRs, function(x) { x <- x[file.exists(x)] })
 
-n_merged <- list()
-prop_merged <- list()
-seqtabs <- list()
-dadaFs_list <- list()
-dadaRs_list <- list()
+n_merged1 <- list() # For run #1
+n_merged2 <- list() # For run #2
+n_merged <- list(n_merged1, n_merged2)
+prop_merged1 <- list() # For run #1
+prop_merged2 <- list() # For run #2
+prop_merged <- list(prop_merged1, prop_merged2)
+seqtabs1 <- list() # For run #1
+seqtabs2 <- list() # For run #2
+seqtabs <- list(seqtabs1, seqtabs2)
+dadaFs_list1 <- list() # For run #1, forward
+dadaFs_list2 <- list() # For run #2, forward
+dadaFs_list <- list(dadaFs_list1, dadaFs_list2)
+dadaRs_list1 <- list() # For run #1, reverse
+dadaRs_list2 <- list() # For run #2, reverse
+dadaRs_list <- list(dadaRs_list1, dadaRs_list2)
 system.time({
-for(i in 1:length(filtFs)) {
-  filtFs.star <- filtFs[[i]]
-  filtRs.star <- filtRs[[i]]
+for(i in 7:7) { # TODO: REVISE BACK TO 1:length(filtFs)
+# for(i in 1:length(filtFs)) {
+  for(j in 2:2) { # TODO: REVISE BACK TO 1:length(runIDs)
+  # Retrieve only those files associated with the appropriate parameter set and runID
+  filtFs.star <- filtFs[[i]][grep(runIDs[j], filtFs[[i]])]
+  filtRs.star <- filtRs[[i]][grep(runIDs[j], filtRs[[i]])]
   
   set.seed(11001100)
   # Learn the error rates
   errF <- learnErrors(filtFs.star, multithread=MULTITHREAD, nbases = 1e7, randomize=TRUE)
   errR <- learnErrors(filtRs.star, multithread=MULTITHREAD, nbases = 1e7, randomize=TRUE)
-  print(paste0("Finished learning error rates in ", param_sets[i], " at ", Sys.time()))
+  print(paste0("Finished learning error rates in ", param_sets[i], runID[j], " at ", Sys.time()))
   
   # Dereplicate identical reads
   derepFs <- derepFastq(filtFs.star, verbose = TRUE)
@@ -164,8 +177,8 @@ for(i in 1:length(filtFs)) {
   ## TODO: Record intermediate metric here: the number of
   ##       sequence variants partitioned from the full set
   ##       of reads after the denoising algorithm.
-  dadaFs_list[[i]] <- dadaFs
-  dadaRs_list[[i]] <- dadaRs
+  dadaFs_list[[j]][[i]] <- dadaFs
+  dadaRs_list[[j]][[i]] <- dadaRs
   
   # Merge pairs
   mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE, returnRejects=TRUE)
@@ -175,8 +188,8 @@ for(i in 1:length(filtFs)) {
 
   # If using returnRejects=TRUE in mergePairs(), you can look at the number/proportion
   # of sequences in each sample which successfully merged
-  n_merged[[i]] <- unlist(lapply(mergers, function(x) sum(x$accept)))
-  prop_merged[[i]] <- unlist(lapply(mergers, function(x) mean(x$accept)))
+  n_merged[[j]][[i]] <- unlist(lapply(mergers, function(x) sum(x$accept)))
+  prop_merged[[j]][[i]] <- unlist(lapply(mergers, function(x) mean(x$accept)))
 
   # Construct sequence table
   # If using returnRejects=TRUE in mergePairs(), you will have to remove the column
@@ -190,24 +203,32 @@ for(i in 1:length(filtFs)) {
 
   # Remove chimeras
   seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=MULTITHREAD, verbose=TRUE)
-  print(paste0("Finished removing chimeras in ", param_sets[i], " at ", Sys.time()))
+  print(paste0("Finished removing chimeras in ", param_sets[i], runID[j], "at", Sys.time()))
 
   # Inspect distribution of sequence lengths
   # hist(nchar(getSequences(seqtab.nochim)))
 
-  seqtabs[[i]] <- seqtab.nochim
+  seqtabs[[j]][[i]] <- seqtab.nochim
+}
 }
 })
-names(n_merged) <- param_sets
-names(prop_merged) <- param_sets
-names(dadaFs_list) <- param_sets
-names(dadaRs_list) <- param_sets
-names(seqtabs) <- param_sets
+names(n_merged[[1]]) <- param_sets
+names(n_merged[[2]]) <- param_sets
+names(prop_merged[[1]]) <- param_sets
+names(prop_merged[[2]]) <- param_sets
+names(dadaFs_list[[1]]) <- param_sets
+names(dadaFs_list[[2]]) <- param_sets
+names(dadaRs_list[[1]]) <- param_sets
+names(dadaRs_list[[2]]) <- param_sets
+names(seqtabs[[1]]) <- param_sets
+names(seqtabs[[2]]) <- param_sets
 
 n_merged # This is the number of ASVs (as partitioned by dada) that successfully merged
 prop_merged # This is proportion of ASVs (as partitioned by dada) that successfully merged
 # The below is the proportion of forward reads that were assigned an ASV
-prop_Fs_mapped_to_asv <- lapply(dadaFs_list, function(x) lapply(x, function(y) mean(!is.na(y$map))))
+prop_Fs_mapped_to_asv <- list(list(), list()) 
+prop_Fs_mapped_to_asv[[1]] <- lapply(dadaFs_list[[1]], function(x) lapply(x, function(y) mean(!is.na(y$map))))
+prop_Fs_mapped_to_asv[[2]] <- lapply(dadaFs_list[[2]], function(x) lapply(x, function(y) mean(!is.na(y$map))))
 prop_Fs_mapped_to_asv_mat <- matrix(
   unlist(prop_Fs_mapped_to_asv),
   ncol=100,nrow=16,dimnames=list(param_sets, basename(cutFs))
@@ -237,13 +258,13 @@ saveRDS(cutFs, "./data/sensitivity_cutFs.Rds")
 saveRDS(cutRs, "./data/sensitivity_cutRs.Rds")
 saveRDS(params, "./data/sensitivity_params.Rds")
 saveRDS(out_list, "./data/sensitivity_filterAndTrim_out_list.Rds")
-saveRDS(prop_Fs_mapped_to_asv, "./data/sensitivity_prop_Fs_mapped.Rds")
-saveRDS(dadaFs_list, "./data/sensitivity_dadaFs_list.Rds")
-saveRDS(dadaRs_list, "./data/sensitivity_dadaRs_list.Rds")
-saveRDS(seqtabs, "./data/sensitivity_seqtabs_list.Rds")
+saveRDS(prop_Fs_mapped_to_asv, "./data/sensitivity_prop_Fs_mapped_seprun.Rds")
+saveRDS(dadaFs_list, "./data/sensitivity_dadaFs_list_seprun.Rds")
+saveRDS(dadaRs_list, "./data/sensitivity_dadaRs_list_seprun.Rds")
+saveRDS(seqtabs, "./data/sensitivity_seqtabs_list_seprun.Rds")
 saveRDS(taxas, "./data/sensitivity_taxas.Rds")
-saveRDS(n_merged, "./data/sensitivity_n_merged.Rds")
-saveRDS(prop_merged, "./data/sensitivity_prop_merged.Rds")
+saveRDS(n_merged, "./data/sensitivity_n_merged_seprun.Rds")
+saveRDS(prop_merged, "./data/sensitivity_prop_merged_seprun.Rds")
 
 # Load the lists
 # cutFs <- readRDS("./data/sensitivity_cutFs.Rds")
