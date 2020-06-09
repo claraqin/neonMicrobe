@@ -147,9 +147,9 @@ dadaRs_list1 <- list() # For run #1, reverse
 dadaRs_list2 <- list() # For run #2, reverse
 dadaRs_list <- list(dadaRs_list1, dadaRs_list2)
 system.time({
-for(i in 8:length(filtFs)) { # TODO: REVISE BACK TO 1:length(filtFs)
+for(i in 7:7) { # TODO: REVISE BACK TO 1:length(filtFs)
 # for(i in 1:length(filtFs)) {
-  for(j in 1:length(runIDs)) {
+  for(j in 2:2) { # TODO: REVISE BACK TO 1:length(runIDs)
   # Retrieve only those files associated with the appropriate parameter set and runID
   filtFs.star <- filtFs[[i]][grep(runIDs[j], filtFs[[i]])]
   filtRs.star <- filtRs[[i]][grep(runIDs[j], filtRs[[i]])]
@@ -226,7 +226,9 @@ names(seqtabs[[2]]) <- param_sets
 n_merged # This is the number of ASVs (as partitioned by dada) that successfully merged
 prop_merged # This is proportion of ASVs (as partitioned by dada) that successfully merged
 # The below is the proportion of forward reads that were assigned an ASV
-prop_Fs_mapped_to_asv <- lapply(dadaFs_list, function(x) lapply(x, function(y) mean(!is.na(y$map))))
+prop_Fs_mapped_to_asv <- list(list(), list()) 
+prop_Fs_mapped_to_asv[[1]] <- lapply(dadaFs_list[[1]], function(x) lapply(x, function(y) mean(!is.na(y$map))))
+prop_Fs_mapped_to_asv[[2]] <- lapply(dadaFs_list[[2]], function(x) lapply(x, function(y) mean(!is.na(y$map))))
 prop_Fs_mapped_to_asv_mat <- matrix(
   unlist(prop_Fs_mapped_to_asv),
   ncol=100,nrow=16,dimnames=list(param_sets, basename(cutFs))
@@ -256,13 +258,13 @@ saveRDS(cutFs, "./data/sensitivity_cutFs.Rds")
 saveRDS(cutRs, "./data/sensitivity_cutRs.Rds")
 saveRDS(params, "./data/sensitivity_params.Rds")
 saveRDS(out_list, "./data/sensitivity_filterAndTrim_out_list.Rds")
-saveRDS(prop_Fs_mapped_to_asv, "./data/sensitivity_prop_Fs_mapped.Rds")
+saveRDS(prop_Fs_mapped_to_asv, "./data/sensitivity_prop_Fs_mapped_seprun.Rds")
 saveRDS(dadaFs_list, "./data/sensitivity_dadaFs_list_seprun.Rds")
 saveRDS(dadaRs_list, "./data/sensitivity_dadaRs_list_seprun.Rds")
 saveRDS(seqtabs, "./data/sensitivity_seqtabs_list_seprun.Rds")
 saveRDS(taxas, "./data/sensitivity_taxas.Rds")
 saveRDS(n_merged, "./data/sensitivity_n_merged_seprun.Rds")
-saveRDS(prop_merged, "./data/sensitivity_prop_merged.Rds")
+saveRDS(prop_merged, "./data/sensitivity_prop_merged_seprun.Rds")
 
 # Load the lists
 # cutFs <- readRDS("./data/sensitivity_cutFs.Rds")
