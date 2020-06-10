@@ -1,5 +1,6 @@
 ---
 title: "Plot DADA2 sensitivity tests"
+date: "`r Sys.Date()`"
 output: html_document
 ---
 
@@ -166,6 +167,19 @@ p_rate_merged
 
 **Question:** It has previously been stated that this metric may not be the best to use, because it is also a function of the variation between reads (more variation --> more unique sequence variants identified by the DADA algorithm). However, since each processing run (each parameter set) starts with the same input data, isn't the variation between reads held constant across processing runs?
 
+Use ANOVA to confirm effects of parameters on "rate of merged ASVs per pre-filter read":
+
+```{r}
+rate_merged_aov <- aov(merged.variants.per.read ~ maxEE*runID + truncQ*runID, data=dada_out)
+par(mfrow=c(2,2))
+plot(rate_merged_aov)
+```
+
+```{r}
+summary(rate_merged_aov)
+```
+
+**`maxEE` and `truncQ` both affect the number of reads in the resulting ASV table.** The effect of `truncQ` varies across sequencing runs.
 
 # Plot effects on taxonomic assignment
 
@@ -195,26 +209,29 @@ assigntax_out <-
 
 Plot the proportion of unique taxonomic assignments that went down to the species level:
 
-```{r}
+```{r, fig.height=4}
 assigntax_out %>%
-  ggplot(aes(x=factor(truncQ), y=prop.spp.classification, color=factor(maxEE))) +
-  geom_point()
+  ggplot(aes(x=factor(truncQ), y=prop.spp.classification, fill=factor(maxEE))) +
+  geom_bar(stat="identity", position=position_dodge())
 ```
 
 Plot the abundance-weighted proportion, and the number, of unique taxonomic assignments that went down to the species level.
 
-```{r}
+```{r fig.height=3, fig.width=7}
 gridExtra::grid.arrange(
   assigntax_out %>%
-  ggplot(aes(x=factor(truncQ), y=abund.weight.prop.spp.classification, color=factor(maxEE))) +
-  geom_point(stat="identity"),
+  ggplot(aes(x=factor(truncQ), y=abund.weight.prop.spp.classification, fill=factor(maxEE))) +
+  geom_bar(stat="identity", position=position_dodge()),
   assigntax_out %>%
-  ggplot(aes(x=factor(truncQ), y=n.spp.classification, color=factor(maxEE))) +
-  geom_point(stat="identity"),
+  ggplot(aes(x=factor(truncQ), y=n.spp.classification, fill=factor(maxEE))) +
+  geom_bar(stat="identity", position=position_dodge()),
   nrow=1
 )
 ```
 
+**Question:** It is not clear which benchmark metric is the most appropriate for evaluating the impact of quality filtering parameters on taxonomic assignment. 
+
+Suppose for now that we are most interested in the number of unique species-level classifications to come out of a set of samples. Then we can conclude that **higher values of `truncQ` result in lower taxonomic assignment rates, while higher values of `maxEE` result in higher taxonomic assignment rates.**
 
 # Plot effects on alpha-diversity estimates
 
@@ -274,7 +291,7 @@ First, test observed richness:
 
 ```{r}
 par(mfrow=c(2,2))
-obsrich_aov <- aov(obs.richness ~ truncQ + maxEE + runID, data=diversity_out)
+obsrich_aov <- aov(obs.richness ~ truncQ + maxEE + runID + runID:truncQ + runID:maxEE, data=diversity_out)
 plot(obsrich_aov)
 ```
 
@@ -290,7 +307,7 @@ summary(obsrich_aov)
 Now, test Shannon diversity:
 
 ```{r}
-shannon_aov <- aov(shannon.div ~ truncQ + maxEE + runID, data=diversity_out)
+shannon_aov <- aov(shannon.div ~ truncQ + maxEE + runID + runID:truncQ + runID:maxEE, data=diversity_out)
 par(mfrow=c(2,2))
 plot(shannon_aov)
 ```
@@ -304,7 +321,25 @@ par(mfrow=c(1,1))
 summary(shannon_aov)
 ```
 
-In conclusion, **`truncQ` has a small but very significant effect on diversity estimates, with higher estimates at lower values of `truncQ`.** On the other hand, `maxEE` has no effect on diversity estimates.
+It seems like the significance of the `truncQ` coefficient may be due to the high leverage of the `truncQ = 16` simulations. Suppose we only varied `truncQ` within 2-8.
+
+```{r}
+diversity_out_2_8 <- diversity_out[which(diversity_out$truncQ <= 8),]
+obsrich_aov_2_8 <- aov(obs.richness ~ truncQ + maxEE + runID + runID:truncQ + runID:maxEE, data=diversity_out_2_8)
+shannon_aov_2_8 <- aov(shannon.div ~ truncQ + maxEE + runID + runID:truncQ + runID:maxEE, data=diversity_out_2_8)
+```
+
+```{r}
+summary(obsrich_aov_2_8)
+```
+
+```{r}
+summary(shannon_aov_2_8)
+```
+
+If we only consider values of `truncQ` between 2 and 8, then the effect of `truncQ` becomes less significant, but is still significant.
+
+In conclusion, **`truncQ` has a small but significant effect on diversity estimates, with higher estimates at lower values of `truncQ`.** On the other hand, `maxEE` has no effect on diversity estimates.
 
 
 # Plot effects on beta-diversity
@@ -394,6 +429,30 @@ It looks like samples don't necessarily form clusters that are distinguishable f
 Confirm with PERMANOVA: How does dissimilarity between samples compare to dissimilarity between parameter sets for a given sample? (These can take several minutes to run, so the corresponding output is pasted below each code chunk.)
 
 ```{r eval=FALSE}
+adonis(formula = ps_joined_dist ~ maxEE.F + truncQ + sample,
+       data = as(sample_data(physeq_joined_nonzero), "data.frame"),
+       permutations = 999) 
+```
+
+```
+Permutation: free
+Number of permutations: 999
+Terms added sequentially (first to last)
+            Df SumsOfSqs MeanSqs F.Model      R2 Pr(>F)    
+maxEE.F      1      0.03  0.0298   1.036 0.00004  0.376    
+truncQ       1      0.46  0.4570  15.890 0.00060  0.001 ***
+sample      98    714.68  7.2926 253.541 0.94393  0.001 ***
+Residuals 1459     41.97  0.0288         0.05543           
+Total     1559    757.13                 1.00000           
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+```
+
+Beta diversity varies much more between samples than within samples. We expect clustering by samples in NMDS plots.
+
+Now, stratifying by sample (so that permutations only take place within samples):
+
+```{r eval=FALSE}
 ps_joined_dist <- vegdist(otu_table(physeq_joined_nonzero))
 adonis(ps_joined_dist ~ maxEE.F + truncQ,
        data = as(sample_data(physeq_joined_nonzero), "data.frame"),
@@ -420,11 +479,11 @@ Total     1559    757.13                 1.00000
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 ```
 
-In conclusion, different parameter sets could lead to different inferences about beta-diversity.\
+In conclusion, different parameter sets could lead to slightly different inferences about beta-diversity.
 
 ### Re-run beta-diversity analyses without outlier samples
 
-We can remove outliers by removing samples with very low sequencing depths. Let's remove all samples with sequencing depth below 1000, to be very lenient.
+The fact that all 8 extreme outliers had `truncQ = 16` suggests that the outliers may have inflated the importance of `truncQ` in affecting beta diversity. We can remove outliers by removing samples with very low sequencing depths. Let's remove all samples with sequencing depth below 1000, to be very lenient.
 
 ```{r}
 mean(sample_sums(physeq_joined_nonzero) < 1000)
@@ -640,13 +699,15 @@ diversity_out_seprun[[1]]$seperate_seq_runs <- TRUE
 diversity_out_seprun[[2]]$seperate_seq_runs <- TRUE
 
 diversity_test_sep <- rbind(diversity_out, diversity_out_seprun[[1]], diversity_out_seprun[[2]])
-diversity_test_sep_obsrich <- aov(obs.richness ~ maxEE + truncQ + runID + seperate_seq_runs, 
+diversity_test_sep_obsrich <- aov(obs.richness ~ maxEE + truncQ + runID + seperate_seq_runs + 
+                                    seperate_seq_runs:truncQ + seperate_seq_runs:maxEE, 
                               data = diversity_test_sep)
 summary(diversity_test_sep_obsrich)
 ```
 
 ```{r}
-diversity_test_sep_shannon <- aov(shannon.div ~ maxEE + truncQ + runID + seperate_seq_runs, 
+diversity_test_sep_shannon <- aov(shannon.div ~ maxEE + truncQ + runID + seperate_seq_runs + 
+                                    seperate_seq_runs:truncQ + seperate_seq_runs:maxEE, 
                               data = diversity_test_sep)
 summary(diversity_test_sep_shannon)
 ```
