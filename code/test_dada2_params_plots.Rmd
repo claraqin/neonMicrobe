@@ -27,7 +27,7 @@ This script only produces the plots and tables associated with the sensitivity a
 
 # Load data, libraries, and parameters
 
-The .Rds files listed below are created by `test_dada2_params.R`. If you have access to `test_dada2_params.R` you can run it yourself. However, you can save yourself (substantial) processing time by downloading them directly from this link: https://drive.google.com/file/d/1Mc_ty_s-dNgBUKjlcW0BuV4gLZM4SFqO/view?usp=sharing (EDIT: You will also have to download the .Rds files associated with the separated-run version: https://drive.google.com/file/d/1G0G6Kf2HCyAVJTQpByUuIrXiTvuVdL2O/view?usp=sharing). Once downloaded, move the contents to the `./data` subdirectory.
+The .Rds files listed below are created by `test_dada2_params.R`. If you have access to `test_dada2_params.R` you can run it yourself. However, you can save yourself (substantial) processing time by downloading them directly from this link: https://drive.google.com/file/d/1CBeMuGqRiNWxY1sgpIJmBXfZ6P5wRr3Y/view?usp=sharing. Once downloaded, move the contents to the `./data` subdirectory.
 
 ```{r}
 runIDs <- c("B69PP", "C25G9")
