@@ -30,7 +30,7 @@ PRIMER_ITS_FWD = "CTTGGTCATTTAGAGGAAGTAA" # Forward primer sequence
 PRIMER_ITS_REV = "GCTGCGTTCTTCATCGATGC" # Reverse primer sequence
 
 # Cutadapt path
-CUTADAPT_PATH = "/afs/cats.ucsc.edu/users/b/claraqin/.local/bin/cutadapt"
+CUTADAPT_PATH = "/raid/users/claraqin/zhulab/NEON_soil_microbe_processing/code/cutadapt"
 
 # Whether to download and process only a small subset
 SMALL_SUBSET = FALSE # If TRUE, all fastq.gz.tar files matching these parameters will still be downloaded,
