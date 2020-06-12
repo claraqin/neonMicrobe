@@ -4,6 +4,9 @@
 # Load parameters from params.R
 source("./code/params.R")
 
+# Load utility functions
+source("./code/utils.R")
+
 # Generate filepath names
 PATH_ITS <- file.path(PRESET_OUTDIR_SEQUENCE, "ITS")
 PATH_UNZIPPED <- file.path(PATH_ITS, "0_unzipped")
