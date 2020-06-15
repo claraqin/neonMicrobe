@@ -64,8 +64,8 @@ for(i in 1:length(zipF)) { # <------------------------ TODO: Replace with foreac
   unzippedF_16S <- grep("/(?!run)[^/]*_16S[^/]*fastq$", list.files(path = BASE_DIR, recursive=TRUE, full.names=TRUE), perl=TRUE, value=TRUE)
   
   # rename all unzipped files by appending sequencer run ID
-  unzippedF_ITS_rename <- file.path(BASE_DIR, "ITS", paste0("run", runID, "_", basename(unzippedF_ITS)))
-  unzippedF_16S_rename <- file.path(BASE_DIR, "16S", paste0("run", runID, "_", basename(unzippedF_16S)))
+  unzippedF_ITS_rename <- file.path(BASE_DIR, "ITS", "0_unzipped", paste0("run", runID, "_", basename(unzippedF_ITS)))
+  unzippedF_16S_rename <- file.path(BASE_DIR, "16S", "0_unzipped", paste0("run", runID, "_", basename(unzippedF_16S)))
   if(length(unzippedF_ITS) > 0) file.rename(unzippedF_ITS, unzippedF_ITS_rename)
   if(length(unzippedF_16S) > 0) file.rename(unzippedF_16S, unzippedF_16S_rename)
 }

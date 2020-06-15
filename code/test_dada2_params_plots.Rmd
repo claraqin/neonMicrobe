@@ -83,7 +83,7 @@ filterAndTrim_out <-
 )
 
 filterAndTrim_out %>%
-  ggplot(aes(x=factor(truncQ), y=prop.out, fill=factor(maxEE))) +
+  ggplot(aes(x=factor(maxEE), y=prop.out, fill=factor(truncQ))) +
   geom_boxplot() +
   facet_grid(runID~.)
 ```
@@ -131,7 +131,7 @@ Plot the proportion of forward reads that were assigned to an ASV in the DADA de
 
 ```{r}
 dada_out %>%
-  ggplot(aes(x=factor(truncQ), y=prop.Fs.mapped, fill=factor(maxEE))) +
+  ggplot(aes(x=factor(maxEE), y=prop.Fs.mapped, fill=factor(truncQ))) +
   geom_boxplot() +
   facet_grid(runID~.) ->
   p_prop_mapped
@@ -142,7 +142,7 @@ Plot the proportion of unique ASVs that successfully merged (out of the unique A
 
 ```{r}
 dada_out %>%
-  ggplot(aes(x=factor(truncQ), y=prop.merged, fill=factor(maxEE))) +
+  ggplot(aes(x=factor(maxEE), y=prop.merged, fill=factor(truncQ))) +
   geom_boxplot() +
   facet_grid(runID~.) ->
   p_prop_merged
@@ -158,7 +158,7 @@ sample_ind <- lapply(n_merged, function(x) match(names(x), sub("_R(1|2).fastq$",
 dada_out$merged.variants.per.read <- unlist(lapply(seq_along(n_merged), function(i) n_merged[[i]]/out_list[[i]][sample_ind[[i]],"reads.in"]))
 
 dada_out %>%
-  ggplot(aes(x=factor(truncQ), y=merged.variants.per.read, fill=factor(maxEE))) +
+  ggplot(aes(x=factor(maxEE), y=merged.variants.per.read, fill=factor(truncQ))) +
   geom_boxplot() +
   facet_grid(runID~.) ->
   p_rate_merged
@@ -211,7 +211,7 @@ Plot the proportion of unique taxonomic assignments that went down to the specie
 
 ```{r, fig.height=4}
 assigntax_out %>%
-  ggplot(aes(x=factor(truncQ), y=prop.spp.classification, fill=factor(maxEE))) +
+  ggplot(aes(x=factor(maxEE), y=prop.spp.classification, fill=factor(truncQ))) +
   geom_bar(stat="identity", position=position_dodge())
 ```
 
@@ -220,10 +220,10 @@ Plot the abundance-weighted proportion, and the number, of unique taxonomic assi
 ```{r fig.height=3, fig.width=7}
 gridExtra::grid.arrange(
   assigntax_out %>%
-  ggplot(aes(x=factor(truncQ), y=abund.weight.prop.spp.classification, fill=factor(maxEE))) +
+  ggplot(aes(x=factor(maxEE), y=abund.weight.prop.spp.classification, fill=factor(truncQ))) +
   geom_bar(stat="identity", position=position_dodge()),
   assigntax_out %>%
-  ggplot(aes(x=factor(truncQ), y=n.spp.classification, fill=factor(maxEE))) +
+  ggplot(aes(x=factor(maxEE), y=n.spp.classification, fill=factor(truncQ))) +
   geom_bar(stat="identity", position=position_dodge()),
   nrow=1
 )
@@ -235,12 +235,23 @@ Suppose for now that we are most interested in the number of unique species-leve
 
 # Plot effects on alpha-diversity estimates
 
+Begin by rarefying all samples to a common sequencing depth. We can start with a generous minimum of 1000 sequences.
+
+```{r message=FALSE}
+physeqs_rare <- list()
+set.seed(1001010100)
+for(i in 1:length(physeqs)) {
+  physeqs_rare[[i]] <- rarefy_even_depth(physeqs[[i]], sample.size = 1000)
+}
+```
+
+
 ```{r}
 obsrich_list <- list()
 shannon_list <- list()
-for(i in 1:length(physeqs)) {
+for(i in 1:length(physeqs_rare)) {
   div <- suppressWarnings(
-    estimate_richness(physeqs[[i]], measures=c("Observed","Shannon"))
+    estimate_richness(physeqs_rare[[i]], measures=c("Observed","Shannon"))
   )
   obsrich_list[[i]] <- div[,"Observed"]
   shannon_list[[i]] <- div[,"Shannon"]
@@ -250,7 +261,7 @@ paramset_index <- unlist(lapply(seq_along(obsrich_list), function(i) { rep(i, le
 diversity_out <- 
   data.frame(
     runID = unlist(lapply(
-      physeqs, function(x) str_extract(sample_names(x), paste0("(", runIDs, ")", collapse="|"))
+      physeqs_rare, function(x) str_extract(sample_names(x), paste0("(", runIDs, ")", collapse="|"))
       )),
     maxEE = params[paramset_index, 1],
     truncQ = params[paramset_index, 3],
@@ -265,7 +276,7 @@ Plot observed richness:
 
 ```{r}
 diversity_out %>%
-  ggplot(aes(x=factor(truncQ), y=obs.richness, fill=factor(maxEE))) +
+  ggplot(aes(x=factor(maxEE), y=obs.richness, fill=factor(truncQ))) +
   geom_boxplot() +
   facet_grid(runID~.) ->
   p_obsrich
@@ -276,7 +287,7 @@ Plot Shannon diversity:
 
 ```{r}
 diversity_out %>%
-  ggplot(aes(x=factor(truncQ), y=shannon.div, fill=factor(maxEE))) +
+  ggplot(aes(x=factor(maxEE), y=shannon.div, fill=factor(truncQ))) +
   geom_boxplot() +
   facet_grid(runID~.) ->
   p_shannon
@@ -295,9 +306,9 @@ obsrich_aov <- aov(obs.richness ~ truncQ + maxEE + runID + runID:truncQ + runID:
 plot(obsrich_aov)
 ```
 
-Normality assumption does not *quite* hold.
+Normality assumption approximately holds.
 
-Check summary anyway:
+Check summary:
 
 ```{r}
 par(mfrow=c(1,1))
@@ -312,7 +323,7 @@ par(mfrow=c(2,2))
 plot(shannon_aov)
 ```
 
-Normality assumption holds quite well.
+Normality assumption approximately holds.
 
 Check summary:
 
@@ -337,9 +348,9 @@ summary(obsrich_aov_2_8)
 summary(shannon_aov_2_8)
 ```
 
-If we only consider values of `truncQ` between 2 and 8, then the effect of `truncQ` becomes less significant, but is still significant.
+If we only consider values of `truncQ` between 2 and 8, then the effect of `truncQ` becomes insignificant for Shannon diversity. They are still significant for observed richness, but less so.
 
-In conclusion, **`truncQ` has a small but significant effect on diversity estimates, with higher estimates at lower values of `truncQ`.** On the other hand, `maxEE` has no effect on diversity estimates.
+In conclusion, **`truncQ` has a small but significant effect on observed richness, with higher estimates at lower values of `truncQ`.** But `truncQ` does not affect Shannon diversity within the range of `2 < truncQ < 8`. `maxEE` has no effect on alpha-diversity estimates.
 
 
 # Plot effects on beta-diversity
@@ -578,12 +589,12 @@ Plot the proportion of forward reads that were assigned to an ASV in the DADA de
 
 ```{r}
 dada_out_seprun[[1]] %>%
-  ggplot(aes(x=factor(truncQ), y=prop.Fs.mapped, fill=factor(maxEE))) +
+  ggplot(aes(x=factor(maxEE), y=prop.Fs.mapped, fill=factor(truncQ))) +
   geom_boxplot() +
   facet_grid(runID~.) ->
   p_mapped1
 dada_out_seprun[[2]] %>%
-  ggplot(aes(x=factor(truncQ), y=prop.Fs.mapped, fill=factor(maxEE))) +
+  ggplot(aes(x=factor(maxEE), y=prop.Fs.mapped, fill=factor(truncQ))) +
   geom_boxplot() +
   facet_grid(runID~.) ->
   p_mapped2
@@ -594,12 +605,12 @@ Plot the proportion of unique ASVs that successfully merged (out of the unique A
 
 ```{r}
 dada_out_seprun[[1]] %>%
-  ggplot(aes(x=factor(truncQ), y=prop.merged, fill=factor(maxEE))) +
+  ggplot(aes(x=factor(maxEE), y=prop.merged, fill=factor(truncQ))) +
   geom_boxplot() +
   facet_grid(runID~.) ->
   p_merged1
 dada_out_seprun[[2]] %>%
-  ggplot(aes(x=factor(truncQ), y=prop.merged, fill=factor(maxEE))) +
+  ggplot(aes(x=factor(maxEE), y=prop.merged, fill=factor(truncQ))) +
   geom_boxplot() +
   facet_grid(runID~.) ->
   p_merged2
@@ -651,12 +662,12 @@ Plot observed richness:
 
 ```{r}
 diversity_out_seprun[[1]] %>%
-  ggplot(aes(x=factor(truncQ), y=obs.richness, fill=factor(maxEE))) +
+  ggplot(aes(x=factor(maxEE), y=obs.richness, fill=factor(truncQ))) +
   geom_boxplot() +
   facet_grid(runID~.) ->
   p_obsrich1
 diversity_out_seprun[[2]] %>%
-  ggplot(aes(x=factor(truncQ), y=obs.richness, fill=factor(maxEE))) +
+  ggplot(aes(x=factor(maxEE), y=obs.richness, fill=factor(truncQ))) +
   geom_boxplot() +
   facet_grid(runID~.) ->
   p_obsrich2
@@ -667,12 +678,12 @@ Plot Shannon diversity:
 
 ```{r}
 diversity_out_seprun[[1]] %>%
-  ggplot(aes(x=factor(truncQ), y=shannon.div, fill=factor(maxEE))) +
+  ggplot(aes(x=factor(maxEE), y=shannon.div, fill=factor(truncQ))) +
   geom_boxplot() +
   facet_grid(runID~.) ->
   p_shannon1
 diversity_out_seprun[[2]] %>%
-  ggplot(aes(x=factor(truncQ), y=shannon.div, fill=factor(maxEE))) +
+  ggplot(aes(x=factor(maxEE), y=shannon.div, fill=factor(truncQ))) +
   geom_boxplot() +
   facet_grid(runID~.) ->
   p_shannon2
