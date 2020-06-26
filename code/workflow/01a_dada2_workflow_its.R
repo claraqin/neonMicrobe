@@ -289,7 +289,7 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN) and #6 (run
 saveRDS(seqtab_joined, file.path(PRESET_OUTDIR_DADA2, PRESET_FILENAME_JOINED_SEQTAB))
 
 # Assign taxonomy using the UNITE database
-unite.ref <- "./raw_data/tax_ref/sh_general_release_dynamic_02.02.2019.fasta"
+unite.ref <- UNITE_REF_PATH
 taxa_joined <- assignTaxonomy(seqtab_joined, unite.ref, multithread = MULTITHREAD, tryRC = TRUE)
 print(paste0("Finished assigning taxonomy in ", runID, " at ", Sys.time()))
 

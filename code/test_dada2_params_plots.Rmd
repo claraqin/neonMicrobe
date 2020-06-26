@@ -107,9 +107,7 @@ Still, there is no guarantee that any of these output reads are of sufficient qu
 
 ### Note:
 
-**This section and all subsequent sections should be re-run so that the DADA error rate estimation and denoising algorithm occurs separately for each sequencing run. At the moment, the process handles both run B69PP and run C25G9 together; these should probably be processed independently of each other.**
-
-**EDIT: For sequencing runs processed separately, go to final section.**
+**This section and all subsequent sections should are re-run later in this report so that the DADA error rate estimation and denoising algorithm occurs separately for each sequencing run. Here, the process handles both run B69PP and run C25G9 together; these should probably be processed independently of each other. That being said, ANOVA shows that whether these runs are processed together or separately has no impact on the resulting alpha- and beta-diversity estimates.**
 
 ```{r}
 # prop_Fs_mapped_to_asv <- lapply(dadaFs_list, function(x) lapply(x, function(y) mean(!is.na(y$map))))

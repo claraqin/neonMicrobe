@@ -5,6 +5,7 @@
 # - diversity estimates of a sample
 # - taxonomic resolution of a sample
 
+# Before running this script, you need to have run 00_new_server_setup.R
 
 # Load parameters from params.R, tools from utils.R
 source("./code/params.R")
@@ -19,28 +20,6 @@ library(dplyr)
 library(vegan)
 library(phyloseq)
 library(ggplot2)
-
-### TEMPORARY ############
-# Create required directories
-BASE_DIR <- PRESET_OUTDIR_SEQUENCE
-if(!dir.exists(PRESET_OUTDIR_SEQUENCE)) dir.create(PRESET_OUTDIR_SEQUENCE, recursive=TRUE)
-if(!dir.exists(PRESET_OUTDIR_SEQMETA)) dir.create(PRESET_OUTDIR_SEQMETA, recursive=TRUE)
-if(!dir.exists(PRESET_OUTDIR_SOIL)) dir.create(PRESET_OUTDIR_SOIL, recursive=TRUE)
-if(!dir.exists(file.path(BASE_DIR, "ITS"))) dir.create(file.path(BASE_DIR, "ITS"), recursive=TRUE)
-if(!dir.exists(file.path(BASE_DIR, "16S"))) dir.create(file.path(BASE_DIR, "16S"), recursive=TRUE)
-if(!dir.exists(file.path(BASE_DIR, "ITS", "0_unzipped"))) dir.create(file.path(BASE_DIR, "ITS", "0_unzipped"), recursive=TRUE)
-if(!dir.exists(file.path(BASE_DIR, "ITS", "1_filtN"))) dir.create(file.path(BASE_DIR, "ITS", "1_filtN"), recursive=TRUE)
-if(!dir.exists(file.path(BASE_DIR, "ITS", "2_cutadapt"))) dir.create(file.path(BASE_DIR, "ITS", "2_cutadapt"), recursive=TRUE)
-if(!dir.exists(file.path(BASE_DIR, "ITS", "3_filtered"))) dir.create(file.path(BASE_DIR, "ITS", "3_unzipped"), recursive=TRUE)
-if(!dir.exists(file.path(BASE_DIR, "ITS", "4_seqtabs"))) dir.create(file.path(BASE_DIR, "ITS", "4_seqtabs"), recursive=TRUE)
-if(!dir.exists(file.path(BASE_DIR, "ITS", "track_reads"))) dir.create(file.path(BASE_DIR, "ITS", "track_reads"), recursive=TRUE)
-if(!dir.exists(file.path(BASE_DIR, "16S", "0_unzipped"))) dir.create(file.path(BASE_DIR, "16S", "0_unzipped"), recursive=TRUE)
-if(!dir.exists(file.path(BASE_DIR, "16S", "1_filtN"))) dir.create(file.path(BASE_DIR, "16S", "1_filtN"), recursive=TRUE)
-if(!dir.exists(file.path(BASE_DIR, "16S", "2_cutadapt"))) dir.create(file.path(BASE_DIR, "16S", "2_cutadapt"), recursive=TRUE)
-if(!dir.exists(file.path(BASE_DIR, "16S", "3_filtered"))) dir.create(file.path(BASE_DIR, "16S", "3_unzipped"), recursive=TRUE)
-if(!dir.exists(file.path(BASE_DIR, "16S", "4_seqtabs"))) dir.create(file.path(BASE_DIR, "16S", "4_seqtabs"), recursive=TRUE)
-if(!dir.exists(file.path(BASE_DIR, "16S", "track_reads"))) dir.create(file.path(BASE_DIR, "16S", "track_reads"), recursive=TRUE)
-### END TEMPORARY SECTION ########
 
 # Generate filepath names
 PATH_ITS <- file.path(PRESET_OUTDIR_SEQUENCE, "ITS")
@@ -121,12 +100,6 @@ names(out_list) <- param_sets
 # Run parts of dada2 (post-filterAndTrim) to see downstream effects on merging, 
 # taxonomic resolution, diversity
 
-# TODO:
-# This section and all subsequent sections should be re-run so that the DADA 
-# error rate estimation and denoising algorithm occurs separately for each 
-# sequencing run. At the moment, the process handles both run B69PP and run C25G9 
-# together; these should probably be processed independently of each other.
-
 # Ensure that all of the output filenames exist
 filtFs <- lapply(filtFs, function(x) { x <- x[file.exists(x)] })
 filtRs <- lapply(filtRs, function(x) { x <- x[file.exists(x)] })
@@ -147,9 +120,8 @@ dadaRs_list1 <- list() # For run #1, reverse
 dadaRs_list2 <- list() # For run #2, reverse
 dadaRs_list <- list(dadaRs_list1, dadaRs_list2)
 system.time({
-for(i in 7:7) { # TODO: REVISE BACK TO 1:length(filtFs)
-# for(i in 1:length(filtFs)) {
-  for(j in 2:2) { # TODO: REVISE BACK TO 1:length(runIDs)
+for(i in 1:length(filtFs)) { 
+  for(j in 1:length(runIDs)) { 
   # Retrieve only those files associated with the appropriate parameter set and runID
   filtFs.star <- filtFs[[i]][grep(runIDs[j], filtFs[[i]])]
   filtRs.star <- filtRs[[i]][grep(runIDs[j], filtRs[[i]])]
@@ -265,18 +237,6 @@ saveRDS(seqtabs, "./data/sensitivity_seqtabs_list_seprun.Rds")
 saveRDS(taxas, "./data/sensitivity_taxas.Rds")
 saveRDS(n_merged, "./data/sensitivity_n_merged_seprun.Rds")
 saveRDS(prop_merged, "./data/sensitivity_prop_merged_seprun.Rds")
-
-# Load the lists
-# cutFs <- readRDS("./data/sensitivity_cutFs.Rds")
-# cutRs <- readRDS("./data/sensitivity_cutRs.Rds")
-# params <- readRDS("./data/sensitivity_params.Rds")
-# out_list <- readRDS("./data/sensitivity_filterAndTrim_out_list.Rds")
-# dadaFs_list <- readRDS("./data/sensitivity_dadaFs_list_16.Rds")
-# dadaRs_list <- readRDS("./data/sensitivity_dadaRs_list_16.Rds")
-# seqtabs <- readRDS("./data/sensitivity_seqtabs_list_16.Rds")
-# taxas <- readRDS("./data/sensitivity_taxas_16.Rds")
-# n_merged <- readRDS("./data/sensitivity_n_merged_16.Rds")
-# prop_merged <- readRDS("./data/sensitivity_prop_merged_16.Rds")
 
 # (Moved plotting code to test_dada2_params_plots.Rmd)
 

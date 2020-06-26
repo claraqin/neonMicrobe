@@ -15,9 +15,9 @@ PRESET_RETURN_DATA = TRUE
 
 
 # Parameters for output directories and filenames
-PRESET_OUTDIR_SEQUENCE = "/data/ZHULAB/NEON_DOB/Illumina/NEON/test" # for sequence data (fastq files)
-PRESET_OUTDIR_SEQMETA = "/data/ZHULAB/NEON_DOB/sequence_metadata/test" # for sequence metadata
-PRESET_OUTDIR_SOIL = "/data/ZHULAB/NEON_DOB/soil/test" # for soil data
+PRESET_OUTDIR_SEQUENCE = "/data/ZHULAB/NEON_DOB/Illumina/NEON" # for sequence data (fastq files)
+PRESET_OUTDIR_SEQMETA = "/data/ZHULAB/NEON_DOB/sequence_metadata" # for sequence metadata
+PRESET_OUTDIR_SOIL = "/data/ZHULAB/NEON_DOB/soil" # for soil data
 PRESET_OUTDIR_SOIL_DB = "/data/ZHULAB/NEON_DOB" # Database containing both seqmeta and soil data
 PRESET_OUTDIR_DADA2 = "/raid/users/claraqin/zhulab/NEON_soil_microbe_processing/data" # for phyloseq outputs
 PRESET_FILENAME_JOINED_SEQTAB = "NEON_ITS_seqtab_nochim_DL08-13-2019.Rds"
@@ -31,6 +31,9 @@ PRIMER_ITS_REV = "GCTGCGTTCTTCATCGATGC" # Reverse primer sequence
 
 # Cutadapt path
 CUTADAPT_PATH = "/raid/users/claraqin/zhulab/NEON_soil_microbe_processing/code/cutadapt"
+
+# UNITE database (FASTA file) path
+UNITE_DB_PATH = "./raw_data/tax_ref/sh_general_release_dynamic_02.02.2019.fasta"
 
 # Whether to download and process only a small subset
 SMALL_SUBSET = FALSE # If TRUE, all fastq.gz.tar files matching these parameters will still be downloaded,
