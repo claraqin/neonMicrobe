@@ -82,8 +82,7 @@ trim_primers <- function(in.fwd, in.rev, out.fwd, out.rev) {
 #   saveRDS(seqtab, out.file)
 # }
 
-# TODO: Switch from a for-loop to a foreach, or some other parallel process
-# system.time({
+t1 <- Sys.time()
 for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN) and #6 (runBF8M2, which lacks rownames?)
   runID <- unique_runs[i]
   print(paste0("Began processing ", runID, " at ", Sys.time()))
@@ -130,8 +129,8 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN) and #6 (run
   # This part deviates from the tutorial. Since some samples lose all reads at
   # the pre-filtering stage, it is useful to trim down the sample list for the
   # next step: cutadapt
-  fnFs.filtN <- list.files(PATH_FILTN, pattern = paste0(runID, ".*_R1.fastq"), full.names=TRUE)
-  fnRs.filtN <- list.files(PATH_FILTN, pattern = paste0(runID, ".*_R2.fastq"), full.names=TRUE)
+  fnFs.filtN <- fnFs.filtN[file.exists(fnFs.filtN)]
+  fnRs.filtN <- fnRs.filtN[file.exists(fnRs.filtN)]
   
   # Count the number of times the forward and reverse primers appear in a
   # set of paired end reads. First file in each sequencing run should
@@ -162,9 +161,9 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN) and #6 (run
   # Remove intermediary files associated with first step of cutadapt
   file.remove(list.files(path=PATH_CUT, pattern = "mid_cutadapt_", full.names=TRUE))
   
-  # Forward and reverse fastq filenames have the format:
-  cutFs <- sort(list.files(PATH_CUT, pattern = paste0(runID, ".*_R1.fastq"), full.names = TRUE))
-  cutRs <- sort(list.files(PATH_CUT, pattern = paste0(runID, ".*_R2.fastq"), full.names = TRUE))
+  # Keep only the filenames for the samples with reads remaining:
+  cutFs <- fnFs.cut[file.exists(fnFs.cut)]
+  cutRs <- fnRs.cut[file.exists(fnRs.cut)]
   
   # Extract sample names, assuming filenames have correct format:
   sample.names <- unname(sapply(cutFs, get.sample.name))
@@ -190,14 +189,10 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN) and #6 (run
   print(paste0("Finished filterAndTrim in ", runID, " at ", Sys.time()))
 
   if(VERBOSE) head(out)
-  # TODO: Address the following issue:
-  # Why do we lose so many reads? For example, in runB69PP:
-  #                                          reads.in reads.out
-  # runB69PP_BMI_Plate13WellA12_ITS_R1.fastq     4517       223
-  # runB69PP_BMI_Plate13WellA3_ITS_R1.fastq      4513       130
   
-  filtFs.out <- list.files(PATH_FILTERED, pattern = paste0(runID, ".*_R1.fastq"), full.names=TRUE)
-  filtRs.out <- list.files(PATH_FILTERED, pattern = paste0(runID, ".*_R2.fastq"), full.names=TRUE)
+  # Keep only the filenames for the samples with reads remaining:
+  filtFs.out <- filtFs[file.exists(filtFs)]
+  filtRs.out <- filtRs[file.exists(filtRs)]
   
   # Learn the error rates
   errF <- learnErrors(filtFs.out, multithread=MULTITHREAD, nbases = 1e7, randomize=TRUE)
@@ -263,15 +258,22 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN) and #6 (run
   
   # Save the table which tracks the no. of reads remaining at each stage
   # in the DADA2 pipeline
-  write.csv(track, file.path(PATH_TRACK, paste0("track_reads_",runID,".csv")))
+  if(SMALL_SUBSET) {
+    write.csv(track, file.path(PATH_TRACK, paste0("track_reads_",runID,"_SMALLSUBSET.csv")))
+  } else {
+    write.csv(track, file.path(PATH_TRACK, paste0("track_reads_",runID,".csv")))
+  }
   print(paste0("Finished tracking reads through pipeline in ", runID, " at ", Sys.time()))
   
   # Save sequence table associated with this sequencing run
-  saveRDS(seqtab.nochim, file.path(PATH_SEQTABS, paste0("NEON_ITS_seqtab_nochim_DL08-13-2019_", runID, ".Rds")))
+  if(SMALL_SUBSET) {
+    saveRDS(seqtab.nochim, file.path(PATH_SEQTABS, paste0("NEON_ITS_seqtab_nochim_DL08-13-2019_", runID, "_SMALLSUBSET.Rds")))
+  } else {
+    saveRDS(seqtab.nochim, file.path(PATH_SEQTABS, paste0("NEON_ITS_seqtab_nochim_DL08-13-2019_", runID, ".Rds")))
+  }
   print(paste0("Finished saving sequence table of ", runID, " at ", Sys.time()))
   print(paste0("Sequencing run-specific sequence tables can be found in ", PATH_SEQTABS))
   
-  # TODO: Need to test the following alternative to full_join:
   # Merge sequence tables
   if(exists("seqtab_joined")) {
     seqtab_joined <- mergeSequenceTables(seqtab_joined, seqtab.nochim)
@@ -281,7 +283,7 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN) and #6 (run
   
   print(paste0("Finished processing ", runID, " at ", Sys.time()))
 }
-# })
+t2 <- Sys.time()
 
 # Takes 38210 s (10 h 36.8 min) to process runB69RF, runB69RN, runB9994, runBDR3T, and runBF8M2 through the for loop
 
@@ -291,7 +293,7 @@ saveRDS(seqtab_joined, file.path(PRESET_OUTDIR_DADA2, PRESET_FILENAME_JOINED_SEQ
 # Assign taxonomy using the UNITE database
 unite.ref <- UNITE_REF_PATH
 taxa_joined <- assignTaxonomy(seqtab_joined, unite.ref, multithread = MULTITHREAD, tryRC = TRUE)
-print(paste0("Finished assigning taxonomy in ", runID, " at ", Sys.time()))
+print(paste0("Finished assigning taxonomy at ", Sys.time()))
 
 taxa.print <- taxa_joined  # Removing sequence rownames for display only
 rownames(taxa.print) <- NULL

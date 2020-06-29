@@ -8,7 +8,7 @@ PRESET_SITES = "all" # Can also be character vector of 4-letter NEON site codes 
 PRESET_START_YR_MO = "2011-06"
 PRESET_END_YR_MO = format(Sys.Date(), "%Y-%m")
 TARGET_GENE = "ITS" # Must be "ITS", "16S", or "all"
-SEQUENCING_RUNS = c('C25G9', 'B69PP') # Can also be character vector of 5-letter NEON sequencing run IDs e.g. c('B69RF','BTP4N')
+SEQUENCING_RUNS = c('C25G9', 'B69PP') # Default 'all'. Can also be character vector of 5-letter NEON sequencing run IDs e.g. c('B69RF','BTP4N')
 SAMPLE_SUBSET_PARAMS_FILENAME = "sample_subset_params.txt" # name to give file where subset params are recorded
 PRESET_CHECK_FILE_SIZE = FALSE
 PRESET_RETURN_DATA = TRUE
@@ -30,7 +30,7 @@ PRIMER_ITS_FWD = "CTTGGTCATTTAGAGGAAGTAA" # Forward primer sequence
 PRIMER_ITS_REV = "GCTGCGTTCTTCATCGATGC" # Reverse primer sequence
 
 # Cutadapt path
-CUTADAPT_PATH = "/raid/users/claraqin/zhulab/NEON_soil_microbe_processing/code/cutadapt"
+CUTADAPT_PATH = "/afs/cats.ucsc.edu/users/b/claraqin/.local/bin/cutadapt"
 
 # UNITE database (FASTA file) path
 UNITE_DB_PATH = "./raw_data/tax_ref/sh_general_release_dynamic_02.02.2019.fasta"
