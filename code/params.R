@@ -32,8 +32,8 @@ PRIMER_ITS_REV = "GCTGCGTTCTTCATCGATGC" # Reverse primer sequence
 # Cutadapt path
 CUTADAPT_PATH = "/afs/cats.ucsc.edu/users/b/claraqin/.local/bin/cutadapt"
 
-# UNITE database (FASTA file) path
-UNITE_DB_PATH = "./raw_data/tax_ref/sh_general_release_dynamic_02.02.2019.fasta"
+# UNITE reference database (FASTA file) path
+UNITE_REF_PATH = "./raw_data/tax_ref/sh_general_release_dynamic_02.02.2019.fasta"
 
 # Whether to download and process only a small subset
 SMALL_SUBSET = FALSE # If TRUE, all fastq.gz.tar files matching these parameters will still be downloaded,
