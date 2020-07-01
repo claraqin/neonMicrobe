@@ -46,7 +46,7 @@ VERBOSE = FALSE
 
 # Whether to use multithreading in DADA2 (Windows users should set to FALSE),
 # or, if integer is provided, how many threads to use
-MULTITHREAD = FALSE
+MULTITHREAD = TRUE
 
 # filterAndTrim arguments
 MAX_EE_FWD = 2 # max. allowable expected errors in forward reads that pass filter

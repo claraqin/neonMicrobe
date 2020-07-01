@@ -44,8 +44,13 @@ if(length(cutFs) > 100) {
   for(i in 1:length(runIDs)) {
     cutFs_runID <- cutFs[grep(runIDs[i], cutFs)]
     cutRs_runID <- cutRs[grep(runIDs[i], cutRs)]
-    cutFs_subset <- c(cutFs_subset, cutFs_runID[round(quantile(1:length(cutFs_runID), probs=seq(0,1,length.out=100/length(runIDs))))])
-    cutRs_subset <- c(cutRs_subset, cutRs_runID[round(quantile(1:length(cutRs_runID), probs=seq(0,1,length.out=100/length(runIDs))))])
+    if(length(cutFs_runID) > 5) {
+      cutFs_subset <- c(cutFs_subset, cutFs_runID[round(quantile(1:length(cutFs_runID), probs=seq(0,1,length.out=100/length(runIDs))))])
+      cutRs_subset <- c(cutRs_subset, cutRs_runID[round(quantile(1:length(cutRs_runID), probs=seq(0,1,length.out=100/length(runIDs))))])
+    } else {
+      cutFs_subset <- c(cutFs_subset, cutFs_runID)
+      cutRs_subset <- c(cutRs_subset, cutRs_runID)
+    }
   }
   cutFs <- cutFs_subset
   cutRs <- cutRs_subset

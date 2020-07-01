@@ -2,7 +2,8 @@
 # DADA2 pipeline (e.g. non-chimeric sequence table, taxonomic table)
 # to environmental/sample data.
 
-# Load utilities and create soil database if necessary
+# Load parameters and utilities and create soil database if necessary
+source("./code/params.R")
 source("./code/utils.R")
 if(!file.exists(file.path(PRESET_OUTDIR_SOIL_DB, "soilDB.db"))) {
   source("./code/create_soil_database.R")
