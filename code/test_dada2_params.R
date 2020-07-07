@@ -23,12 +23,7 @@ library(ggplot2)
 
 # Generate filepath names
 PATH_ITS <- file.path(PRESET_OUTDIR_SEQUENCE, "ITS")
-PATH_UNZIPPED <- file.path(PATH_ITS, "0_unzipped")
-PATH_FILTN <- file.path(PATH_ITS, "1_filtN")
 PATH_CUT <- file.path(PATH_ITS, "2_cutadapt")
-PATH_FILTERED <- file.path(PATH_ITS, "3_filtered")
-PATH_SEQTABS <- file.path(PATH_ITS, "4_seqtabs")
-PATH_TRACK <- file.path(PATH_ITS, "track_reads")
 PATH_TEST <- file.path(PATH_ITS, "test")
 
 ##############
@@ -89,7 +84,9 @@ for (i in 1:nrow(params)) {
     compress = TRUE, multithread = TRUE, maxN = 0,
     maxEE = params[i,1:2], truncQ = params[i,3], minLen = 50
   )
-  out_list[[i]] <- as.data.frame(out) %>% mutate(prop.out = reads.out / reads.in)
+  temp <- as.data.frame(out) %>% mutate(prop.out = reads.out / reads.in)
+  rownames(temp) <- rownames(out)
+  out_list[[i]] <- temp
 }
 })
 
@@ -109,84 +106,80 @@ names(out_list) <- param_sets
 filtFs <- lapply(filtFs, function(x) { x <- x[file.exists(x)] })
 filtRs <- lapply(filtRs, function(x) { x <- x[file.exists(x)] })
 
-n_merged1 <- list() # For run #1
-n_merged2 <- list() # For run #2
-n_merged <- list(n_merged1, n_merged2)
-prop_merged1 <- list() # For run #1
-prop_merged2 <- list() # For run #2
-prop_merged <- list(prop_merged1, prop_merged2)
-seqtabs1 <- list() # For run #1
-seqtabs2 <- list() # For run #2
-seqtabs <- list(seqtabs1, seqtabs2)
-dadaFs_list1 <- list() # For run #1, forward
-dadaFs_list2 <- list() # For run #2, forward
-dadaFs_list <- list(dadaFs_list1, dadaFs_list2)
-dadaRs_list1 <- list() # For run #1, reverse
-dadaRs_list2 <- list() # For run #2, reverse
-dadaRs_list <- list(dadaRs_list1, dadaRs_list2)
+# The following objects, which will be output as Rds objects, are nested
+# accordingly:
+# - first layer [1:2] indexes across sequencing runs
+# - second layer [1:16] indexes across parameter sets
+
+dadaFs_list <- list(list(), list())
+dadaRs_list <- list(list(), list())
+n_merged <- list(list(), list())
+prop_merged <- list(list(), list())
+mergers <- list(list(), list())
+seqtabs <- list(list(), list())
 system.time({
 for(i in 1:length(filtFs)) { 
   for(j in 1:length(runIDs)) { 
-  # Retrieve only those files associated with the appropriate parameter set and runID
-  filtFs.star <- filtFs[[i]][grep(runIDs[j], filtFs[[i]])]
-  filtRs.star <- filtRs[[i]][grep(runIDs[j], filtRs[[i]])]
+    # Retrieve only those files associated with the appropriate parameter set and runID
+    filtFs.star <- filtFs[[i]][grep(runIDs[j], filtFs[[i]])]
+    filtRs.star <- filtRs[[i]][grep(runIDs[j], filtRs[[i]])]
+    
+    set.seed(11001100)
+    # Learn the error rates
+    errF <- learnErrors(filtFs.star, multithread=MULTITHREAD, nbases = 1e7, randomize=TRUE)
+    errR <- learnErrors(filtRs.star, multithread=MULTITHREAD, nbases = 1e7, randomize=TRUE)
+    print(paste0("Finished learning error rates in ", param_sets[i], runID[j], " at ", Sys.time()))
+    
+    # Dereplicate identical reads
+    derepFs <- derepFastq(filtFs.star, verbose = TRUE)
+    derepRs <- derepFastq(filtRs.star, verbose = TRUE)
+    # Name the derep-class objects by the sample names
+    sample.names <- unname(sapply(filtFs.star, get.sample.name))
+    names(derepFs) <- sample.names
+    names(derepRs) <- sample.names
+    print(paste0("Finished dereplication in ", param_sets[i], " at ", Sys.time()))
+    
+    # DADA2's core sample inference algorithm
+    dadaFs <- dada(derepFs, err = errF, multithread = MULTITHREAD)
+    dadaRs <- dada(derepRs, err = errR, multithread = MULTITHREAD)
+    print(paste0("Finished DADA2's core sample inference algorithm in ", params[i], " at ", Sys.time()))
+    
+    ## TODO: Record intermediate metric here: the number of
+    ##       sequence variants partitioned from the full set
+    ##       of reads after the denoising algorithm.
+    dadaFs_list[[j]][[i]] <- dadaFs
+    dadaRs_list[[j]][[i]] <- dadaRs
+    
+    # Merge pairs
+    mergers[[j]][[i]] <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE, returnRejects=TRUE)
+    print(paste0("Finished merging pairs in ", param_sets[i], " at ", Sys.time()))
+    # rm(derepFs)
+    # rm(derepRs)
   
-  set.seed(11001100)
-  # Learn the error rates
-  errF <- learnErrors(filtFs.star, multithread=MULTITHREAD, nbases = 1e7, randomize=TRUE)
-  errR <- learnErrors(filtRs.star, multithread=MULTITHREAD, nbases = 1e7, randomize=TRUE)
-  print(paste0("Finished learning error rates in ", param_sets[i], runID[j], " at ", Sys.time()))
+    # If using returnRejects=TRUE in mergePairs(), you can look at the number/proportion
+    # of sequences in each sample which successfully merged. This is now weighted by abundance,
+    # so it does NOT simply return the number or proportion of UNIQUE sequences.
+    n_merged[[j]][[i]] <- unlist(lapply(mergers[[j]][[i]], function(x) sum(x$abundance[x$accept])))
+    prop_merged[[j]][[i]] <- unlist(lapply(mergers[[j]][[i]], function(x) mean(x$abundance[x$accept])))
   
-  # Dereplicate identical reads
-  derepFs <- derepFastq(filtFs.star, verbose = TRUE)
-  derepRs <- derepFastq(filtRs.star, verbose = TRUE)
-  # Name the derep-class objects by the sample names
-  sample.names <- unname(sapply(filtFs.star, get.sample.name))
-  names(derepFs) <- sample.names
-  names(derepRs) <- sample.names
-  print(paste0("Finished dereplication in ", param_sets[i], " at ", Sys.time()))
+    # Construct sequence table
+    # If using returnRejects=TRUE in mergePairs(), you will have to remove the column
+    # corresponding to unmerged sequence pairs, "".
+    seqtab <- makeSequenceTable(mergers[[j]][[i]])
+    ind_blank <- which(colnames(seqtab)=="")
+    if(length(ind_blank) > 0) {
+      seqtab <- seqtab[,-ind_blank]
+    }
   
-  # DADA2's core sample inference algorithm
-  dadaFs <- dada(derepFs, err = errF, multithread = MULTITHREAD)
-  dadaRs <- dada(derepRs, err = errR, multithread = MULTITHREAD)
-  print(paste0("Finished DADA2's core sample inference algorithm in ", params[i], " at ", Sys.time()))
+    # Remove chimeras
+    seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=MULTITHREAD, verbose=TRUE)
+    print(paste0("Finished removing chimeras in ", param_sets[i], runID[j], "at", Sys.time()))
   
-  ## TODO: Record intermediate metric here: the number of
-  ##       sequence variants partitioned from the full set
-  ##       of reads after the denoising algorithm.
-  dadaFs_list[[j]][[i]] <- dadaFs
-  dadaRs_list[[j]][[i]] <- dadaRs
+    # Inspect distribution of sequence lengths
+    # hist(nchar(getSequences(seqtab.nochim)))
   
-  # Merge pairs
-  mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE, returnRejects=TRUE)
-  print(paste0("Finished merging pairs in ", param_sets[i], " at ", Sys.time()))
-  # rm(derepFs)
-  # rm(derepRs)
-
-  # If using returnRejects=TRUE in mergePairs(), you can look at the number/proportion
-  # of sequences in each sample which successfully merged
-  n_merged[[j]][[i]] <- unlist(lapply(mergers, function(x) sum(x$accept)))
-  prop_merged[[j]][[i]] <- unlist(lapply(mergers, function(x) mean(x$accept)))
-
-  # Construct sequence table
-  # If using returnRejects=TRUE in mergePairs(), you will have to remove the column
-  # corresponding to unmerged sequence pairs, "".
-  seqtab <- makeSequenceTable(mergers)
-  dim(seqtab)
-  ind_blank <- which(colnames(seqtab)=="")
-  if(length(ind_blank) > 0) {
-    seqtab <- seqtab[,-ind_blank]
+    seqtabs[[j]][[i]] <- seqtab.nochim
   }
-
-  # Remove chimeras
-  seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=MULTITHREAD, verbose=TRUE)
-  print(paste0("Finished removing chimeras in ", param_sets[i], runID[j], "at", Sys.time()))
-
-  # Inspect distribution of sequence lengths
-  # hist(nchar(getSequences(seqtab.nochim)))
-
-  seqtabs[[j]][[i]] <- seqtab.nochim
-}
 }
 })
 names(n_merged[[1]]) <- param_sets
@@ -238,6 +231,7 @@ saveRDS(out_list, "./data/sensitivity_filterAndTrim_out_list.Rds")
 saveRDS(prop_Fs_mapped_to_asv, "./data/sensitivity_prop_Fs_mapped_seprun.Rds")
 saveRDS(dadaFs_list, "./data/sensitivity_dadaFs_list_seprun.Rds")
 saveRDS(dadaRs_list, "./data/sensitivity_dadaRs_list_seprun.Rds")
+saveRDS(mergers, "./data/sensitivity_mergers_list_seprun.Rds")
 saveRDS(seqtabs, "./data/sensitivity_seqtabs_list_seprun.Rds")
 saveRDS(taxas, "./data/sensitivity_taxas.Rds")
 saveRDS(n_merged, "./data/sensitivity_n_merged_seprun.Rds")
