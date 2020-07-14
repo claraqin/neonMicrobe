@@ -20,8 +20,8 @@ PRESET_OUTDIR_SEQMETA = "/data/ZHULAB/NEON_DOB/sequence_metadata" # for sequence
 PRESET_OUTDIR_SOIL = "/data/ZHULAB/NEON_DOB/soil" # for soil data
 PRESET_OUTDIR_SOIL_DB = "/data/ZHULAB/NEON_DOB" # Database containing both seqmeta and soil data
 PRESET_OUTDIR_DADA2 = "/raid/users/claraqin/zhulab/NEON_soil_microbe_processing/data" # for phyloseq outputs
-PRESET_FILENAME_JOINED_SEQTAB = "NEON_ITS_seqtab_nochim_DL08-13-2019.Rds"
-PRESET_FILENAME_TAXTAB = "NEON_ITS_taxa_DL08-13-2019.Rds"
+PRESET_FILENAME_JOINED_SEQTAB = "NEON_ITS_seqtab_nochim_DL08-13-2019_truncQ4_maxEE8.Rds"
+PRESET_FILENAME_TAXTAB = "NEON_ITS_taxa_DL08-13-2019_truncQ4_maxEE8.Rds"
 
 ## PARAMETERS FOR DADA2_WORKFLOW
 
@@ -49,9 +49,9 @@ VERBOSE = FALSE
 MULTITHREAD = TRUE
 
 # filterAndTrim arguments
-MAX_EE_FWD = 2 # max. allowable expected errors in forward reads that pass filter
-MAX_EE_REV = 2 # max. allowable expected errors in reverse reads that pass filter
-TRUNC_Q = 2 # base quality score after which to truncate sequence
+MAX_EE_FWD = 8 # max. allowable expected errors in forward reads that pass filter
+MAX_EE_REV = 8 # max. allowable expected errors in reverse reads that pass filter
+TRUNC_Q = 4 # base quality score after which to truncate sequence
 # NOTE: it may be desirable to set this higher than 2 if the goal
 # is to increase the proportion of reads passing the filter, as this
 # would allow fewer "expected errors" to appear in the sequence

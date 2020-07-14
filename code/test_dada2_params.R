@@ -160,7 +160,7 @@ for(i in 1:length(filtFs)) {
     # of sequences in each sample which successfully merged. This is now weighted by abundance,
     # so it does NOT simply return the number or proportion of UNIQUE sequences.
     n_merged[[j]][[i]] <- unlist(lapply(mergers[[j]][[i]], function(x) sum(x$abundance[x$accept])))
-    prop_merged[[j]][[i]] <- unlist(lapply(mergers[[j]][[i]], function(x) mean(x$abundance[x$accept])))
+    prop_merged[[j]][[i]] <- unlist(lapply(mergers[[j]][[i]], function(x) sum(x$abundance[x$accept])/sum(x$abundance)))
   
     # Construct sequence table
     # If using returnRejects=TRUE in mergePairs(), you will have to remove the column
@@ -205,10 +205,10 @@ prop_Fs_mapped_to_asv_mat <- matrix(
 )
 head(prop_Fs_mapped_to_asv_mat)
 
-# Rate of successfully merged ASVs per pre-filterAndTrim read
-# (Not sure if this is meaningful -- treats denoising algorithm as a black box)
-merged_variants_per_input_read <- lapply(n_merged, function(x) x/out_list[[1]][,"reads.in"])
-merged_variants_per_input_read
+# # Rate of successfully merged ASVs per pre-filterAndTrim read
+# # (Not sure if this is meaningful -- treats denoising algorithm as a black box)
+# merged_variants_per_input_read <- lapply(n_merged, function(x) x/out_list[[1]][,"reads.in"])
+# merged_variants_per_input_read
 
 # Assign taxonomy using the UNITE database
 # Warning: this can take several days. If available, load from file

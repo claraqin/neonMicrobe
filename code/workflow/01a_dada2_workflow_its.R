@@ -1,6 +1,8 @@
 # DADA2 workflow for processing NEON ITS raw sequences
 # Follows https://benjjneb.github.io/dada2/ITS_workflow.html
 
+t0 <- Sys.time()
+
 # Load parameters from params.R
 source("./code/params.R")
 
@@ -83,7 +85,9 @@ trim_primers <- function(in.fwd, in.rev, out.fwd, out.rev) {
 # }
 
 t1 <- Sys.time()
-for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN) and #6 (runBF8M2, which lacks rownames?)
+first <- TRUE
+for (i in 8:loop_length) {
+# for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN)
   runID <- unique_runs[i]
   print(paste0("Began processing ", runID, " at ", Sys.time()))
   
@@ -224,6 +228,7 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN) and #6 (run
   
   # Construct sequence table
   seqtab <- makeSequenceTable(mergers)
+  if(nrow(seqtab) == 1) rownames(seqtab) <- sample.names # special case if run contains only 1 sample
   if(VERBOSE) dim(seqtab)
   
   # Remove chimeras
@@ -275,17 +280,20 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN) and #6 (run
   print(paste0("Sequencing run-specific sequence tables can be found in ", PATH_SEQTABS))
   
   # Merge sequence tables
-  if(exists("seqtab_joined")) {
-    seqtab_joined <- mergeSequenceTables(seqtab_joined, seqtab.nochim)
-  } else {
+  if(first) {
     seqtab_joined <- seqtab.nochim
+    first <- FALSE
+  } else {
+    seqtab_joined <- mergeSequenceTables(seqtab_joined, seqtab.nochim)
   }
   
   print(paste0("Finished processing ", runID, " at ", Sys.time()))
 }
 t2 <- Sys.time()
+# Takes 1.87 hours to process first 6 runs (runB69PP runB69RF, runB69RN, runB9994, runBDR3T, and runBF8M2)
 
-# Takes 38210 s (10 h 36.8 min) to process runB69RF, runB69RN, runB9994, runBDR3T, and runBF8M2 through the for loop
+# Previously took 38210 s (10 h 36.8 min) to process runB69RF, runB69RN, runB9994, runBDR3T, and runBF8M2 through the for loop
+# Perhaps multithreading was off? Or it could have to do with the quality filtering parameters?
 
 # Save joined sequence table
 saveRDS(seqtab_joined, file.path(PRESET_OUTDIR_DADA2, PRESET_FILENAME_JOINED_SEQTAB))
@@ -301,5 +309,7 @@ if(VERBOSE) head(taxa.print)
 
 # Saved joined taxa table
 saveRDS(taxa_joined, file.path(PRESET_OUTDIR_DADA2, PRESET_FILENAME_TAXTAB))
+
+t3 <- Sys.time()
 
 # Hand off to dada2_to_phyloseq.R
