@@ -85,9 +85,9 @@ trim_primers <- function(in.fwd, in.rev, out.fwd, out.rev) {
 # }
 
 t1 <- Sys.time()
+ti <- c()
 first <- TRUE
-for (i in 8:loop_length) {
-# for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN)
+for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN)
   runID <- unique_runs[i]
   print(paste0("Began processing ", runID, " at ", Sys.time()))
   
@@ -288,9 +288,14 @@ for (i in 8:loop_length) {
   }
   
   print(paste0("Finished processing ", runID, " at ", Sys.time()))
+  ti <- c(ti, Sys.time())
 }
 t2 <- Sys.time()
 # Takes 1.87 hours to process first 6 runs (runB69PP runB69RF, runB69RN, runB9994, runBDR3T, and runBF8M2)
+# Took 3.65 hours to process next run (BFDG8)
+# At this point, switched to processing on Clara's macMini
+# Took 1.41 hours to process next run (BMCBD)
+
 
 # Previously took 38210 s (10 h 36.8 min) to process runB69RF, runB69RN, runB9994, runBDR3T, and runBF8M2 through the for loop
 # Perhaps multithreading was off? Or it could have to do with the quality filtering parameters?
