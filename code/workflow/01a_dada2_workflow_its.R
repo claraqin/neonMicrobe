@@ -89,7 +89,7 @@ ti <- c()
 first <- TRUE
 for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN)
   runID <- unique_runs[i]
-  print(paste0("Began processing ", runID, " at ", Sys.time()))
+  message(paste0("Began processing ", runID, " at ", Sys.time()))
   
   # Forward and reverse fastq filenames have format: SAMPLENAME_R1_001.fastq and SAMPLENAME_R2_001.fastq
   fnFs <- sort(list.files(PATH_UNZIPPED, pattern=paste0(runID, ".*_R1.fastq"), full.names = TRUE)) # If set to be FALSE, then working directory must contain the files
@@ -103,11 +103,11 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN)
   rm_from_fnRs <- basefilenames_Rs[which(!(basefilenames_Rs %in% basefilenames_Fs))]
   
   for(name in rm_from_fnFs) {
-    if(VERBOSE) print(paste(name, "does not have an R2 counterpart. Omitting from this analysis."))
+    if(VERBOSE) message(paste(name, "does not have an R2 counterpart. Omitting from this analysis."))
     fnFs <- fnFs[-which(fnFs == paste0(PATH_UNZIPPED, "/", name, "_R1.fastq"))]
   }
   for(name in rm_from_fnRs) {
-    if(VERBOSE) print(paste(name, "does not have an R1 counterpart. Omitting from this analysis."))
+    if(VERBOSE) message(paste(name, "does not have an R1 counterpart. Omitting from this analysis."))
     fnRs <- fnRs[-which(fnRs == paste0(PATH_UNZIPPED, "/", name, "_R2.fastq"))]
   }
   rm(rm_from_fnFs)
@@ -128,7 +128,7 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN)
   fnFs.filtN <- file.path(PATH_FILTN, basename(fnFs)) # Put N-filtered files in filtN/ subdirectory
   fnRs.filtN <- file.path(PATH_FILTN, basename(fnRs))
   out_filtN <- filterAndTrim(fnFs, fnFs.filtN, fnRs, fnRs.filtN, maxN = 0, multithread = MULTITHREAD, compress = FALSE)
-  print(paste0("Finished pre-filtering sequences in ", runID, " at ", Sys.time()))
+  message(paste0("Finished pre-filtering sequences in ", runID, " at ", Sys.time()))
   
   # This part deviates from the tutorial. Since some samples lose all reads at
   # the pre-filtering stage, it is useful to trim down the sample list for the
@@ -190,7 +190,7 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN)
   out <- filterAndTrim(cutFs, filtFs, cutRs, filtRs, maxN = 0, maxEE = c(MAX_EE_FWD, MAX_EE_REV), 
                        truncQ = TRUNC_Q, minLen = MIN_LEN, compress = TRUE, multithread = MULTITHREAD)  # on windows, set multithread = FALSE
   # })
-  print(paste0("Finished filterAndTrim in ", runID, " at ", Sys.time()))
+  message(paste0("Finished filterAndTrim in ", runID, " at ", Sys.time()))
 
   if(VERBOSE) head(out)
   
@@ -201,7 +201,7 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN)
   # Learn the error rates
   errF <- learnErrors(filtFs.out, multithread=MULTITHREAD, nbases = 1e7, randomize=TRUE)
   errR <- learnErrors(filtRs.out, multithread=MULTITHREAD, nbases = 1e7, randomize=TRUE)
-  print(paste0("Finished learning error rates in ", runID, " at ", Sys.time()))
+  message(paste0("Finished learning error rates in ", runID, " at ", Sys.time()))
   
   # Visualize estimated error rates
   if(VERBOSE) plotErrors(errF, nominalQ = TRUE)
@@ -213,16 +213,16 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN)
   sample.names <- unname(sapply(filtFs.out, get.sample.name))
   names(derepFs) <- sample.names
   names(derepRs) <- sample.names
-  print(paste0("Finished dereplication in ", runID, " at ", Sys.time()))
+  message(paste0("Finished dereplication in ", runID, " at ", Sys.time()))
   
   # DADA2's core sample inference algorithm
   dadaFs <- dada(derepFs, err = errF, multithread = MULTITHREAD)
   dadaRs <- dada(derepRs, err = errR, multithread = MULTITHREAD)
-  print(paste0("Finished DADA2's core sample inference algorithm in ", runID, " at ", Sys.time()))
+  message(paste0("Finished DADA2's core sample inference algorithm in ", runID, " at ", Sys.time()))
   
   # Merge pairs
   mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE)
-  print(paste0("Finished merging pairs in ", runID, " at ", Sys.time()))
+  message(paste0("Finished merging pairs in ", runID, " at ", Sys.time()))
   rm(derepFs)
   rm(derepRs)
   
@@ -233,7 +233,7 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN)
   
   # Remove chimeras
   seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=MULTITHREAD, verbose=TRUE)
-  print(paste0("Finished removing chimeras in ", runID, " at ", Sys.time()))
+  message(paste0("Finished removing chimeras in ", runID, " at ", Sys.time()))
   
   # Inspect distribution of sequence lengths
   if(VERBOSE) hist(nchar(getSequences(seqtab.nochim)))
@@ -268,7 +268,7 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN)
   } else {
     write.csv(track, file.path(PATH_TRACK, paste0("track_reads_",runID,".csv")))
   }
-  print(paste0("Finished tracking reads through pipeline in ", runID, " at ", Sys.time()))
+  message(paste0("Finished tracking reads through pipeline in ", runID, " at ", Sys.time()))
   
   # Save sequence table associated with this sequencing run
   if(SMALL_SUBSET) {
@@ -276,8 +276,8 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN)
   } else {
     saveRDS(seqtab.nochim, file.path(PATH_SEQTABS, paste0("NEON_ITS_seqtab_nochim_DL08-13-2019_", runID, ".Rds")))
   }
-  print(paste0("Finished saving sequence table of ", runID, " at ", Sys.time()))
-  print(paste0("Sequencing run-specific sequence tables can be found in ", PATH_SEQTABS))
+  message(paste0("Finished saving sequence table of ", runID, " at ", Sys.time()))
+  message(paste0("Sequencing run-specific sequence tables can be found in ", PATH_SEQTABS))
   
   # Merge sequence tables
   if(first) {
@@ -287,7 +287,7 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN)
     seqtab_joined <- mergeSequenceTables(seqtab_joined, seqtab.nochim)
   }
   
-  print(paste0("Finished processing ", runID, " at ", Sys.time()))
+  message(paste0("Finished processing ", runID, " at ", Sys.time()))
   ti <- c(ti, Sys.time())
 }
 t2 <- Sys.time()
@@ -306,7 +306,7 @@ saveRDS(seqtab_joined, file.path(PRESET_OUTDIR_DADA2, PRESET_FILENAME_JOINED_SEQ
 # Assign taxonomy using the UNITE database
 unite.ref <- UNITE_REF_PATH
 taxa_joined <- assignTaxonomy(seqtab_joined, unite.ref, multithread = MULTITHREAD, tryRC = TRUE)
-print(paste0("Finished assigning taxonomy at ", Sys.time()))
+message(paste0("Finished assigning taxonomy at ", Sys.time()))
 
 taxa.print <- taxa_joined  # Removing sequence rownames for display only
 rownames(taxa.print) <- NULL
