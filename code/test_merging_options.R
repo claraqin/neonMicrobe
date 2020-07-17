@@ -1,5 +1,5 @@
 # test_merging_options.R
-# 
+#
 # This script tests the impact of different paired-end read-merging
 # options on the number of remaining reads in the output sequence table.
 # Inspired by https://github.com/benjjneb/dada2/issues/279
@@ -69,7 +69,7 @@ if(length(cutFs) > 100) {
 
 # Plot quality profiles
 gridExtra::grid.arrange(plotQualityProfile(cutFs, aggregate=TRUE),
-                        plotQualityProfile(cutRs, aggregate=TRUE), nrow=1)  
+                        plotQualityProfile(cutRs, aggregate=TRUE), nrow=1)
 
 # Create output filenames for the filterAndTrim outputs where only R1
 # reads will be used vs. where R1 and R2 will be filtered in conjunction
@@ -82,12 +82,12 @@ filtRs_paired <- file.path(PATH_TEST, "merging_opt_paired", basename(cutRs))
 # FOR THIS ANALYSIS, WE SIMPLY USE THE DEFAULT PARAMETER VALUES FROM params.R
 out_list <- list()
 out_list[[1]] <- filterAndTrim(
-  fwd = cutFs, filt = filtFs_r1, 
+  fwd = cutFs, filt = filtFs_r1,
   compress = TRUE, multithread = TRUE, maxN = 0,
   maxEE = MAX_EE_FWD, truncQ = TRUNC_Q, minLen = MIN_LEN
 )
 out_list[[2]] <- filterAndTrim(
-  fwd = cutFs, filt = filtFs_paired, rev = cutRs, filt.rev = filtRs_paired, 
+  fwd = cutFs, filt = filtFs_paired, rev = cutRs, filt.rev = filtRs_paired,
   compress = TRUE, multithread = TRUE, maxN = 0,
   maxEE = c(MAX_EE_FWD, MAX_EE_REV), truncQ = TRUNC_Q, minLen = MIN_LEN
 )
@@ -117,7 +117,7 @@ seqtabs <- list(list(), list()) # One sub-list for each of two sequencing runs, 
 
 t1 <- Sys.time()
 for(i in 1:length(runIDs)) {
-  
+
   # (1/2)
   # First handle the R1-only case
   filtFs_r1_selrunID <- filtFs_r1[grep(runIDs[i], filtFs_r1)] # select files matching runID
@@ -133,7 +133,7 @@ for(i in 1:length(runIDs)) {
   rm(derepFs)
   seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=MULTITHREAD, verbose=TRUE) # remove chimeras
   seqtabs[[i]][[1]] <- seqtab.nochim
-  
+
   # (2/2)
   # Then handle the paired-read cases
   filtFs_paired_selrunID <- filtFs_paired[grep(runIDs[i], filtFs_paired)] # select files matching runID
@@ -156,13 +156,13 @@ for(i in 1:length(runIDs)) {
   mergers_list[[i]][[3]] <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE, returnRejects=TRUE, justConcatenate=TRUE)
   rm(derepFs)
   rm(derepRs)
-  
+
   for(j in 2:length(merging_opts)) {
     # If using returnRejects=TRUE in mergePairs(), you can look at the number/proportion
     # of sequences in each sample which successfully merged
     n_merged[[i]][[j]] <- unlist(lapply(mergers_list[[i]][[j]], function(x) sum(x$accept)))
     prop_merged[[i]][[j]] <- unlist(lapply(mergers_list[[i]][[j]], function(x) mean(x$accept)))
-    
+
     # Construct sequence table
     # If using returnRejects=TRUE in mergePairs(), you will have to remove the column
     # corresponding to unmerged sequence pairs, "".
@@ -171,13 +171,13 @@ for(i in 1:length(runIDs)) {
     if(length(ind_blank) > 0) {
       seqtab <- seqtab[,-ind_blank]
     }
-    
+
     # Remove chimeras
     seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=MULTITHREAD, verbose=TRUE)
-    
+
     # Inspect distribution of sequence lengths
     # hist(nchar(getSequences(seqtab.nochim)))
-    
+
     seqtabs[[i]][[j]] <- seqtab.nochim
   }
 }
@@ -216,7 +216,7 @@ saveRDS(prop_merged, "./data/merging_opts_prop_merged.Rds")
 #   ncol=100,nrow=16,dimnames=list(param_sets, basename(cutFs))
 # )
 # head(prop_Fs_mapped_to_asv_mat)
-# 
+#
 # # Rate of successfully merged ASVs per pre-filterAndTrim read
 # # (Not sure if this is meaningful -- treats denoising algorithm as a black box)
 # merged_variants_per_input_read <- lapply(n_merged, function(x) x/out_list[[1]][,"reads.in"])

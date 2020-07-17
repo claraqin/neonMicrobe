@@ -1,0 +1,148 @@
+---
+title: "Plot DADA2 merging options tests"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load data, libraries, and parameters
+
+```{r}
+dadaFs_list <- readRDS("./data/merging_opts_dadaFs_list.Rds")
+dadaRs_list <- readRDS("./data/merging_opts_dadaRs_list.Rds")
+mergers_list <- readRDS("./data/merging_opts_mergers_list.Rds")
+seqtabs <- readRDS("./data/merging_opts_seqtabs_list.Rds")
+n_merged <- readRDS("./data/merging_opts_n_merged.Rds")
+prop_merged <- readRDS("./data/merging_opts_prop_merged.Rds")
+
+runIDs <- c("B69PP", "C25G9")
+
+source("./code/params.R")
+
+suppressMessages({
+  library(dada2)
+  library(ShortRead)
+  library(Biostrings)
+  library(tibble)
+  library(dplyr)
+  library(vegan)
+  library(phyloseq)
+  library(ggplot2)
+  library(stringr)
+})
+
+theme_set(theme_bw())
+```
+
+# Plot outputs of filterAndTrim
+
+Number of reads remaining after filterAndTrim:
+
+```{r}
+library(ggplot2)
+
+filterAndTrim_out <- 
+  data.frame(
+    runID = rep(rep(runIDs, each=50), 2),
+    r1_only = c(rep(TRUE, 100), rep(FALSE, 100)),
+    n.in = unlist(lapply(out_list, function(x) x[,"reads.in"])),
+    n.out = unlist(lapply(out_list, function(x) x[,"reads.out"])),
+    prop.out = unlist(lapply(out_list, function(x) x[,"prop.out"]))
+)
+
+filterAndTrim_out %>%
+  ggplot(aes(y=prop.out, fill=factor(r1_only))) +
+  geom_boxplot() +
+  facet_grid(runID~.)
+```
+
+# Plot outputs of DADA algorithm
+
+```{r}
+prop_Fs_mapped_to_asv <- lapply(dadaFs_list, function(x) lapply(x, function(y) lapply(y, function(z) mean(!is.na(z$map)))))
+
+merged_out <-
+  data.frame(
+    runID = c(rep("B69PP", length(prop_merged[[1]][[2]]) + length(prop_merged[[1]][[3]])), rep("C25G9", length(prop_merged[[2]][[2]]) + length(prop_merged[[2]][[3]]))),
+    merging_opt = c(rep(merging_opts[2], length(prop_merged[[1]][[2]])),
+                    rep(merging_opts[3], length(prop_merged[[1]][[3]])),
+                    rep(merging_opts[2], length(prop_merged[[2]][[2]])),
+                    rep(merging_opts[3], length(prop_merged[[2]][[3]]))),
+    # r1_only = rep(c(rep(TRUE, 50), rep(FALSE, 100)), 2),
+    # prop.Fs.mapped = unlist(prop_Fs_mapped_to_asv),
+    prop_merged = unlist(prop_merged)
+  )
+```
+
+
+```{r}
+merged_out %>%
+  ggplot(aes(y=prop_merged, fill=merging_opt)) +
+  geom_boxplot() +
+  facet_grid(runID~.)
+```
+
+# Plot effects on alpha-diversity estimates
+
+Put seqtabs into phyloseq format:
+
+```{r}
+physeqs <- list(list(),list()) # List of two lists: each sub-list is a different sequencing run
+for(j in 1:length(runIDs)) {
+  for(i in 1:length(seqtabs[[j]])) {
+    physeqs[[j]][[i]] <- phyloseq(otu_table(seqtabs[[j]][[i]],taxa_are_rows=FALSE))
+  }
+}
+```
+
+Rarefy all samples to a common sequencing depth. We can start with a generous minimum of 1000 sequences.
+
+```{r message=FALSE}
+physeqs_rare <- list(list(), list())
+set.seed(1001010100)
+for(j in 1:length(runIDs)) {
+  for(i in 1:length(physeqs[[j]])) {
+    physeqs_rare[[j]][[i]] <- rarefy_even_depth(physeqs[[j]][[i]], sample.size = 1000)
+  }
+}
+```
+
+Now estimate alpha diversity:
+
+```{r}
+diversity_out <- list(list(), list())
+for(j in 1:length(runIDs)) {
+  for(i in 1:length(physeqs_rare[[j]])) {
+    div <- suppressWarnings(
+      estimate_richness(physeqs_rare[[j]][[i]], measures=c("Observed","Shannon"))
+    )
+    diversity_out[[j]][[i]] <- data.frame(
+      runID = runIDs[j],
+      merging_opt = merging_opts[i],
+      obs_richness = div[,"Observed"],
+      shannon_div = div[,"Shannon"])
+  }
+}
+
+diversity_out_df <- do.call(rbind, unlist(diversity_out, recursive=FALSE))
+```
+
+Plot observed richness
+
+```{r}
+diversity_out_df %>%
+  ggplot(aes(y=obs_richness, fill=merging_opt)) +
+  geom_boxplot() +
+  facet_grid(runID~.)
+```
+
+Plot Shannon diversity
+
+```{r}
+diversity_out_df %>%
+  ggplot(aes(y=shannon_div, fill=merging_opt)) +
+  geom_boxplot() +
+  facet_grid(runID~.)
+```

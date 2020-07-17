@@ -53,7 +53,7 @@ if(length(cutFs) > 100) {
 
 # Plot quality profiles
 gridExtra::grid.arrange(plotQualityProfile(cutFs, aggregate=TRUE),
-                        plotQualityProfile(cutRs, aggregate=TRUE), nrow=1)  
+                        plotQualityProfile(cutRs, aggregate=TRUE), nrow=1)
 
 # Generalize previous version's setup to allow testing filterAndTrim on
 # multiple sets of parameters at a time. The following tests 16 sets at a time:
@@ -80,7 +80,7 @@ out_list <- list()
 system.time({
 for (i in 1:nrow(params)) {
   out <- filterAndTrim(
-    fwd = cutFs, filt = filtFs[[i]], rev = cutRs, filt.rev = filtRs[[i]], 
+    fwd = cutFs, filt = filtFs[[i]], rev = cutRs, filt.rev = filtRs[[i]],
     compress = TRUE, multithread = TRUE, maxN = 0,
     maxEE = params[i,1:2], truncQ = params[i,3], minLen = 50
   )
@@ -94,12 +94,12 @@ names(out_list) <- param_sets
 
 # Code for plotting moved to test_dada2_params_plots.Rmd
 
-# These plots don't tell us much, because there is no guarantee that 
+# These plots don't tell us much, because there is no guarantee that
 # any of these reads are of sufficient quality to be assigned taxonomy,
 # or that they will merge.
 
 ###############
-# Run parts of dada2 (post-filterAndTrim) to see downstream effects on merging, 
+# Run parts of dada2 (post-filterAndTrim) to see downstream effects on merging,
 # taxonomic resolution, diversity
 
 # Ensure that all of the output filenames exist
@@ -118,18 +118,18 @@ prop_merged <- list(list(), list())
 mergers <- list(list(), list())
 seqtabs <- list(list(), list())
 system.time({
-for(i in 1:length(filtFs)) { 
-  for(j in 1:length(runIDs)) { 
+for(i in 1:length(filtFs)) {
+  for(j in 1:length(runIDs)) {
     # Retrieve only those files associated with the appropriate parameter set and runID
     filtFs.star <- filtFs[[i]][grep(runIDs[j], filtFs[[i]])]
     filtRs.star <- filtRs[[i]][grep(runIDs[j], filtRs[[i]])]
-    
+
     set.seed(11001100)
     # Learn the error rates
     errF <- learnErrors(filtFs.star, multithread=MULTITHREAD, nbases = 1e7, randomize=TRUE)
     errR <- learnErrors(filtRs.star, multithread=MULTITHREAD, nbases = 1e7, randomize=TRUE)
     print(paste0("Finished learning error rates in ", param_sets[i], runID[j], " at ", Sys.time()))
-    
+
     # Dereplicate identical reads
     derepFs <- derepFastq(filtFs.star, verbose = TRUE)
     derepRs <- derepFastq(filtRs.star, verbose = TRUE)
@@ -138,30 +138,30 @@ for(i in 1:length(filtFs)) {
     names(derepFs) <- sample.names
     names(derepRs) <- sample.names
     print(paste0("Finished dereplication in ", param_sets[i], " at ", Sys.time()))
-    
+
     # DADA2's core sample inference algorithm
     dadaFs <- dada(derepFs, err = errF, multithread = MULTITHREAD)
     dadaRs <- dada(derepRs, err = errR, multithread = MULTITHREAD)
     print(paste0("Finished DADA2's core sample inference algorithm in ", params[i], " at ", Sys.time()))
-    
+
     ## TODO: Record intermediate metric here: the number of
     ##       sequence variants partitioned from the full set
     ##       of reads after the denoising algorithm.
     dadaFs_list[[j]][[i]] <- dadaFs
     dadaRs_list[[j]][[i]] <- dadaRs
-    
+
     # Merge pairs
     mergers[[j]][[i]] <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE, returnRejects=TRUE)
     print(paste0("Finished merging pairs in ", param_sets[i], " at ", Sys.time()))
     # rm(derepFs)
     # rm(derepRs)
-  
+
     # If using returnRejects=TRUE in mergePairs(), you can look at the number/proportion
     # of sequences in each sample which successfully merged. This is now weighted by abundance,
     # so it does NOT simply return the number or proportion of UNIQUE sequences.
     n_merged[[j]][[i]] <- unlist(lapply(mergers[[j]][[i]], function(x) sum(x$abundance[x$accept])))
     prop_merged[[j]][[i]] <- unlist(lapply(mergers[[j]][[i]], function(x) sum(x$abundance[x$accept])/sum(x$abundance)))
-  
+
     # Construct sequence table
     # If using returnRejects=TRUE in mergePairs(), you will have to remove the column
     # corresponding to unmerged sequence pairs, "".
@@ -170,14 +170,14 @@ for(i in 1:length(filtFs)) {
     if(length(ind_blank) > 0) {
       seqtab <- seqtab[,-ind_blank]
     }
-  
+
     # Remove chimeras
     seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=MULTITHREAD, verbose=TRUE)
     print(paste0("Finished removing chimeras in ", param_sets[i], runID[j], "at", Sys.time()))
-  
+
     # Inspect distribution of sequence lengths
     # hist(nchar(getSequences(seqtab.nochim)))
-  
+
     seqtabs[[j]][[i]] <- seqtab.nochim
   }
 }
@@ -196,7 +196,7 @@ names(seqtabs[[2]]) <- param_sets
 n_merged # This is the number of ASVs (as partitioned by dada) that successfully merged
 prop_merged # This is proportion of ASVs (as partitioned by dada) that successfully merged
 # The below is the proportion of forward reads that were assigned an ASV
-prop_Fs_mapped_to_asv <- list(list(), list()) 
+prop_Fs_mapped_to_asv <- list(list(), list())
 prop_Fs_mapped_to_asv[[1]] <- lapply(dadaFs_list[[1]], function(x) lapply(x, function(y) mean(!is.na(y$map))))
 prop_Fs_mapped_to_asv[[2]] <- lapply(dadaFs_list[[2]], function(x) lapply(x, function(y) mean(!is.na(y$map))))
 prop_Fs_mapped_to_asv_mat <- matrix(
@@ -260,7 +260,7 @@ for(i in 1:length(seqtabs)) {
 }
 
 # Remake summary_df with additional columns
-summary_df <- 
+summary_df <-
   data.frame(
     maxEE = params[,1],
     truncQ = params[,3],
@@ -277,7 +277,7 @@ summary_df <-
 # FINDING: This is intuitive; as filtering parameters become more
 # stringent, the proportion of ASVs which are assigned to the species
 # level increases. However, this does not mean that the absolute
-# number of spp-identified ASVs increases; only the spp identification 
+# number of spp-identified ASVs increases; only the spp identification
 # rate.
 
 ##################
@@ -312,7 +312,7 @@ for(i in 1:length(physeqs)) {
 # (Moved code for plotting to test_dada2_params_plots.Rmd)
 
 ##############
-# Evaluate effects on beta-diversity inference, 
+# Evaluate effects on beta-diversity inference,
 # using ordinations and permANOVA
 
 # (Some of this code is redundant with test_dada2_params_plots.Rmd)
@@ -375,7 +375,7 @@ hist(vegdist(seqtab_joined[grep("runB69PP_BMI_Plate13WellA12_ITS", rownames(seqt
 hist(vegdist(seqtab_joined[grep("runC25G9_BMI_Plate70WellF7_ITS", rownames(seqtab_joined)),]))
 hist(vegdist(seqtab_joined[grep("runC25G9_BMI_Plate70WellC10_ITS", rownames(seqtab_joined)),]))
 
-# FINDING: Within the same parameter set, very little overlap between 
+# FINDING: Within the same parameter set, very little overlap between
 # samples (BCdist ~ 1). Across different parameter sets on the same sample,
 # overlap can be large or small depending on the sample.
 
@@ -442,10 +442,10 @@ adonis(ps_joined_dist ~ maxEE.F + truncQ,
 # Try again with spp-agglomerated version
 ps_joined_spp_dist <- vegdist(otu_table(physeq_joined_spp_nonzero))
 adonis(ps_joined_spp_dist ~ maxEE.F + truncQ,
-       data = sample_data(physeq_joined_spp_nonzero), 
+       data = sample_data(physeq_joined_spp_nonzero),
        strata = get_variable(phseq_joined_spp_nonzero, "sample"),
        permutations=999)
 
-# FINDING: Where there are compositional differences between parameter 
+# FINDING: Where there are compositional differences between parameter
 # sets, the differences are due to truncQ, not maxEE
 

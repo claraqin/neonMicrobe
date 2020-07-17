@@ -42,19 +42,19 @@ trim_primers <- function(in.fwd, in.rev, out.fwd, out.rev) {
   FWD.RC <- dada2:::rc(PRIMER_ITS_FWD)
   REV.RC <- dada2:::rc(PRIMER_ITS_REV)
   # Trim FWDPrimer and the reverse-complement of REVPrimer off of R1 (forward reads)
-  R1.flags <- paste("-g", PRIMER_ITS_FWD, "-a", REV.RC) 
+  R1.flags <- paste("-g", PRIMER_ITS_FWD, "-a", REV.RC)
   # Trim REVPrimer and the reverse-complement of FWDPrimer off of R2 (reverse reads)
-  R2.flags <- paste("-G", PRIMER_ITS_REV, "-A", FWD.RC) 
-  
+  R2.flags <- paste("-G", PRIMER_ITS_REV, "-A", FWD.RC)
+
   # Run Cutadapt
   for(i in seq_along(in.fwd)) {
     system2(CUTADAPT_PATH, args = c(R1.flags, R2.flags, "-n", 2, # -n 2 required to remove FWD and REV from reads
                                     "-o", out.fwd[i], "-p", out.rev[i], # output files
                                     in.fwd[i], in.rev[i], # input files; fnFs.filtN replaced by fnFs.filtN2, etc.
-                                    "--minimum-length", "1"), # min length of cutadapted reads: >0 
+                                    "--minimum-length", "1"), # min length of cutadapted reads: >0
             stdout = FALSE)
   }
-  
+
   # Count primers in first post-cutadapt sample (should all be 0):
   if(VERBOSE) {
     count_primer_orients(out.fwd[[1]], out.rev[[1]], PRIMER_ITS_FWD, PRIMER_ITS_REV)
@@ -63,7 +63,7 @@ trim_primers <- function(in.fwd, in.rev, out.fwd, out.rev) {
 
 # runDada2_fwd.reads <- function(filtpath, out.file, seed = NULL, ...){
 #   if (!is.null(seed)) set.seed(seed)
-#   
+#
 #   filtFs <- list.files(filtpath, pattern="fastq.gz|.fastq", full.names=TRUE) # CHANGE if different file extensions
 #   sample.names <- sapply(strsplit(basename(filtFs), "_R"), `[`, 1) # Assumes filename = samplename_RX.fastq.gz
 #   names(filtFs) <- sample.names
@@ -90,18 +90,18 @@ first <- TRUE
 for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN)
   runID <- unique_runs[i]
   message(paste0("Began processing ", runID, " at ", Sys.time()))
-  
+
   # Forward and reverse fastq filenames have format: SAMPLENAME_R1_001.fastq and SAMPLENAME_R2_001.fastq
   fnFs <- sort(list.files(PATH_UNZIPPED, pattern=paste0(runID, ".*_R1.fastq"), full.names = TRUE)) # If set to be FALSE, then working directory must contain the files
   fnRs <- sort(list.files(PATH_UNZIPPED, pattern=paste0(runID, ".*_R2.fastq"), full.names = TRUE))
-  
+
   # Remove any forward files that don't have reverse counterparts, and vise versa
   # (filterAndTrim will throw an error if fnFs and fnRs have any mismatches)
   basefilenames_Fs <- sub("_R1.fastq","",basename(fnFs))
   basefilenames_Rs <- sub("_R2.fastq","",basename(fnRs))
   rm_from_fnFs <- basefilenames_Fs[which(!(basefilenames_Fs %in% basefilenames_Rs))]
   rm_from_fnRs <- basefilenames_Rs[which(!(basefilenames_Rs %in% basefilenames_Fs))]
-  
+
   for(name in rm_from_fnFs) {
     if(VERBOSE) message(paste(name, "does not have an R2 counterpart. Omitting from this analysis."))
     fnFs <- fnFs[-which(fnFs == paste0(PATH_UNZIPPED, "/", name, "_R1.fastq"))]
@@ -112,30 +112,30 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN)
   }
   rm(rm_from_fnFs)
   rm(rm_from_fnRs)
-  
+
   # If SMALL_SUBSET == TRUE,
   # keep only the first two forward-reverse pairs of sequence files
   if(SMALL_SUBSET){
     if(length(fnFs > 2)) fnFs <- fnFs[1:2]
     if(length(fnRs > 2)) fnRs <- fnRs[1:2]
   }
-  
+
   # Get all orientations of primers, for trimming later
   FWD.orients <- allOrients(PRIMER_ITS_FWD)
   REV.orients <- allOrients(PRIMER_ITS_REV)
-  
+
   # “pre-filter” the sequences just to remove those with Ns, but perform no other filtering
   fnFs.filtN <- file.path(PATH_FILTN, basename(fnFs)) # Put N-filtered files in filtN/ subdirectory
   fnRs.filtN <- file.path(PATH_FILTN, basename(fnRs))
   out_filtN <- filterAndTrim(fnFs, fnFs.filtN, fnRs, fnRs.filtN, maxN = 0, multithread = MULTITHREAD, compress = FALSE)
   message(paste0("Finished pre-filtering sequences in ", runID, " at ", Sys.time()))
-  
+
   # This part deviates from the tutorial. Since some samples lose all reads at
   # the pre-filtering stage, it is useful to trim down the sample list for the
   # next step: cutadapt
   fnFs.filtN <- fnFs.filtN[file.exists(fnFs.filtN)]
   fnRs.filtN <- fnRs.filtN[file.exists(fnRs.filtN)]
-  
+
   # Count the number of times the forward and reverse primers appear in a
   # set of paired end reads. First file in each sequencing run should
   # be sufficient
@@ -146,66 +146,66 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN)
   # or the reverse-complement of the reverse primer in the forward reads (cell [3,4]),
   # it's because the ITS region is short and the read overlaps with the reverse-complement
   # of the other primer.
-  
+
   # TODO: Fix the mixed-orientation reads issue
-  
+
   # Remove primers using cutadapt
   fnFs.cut_mid <- file.path(PATH_CUT, paste0("mid_cutadapt_", basename(fnFs.filtN)))
   fnRs.cut_mid <- file.path(PATH_CUT, paste0("mid_cutadapt_", basename(fnRs.filtN)))
-  
+
   trim_primers(fnFs.filtN, fnRs.filtN, fnFs.cut_mid, fnRs.cut_mid)
-  
+
   # Since not all primer counts are zero yet, remove all other orientations of primers
-  
+
   fnFs.cut <- file.path(PATH_CUT, sub("mid_cutadapt_", "", basename(fnFs.cut_mid)))
   fnRs.cut <- file.path(PATH_CUT, sub("mid_cutadapt_", "", basename(fnRs.cut_mid)))
-  
+
   trim_primers(fnFs.cut_mid, fnRs.cut_mid, fnFs.cut, fnRs.cut)
-  
+
   # Remove intermediary files associated with first step of cutadapt
   file.remove(list.files(path=PATH_CUT, pattern = "mid_cutadapt_", full.names=TRUE))
-  
+
   # Keep only the filenames for the samples with reads remaining:
   cutFs <- fnFs.cut[file.exists(fnFs.cut)]
   cutRs <- fnRs.cut[file.exists(fnRs.cut)]
-  
+
   # Extract sample names, assuming filenames have correct format:
   sample.names <- unname(sapply(cutFs, get.sample.name))
   if(VERBOSE) head(sample.names)
-  
+
   # Inspect read quality profiles of forward reads #1-2
   if(VERBOSE) plotQualityProfile(cutFs[1:2])
-  
+
   # Inspect read quality profiles of reverse reads #1-2
   if(VERBOSE) plotQualityProfile(cutRs[1:2])
-  
+
   # Filter and trim
-  
-  # Assigning the filenames for the output of the filtered reads 
+
+  # Assigning the filenames for the output of the filtered reads
   # to be stored as fastq.gz files.
   filtFs <- file.path(PATH_FILTERED, basename(cutFs))
   filtRs <- file.path(PATH_FILTERED, basename(cutRs))
-  
+
   # system.time({ # 26.2 s on runB69PP
-  out <- filterAndTrim(cutFs, filtFs, cutRs, filtRs, maxN = 0, maxEE = c(MAX_EE_FWD, MAX_EE_REV), 
+  out <- filterAndTrim(cutFs, filtFs, cutRs, filtRs, maxN = 0, maxEE = c(MAX_EE_FWD, MAX_EE_REV),
                        truncQ = TRUNC_Q, minLen = MIN_LEN, compress = TRUE, multithread = MULTITHREAD)  # on windows, set multithread = FALSE
   # })
   message(paste0("Finished filterAndTrim in ", runID, " at ", Sys.time()))
 
   if(VERBOSE) head(out)
-  
+
   # Keep only the filenames for the samples with reads remaining:
   filtFs.out <- filtFs[file.exists(filtFs)]
   filtRs.out <- filtRs[file.exists(filtRs)]
-  
+
   # Learn the error rates
   errF <- learnErrors(filtFs.out, multithread=MULTITHREAD, nbases = 1e7, randomize=TRUE)
   errR <- learnErrors(filtRs.out, multithread=MULTITHREAD, nbases = 1e7, randomize=TRUE)
   message(paste0("Finished learning error rates in ", runID, " at ", Sys.time()))
-  
+
   # Visualize estimated error rates
   if(VERBOSE) plotErrors(errF, nominalQ = TRUE)
-  
+
   # Dereplicate identical reads
   derepFs <- derepFastq(filtFs.out)
   derepRs <- derepFastq(filtRs.out)
@@ -214,40 +214,40 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN)
   names(derepFs) <- sample.names
   names(derepRs) <- sample.names
   message(paste0("Finished dereplication in ", runID, " at ", Sys.time()))
-  
+
   # DADA2's core sample inference algorithm
   dadaFs <- dada(derepFs, err = errF, multithread = MULTITHREAD)
   dadaRs <- dada(derepRs, err = errR, multithread = MULTITHREAD)
   message(paste0("Finished DADA2's core sample inference algorithm in ", runID, " at ", Sys.time()))
-  
+
   # Merge pairs
   mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose=TRUE)
   message(paste0("Finished merging pairs in ", runID, " at ", Sys.time()))
   rm(derepFs)
   rm(derepRs)
-  
+
   # Construct sequence table
   seqtab <- makeSequenceTable(mergers)
   if(nrow(seqtab) == 1) rownames(seqtab) <- sample.names # special case if run contains only 1 sample
   if(VERBOSE) dim(seqtab)
-  
+
   # Remove chimeras
   seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=MULTITHREAD, verbose=TRUE)
   message(paste0("Finished removing chimeras in ", runID, " at ", Sys.time()))
-  
+
   # Inspect distribution of sequence lengths
   if(VERBOSE) hist(nchar(getSequences(seqtab.nochim)))
-  
+
   # Takes 1299 s (21.7 min) to get to this point from the start of the for loop for runB69PP, with multithreading
-  
+
   # Track reads through pipeline
   getN <- function(x) sum(getUniques(x))
   rownames(out) <- sub("_R1.fastq", "", rownames(out)) # TODO: This could be made more robust
   if(nrow(seqtab.nochim) > 1) {
-    track <- cbind(out, 
-                   sapply(dadaFs, getN)[rownames(out)], 
-                   sapply(dadaRs, getN)[rownames(out)], 
-                   sapply(mergers, getN)[rownames(out)], 
+    track <- cbind(out,
+                   sapply(dadaFs, getN)[rownames(out)],
+                   sapply(dadaRs, getN)[rownames(out)],
+                   sapply(mergers, getN)[rownames(out)],
                    rowSums(seqtab.nochim)[rownames(out)])
   # If processing a single sample, remove the sapply calls: e.g. replace
   # sapply(dadaFs, getN) with getN(dadaFs)
@@ -258,9 +258,9 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN)
                    getN(mergers),
                    rowSums(seqtab.nochim))
   }
-  colnames(track) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", 
+  colnames(track) <- c("input", "filtered", "denoisedF", "denoisedR", "merged",
                        "nonchim")
-  
+
   # Save the table which tracks the no. of reads remaining at each stage
   # in the DADA2 pipeline
   if(SMALL_SUBSET) {
@@ -269,7 +269,7 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN)
     write.csv(track, file.path(PATH_TRACK, paste0("track_reads_",runID,".csv")))
   }
   message(paste0("Finished tracking reads through pipeline in ", runID, " at ", Sys.time()))
-  
+
   # Save sequence table associated with this sequencing run
   if(SMALL_SUBSET) {
     saveRDS(seqtab.nochim, file.path(PATH_SEQTABS, paste0("NEON_ITS_seqtab_nochim_DL08-13-2019_", runID, "_SMALLSUBSET.Rds")))
@@ -278,7 +278,7 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN)
   }
   message(paste0("Finished saving sequence table of ", runID, " at ", Sys.time()))
   message(paste0("Sequencing run-specific sequence tables can be found in ", PATH_SEQTABS))
-  
+
   # Merge sequence tables
   if(first) {
     seqtab_joined <- seqtab.nochim
@@ -286,7 +286,7 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN)
   } else {
     seqtab_joined <- mergeSequenceTables(seqtab_joined, seqtab.nochim)
   }
-  
+
   message(paste0("Finished processing ", runID, " at ", Sys.time()))
   ti <- c(ti, Sys.time())
 }

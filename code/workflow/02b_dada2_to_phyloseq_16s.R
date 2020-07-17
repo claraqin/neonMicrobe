@@ -41,7 +41,7 @@ sampledata_ind <- match(seqtab_rownames, sampledata_full$internalLabID)
 # sampledata_ind2 <- match(seqtab_rownames, lee_metadata$match_name)
 # mean(is.na(sampledata_ind2)) # 0.262
 # # Yes, let's go with this one instead of seqmetadata
-# 
+#
 # soildata %>%
 #   filter(geneticSampleID != "") -> # %>%
 #   # full_join(select(lee_metadata, match_name, geneticSampleID), by="geneticSampleID") ->
@@ -59,11 +59,11 @@ sampledata %>%
   sampledata_select
 rownames(sampledata_select) <- rownames(seqtab.nochim)
 
-ps <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows=FALSE), 
+ps <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows=FALSE),
                sample_data(sampledata_select),
                tax_table(taxa))
 
-# store the DNA sequences of our ASVs in the refseq slot of the phyloseq object, 
+# store the DNA sequences of our ASVs in the refseq slot of the phyloseq object,
 # and then rename our taxa to a short string
 dna <- Biostrings::DNAStringSet(taxa_names(ps))
 names(dna) <- taxa_names(ps)
