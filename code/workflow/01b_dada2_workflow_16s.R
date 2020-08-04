@@ -1,131 +1,99 @@
-# DADA2 workflow for processing NEON ITS raw sequences
+# DADA2 workflow for processing NEON 16S raw sequences
 # Follows https://benjjneb.github.io/dada2/tutorial.html
 
+t0 <- Sys.time()
+
+# Load parameters from params.R
+source("./code/params.R")
+
+# Load utility functions
+source("./code/utils.R")
+source("./code/utils_16S.r")
+
+# Generate filepath names
+PATH_16S <- file.path(PRESET_OUTDIR_SEQUENCE, "16S")
+PATH_UNZIPPED <- file.path(PATH_16S, "0_unzipped")
+PATH_CUT <- file.path(PATH_16S, "1_trimmed")
+PATH_FILTERED <- file.path(PATH_16S, "2_filtered")
+PATH_SEQTABS <- file.path(PATH_16S, "3_seqtabs")
+PATH_TRACK <- file.path(PATH_16S, "track_reads")
+
+# Load libraries
 library(dada2)
 library(ShortRead)
 library(Biostrings)
 
-path <- "/data/ZHULAB/NEON_DOB/Illumina/NEON/16S"
-list.files(path)
+# Get all run IDs so you can group by them
+unique_runs <- unique(unlist(
+  regmatches(list.files(PATH_UNZIPPED), gregexpr("^run[A-Za-z0-9]*", list.files(PATH_UNZIPPED)))
+))
 
-# Forward and reverse fastq filenames have format: SAMPLENAME_R1_001.fastq and SAMPLENAME_R2_001.fastq
-fnFs <- sort(list.files(path, pattern="_R1.fastq", full.names = TRUE)) # If set to be FALSE, then working directory must contain the files
-fnRs <- sort(list.files(path, pattern="_R2.fastq", full.names = TRUE))
-
-# Remove any forward files that don't have reverse counterparts, and vise versa
-# (filterAndTrim will throw an error if fnFs and fnRs have any mismatches)
-basefilenames_Fs <- sub("_R1.fastq","",basename(fnFs))
-basefilenames_Rs <- sub("_R2.fastq","",basename(fnRs))
-rm_from_fnFs <- basefilenames_Fs[which(!(basefilenames_Fs %in% basefilenames_Rs))]
-rm_from_fnRs <- basefilenames_Rs[which(!(basefilenames_Rs %in% basefilenames_Fs))]
-
-for(name in rm_from_fnFs) {
-  print(paste(name, "does not have a reverse-reads counterpart. Omitting from this analysis."))
-  fnFs <- fnFs[-which(fnFs == paste0(path, "/", name, "_R1.fastq"))]
-}
-for(name in rm_from_fnRs) {
-  print(paste(name, "does not have a forward-reads counterpart. Omitting from this analysis."))
-  fnRs <- fnRs[-which(fnRs == paste0(path, "/", name, "_R2.fastq"))]
+# If SMALL_SUBSET == TRUE, run only the first runID
+if (SMALL_SUBSET) {
+  loop_length <- 1
+} else {
+  loop_length <- length(unique_runs)
 }
 
-sample.names <- sub("_R1.fastq","",basename(fnFs))
+all.seqtabs <- list()
+t1 <- Sys.time()
+ti <- c()
+first <- TRUE
+for (i in 1:loop_length) { 
+  runID <- unique_runs[i]
+  message(paste0("Began processing ", runID, " at ", Sys.time()))
+  
+  # Forward and reverse fastq filenames have format: SAMPLENAME_R1.fastq and SAMPLENAME_R2.fastq
+  fnFs <- sort(list.files(PATH_UNZIPPED, pattern=paste0(runID, ".*_R1.fastq"), full.names = TRUE)) 
+  fnRs <- sort(list.files(PATH_UNZIPPED, pattern=paste0(runID, ".*_R2.fastq"), full.names = TRUE))
+  
 
-# Inspect read quality profiles
-plotQualityProfile(fnFs[1:2])
-plotQualityProfile(fnRs[1:2])
+  # If SMALL_SUBSET == TRUE,
+  # keep only the first two forward-reverse pairs of sequence files
+  if(SMALL_SUBSET){
+    if(length(fnFs > 2)) fnFs <- fnFs[1:2]
+    if(length(fnRs > 2)) fnRs <- fnRs[1:2]
+  }
+  
+  # Remove any files that only have forward or reverse reads
+  remove_unmatched_files(fnFs, fnRs)
+  
+  # Trim reads based on the primer lengths supplied in params.r
+  trim_trackReads <- trimPrimers16S(fnFs, fnRs, PATH_CUT, PRIMER_16S_FWD, PRIMER_16S_REV, MULTITHREAD)
 
-# Filter and trim
+  # Filter reads based on the settings in params.r
+  filter_trackReads <- qualityFilter16S(PATH_CUT, PATH_FILTERED, MULTITHREAD, MAX_EE_FWD, MAX_EE_REV, TRUNC.LENGTHS = c(265, 210))
+  
+  # Now create sequence table for run
+  seqtab.list <- runDada16S(PATH_FILTERED, VERBOSE, MULTITHREAD)
+  
+  # Create output tracking file
+  track <- cbind.data.frame(trim_trackReads, 
+                            filtered = filter_trackReads[,2], 
+                            seqtab.list$track)
+  
+  # Append sequence table to output list
+  all.seqtabs[[runID]] <- seqtab.list$seqtab.nochim
+  
+  # Save tracking table (which tracks no. of reads remaining at each stage) and sequence table
+  if(SMALL_SUBSET) {
+    write.csv(track, file.path(PATH_TRACK, paste0("track_reads_",runID,"_SMALLSUBSET.csv")))
+    saveRDS(seqtab.list$seqtab.nochim, file.path(PATH_SEQTABS, paste0("NEON_16S_seqtab_nochim_", runID, "_SMALLSUBSET.rds")))
+  } else {
+    write.csv(track, file.path(PATH_TRACK, paste0("track_reads_",runID,".csv")))
+    saveRDS(seqtab.list$seqtab.nochim, file.path(PATH_SEQTABS, paste0("NEON_16S_seqtab_nochim_", runID, ".rds")))
+  }
+  message(paste0("Finished tracking reads through pipeline in ", runID, " at ", Sys.time()))
+  message(paste0("Finished saving sequence table of ", runID, " at ", Sys.time()))
+  message(paste0("Sequencing run-specific sequence tables can be found in ", PATH_SEQTABS))
+}
 
-# Place filtered files in filtered/ subdirectory
-filtFs <- file.path(path, "filtered", paste0(sample.names, "_F_filt.fastq.gz"))
-filtRs <- file.path(path, "filtered", paste0(sample.names, "_R_filt.fastq.gz"))
-names(filtFs) <- sample.names
-names(filtRs) <- sample.names
-
-out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(240,160),
-                     maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
-                     compress=TRUE, multithread=TRUE)
-
-# Error in filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen = c(240, 160),  : 
-# These are the errors (up to 5) encountered in individual cores...
-# Error in (function (fn, fout, maxN = c(0, 0), truncQ = c(2, 2), truncLen = c(0,  : 
-# Mismatched forward and reverse sequence files: 49729, 28061.
-# Error in (function (fn, fout, maxN = c(0, 0), truncQ = c(2, 2), truncLen = c(0,  : 
-# Mismatched forward and reverse sequence files: 49729, 28061.
-# Error in (function (fn, fout, maxN = c(0, 0), truncQ = c(2, 2), truncLen = c(0,  : 
-# Mismatched forward and reverse sequence files: 49729, 28061.
-# Error in (function (fn, fout, maxN = c(0, 0), truncQ = c(2, 2), truncLen = c(0,  : 
-# Mismatched forward and reverse sequence files: 49729, 28061.
-# Error in (function (fn, fout, maxN = c(0, 0), truncQ = c(2, 2), truncLen = c(0,  : 
-# Mismatched forward and reverse sequence files: 49729, 28061.
-# In addition: Warning message:
-# In mclapply(seq_len(n), do_one, mc.preschedule = mc.preschedule,  :
-# scheduled cores 22 encountered errors in user code, all values of the jobs will be affected
-
-# "Mismatched forward and reverse sequence files" error occurs many times:
-# I believe this happens whenever at least one file in the forward-reverse pair
-# does not pass the "N" filter.
-
-# 11250 out of 11378 16S fastq files passed
-
-# This part deviates from the tutorial, but since not all fastq files passed
-# the filter, it might make more sense to trim down the filenames for the
-# next step
-filt2_basenames <- list.files(file.path(path,"filtered"), full.names=FALSE)
-filtFs2 <- file.path(path, "filtered", filt2_basenames[grep("_F_filt.fastq", filt2_basenames)])
-filtRs2 <- file.path(path, "filtered", filt2_basenames[grep("_R_filt.fastq", filt2_basenames)])
-
-
-# Learn the error rates
-errF <- learnErrors(filtFs2, multithread=TRUE)
-errR <- learnErrors(filtRs2, multithread=TRUE)
-plotErrors(errF, nominalQ=TRUE)
-
-
-# DADA2's core sample inference algorithm
-dadaFs <- dada(filtFs2, err=errF, multithread=TRUE)
-dadaRs <- dada(filtRs2, err=errR, multithread=TRUE)
-dadaFs[[1]]
-
-
-# Merge pairs
-mergers <- mergePairs(dadaFs, filtFs2, dadaRs, filtRs2, verbose=TRUE)
-head(mergers[[1]])
-
-
-# Construct sequence table
-seqtab <- makeSequenceTable(mergers)
-dim(seqtab)
-
-# Inspect distribution of sequence lengths
-table(nchar(getSequences(seqtab)))
-
-
-# Remove chimeras
-seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
-dim(seqtab.nochim)
-
-# What proportion remains after removal of chimeras?
-sum(seqtab.nochim)/sum(seqtab)
-
-
-# # Track reads through pipeline
-# getN <- function(x) sum(getUniques(x))
-# track <- cbind(out, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim))
-# # If processing a single sample, remove the sapply calls: e.g. replace sapply(dadaFs, getN) with getN(dadaFs)
-# colnames(track) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", "nonchim")
-# rownames(track) <- sample.names
-# head(track)
-
-
+# Merge the sequence tables from all runs
+seqtab_joined <- mergeSequenceTables(tables = all.seqtabs)
 # Assign taxonomy using the Silva reference database
-taxa <- assignTaxonomy(seqtab.nochim, "./raw_data/tax_ref/silva_nr_v132_train_set.fa.gz", multithread=TRUE)
-taxa.print <- taxa # Removing sequence rownames for display only
-rownames(taxa.print) <- NULL
-head(taxa.print)
-
+tax <- assignTaxonomy(seqtab_joined, SILVA_REF_PATH, multithread = MULTITHREAD, verbose = VERBOSE)
 
 # Save OTU table and taxonomic table as RDS files
 # to hand off to dada2_to_phyloseq.R
-saveRDS(seqtab.nochim, "./data/NEON_16S_seqtab_nochim_DL08-13-2019.Rds")
-saveRDS(taxa, "./data/NEON_16S_taxa_DL08-13-2019.Rds")
+saveRDS(seqtab_joined, "./data/NEON_16S_seqtab_nochim.Rds")
+saveRDS(tax, "./data/NEON_16S_tax.Rds")
