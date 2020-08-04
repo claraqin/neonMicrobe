@@ -25,7 +25,7 @@ write_sample_subset_params(
 \item{sequencing_runs}{Vector naming the sequencing runs in the subset.}
 }
 \value{
-No value is returned
+No value is returned.
 }
 \description{
 Write site and date range parameters for subsetting samples. To be called within other functions.
