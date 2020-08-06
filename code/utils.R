@@ -273,7 +273,7 @@ downloadRawSoilData <- function(sites = PRESET_SITES, startYrMo = PRESET_START_Y
            soilSamplingDevice, geneticSampleID, sccDataQF=dataQF) %>%
       full_join(select(dat_soilMoisture, all_of(joining_cols), moistureSampleID, smSamplingProtocolVersion=samplingProtocolVersion, soilMoisture, smDataQF), by=joining_cols) %>%
       full_join(select(dat_soilpH, all_of(joining_cols), pHSampleID, pHSamplingProtocolVersion=samplingProtocolVersion, soilInWaterpH, soilInCaClpH, pHDataQF), by=joining_cols) %>%
-      full_join(select(dat_soilChemistry, all_of(joining_cols), cnSampleID, nitrogenPercent, organicCPercent, CNratio, cnTestMethod=testMethod, cnInstrument=instrument, cnDataQF=dataQF), by=joining_cols) ->
+      full_join(select(dat_soilChemistry, all_of(joining_cols), cnSampleID, analyticalRepNumber, nitrogenPercent, organicCPercent, CNratio, cnTestMethod=testMethod, cnInstrument=instrument, cnDataQF=dataQF), by=joining_cols) ->
       dat_soil
     # TODO: Filter by nTransBoutType to remove incubated samples?
 
