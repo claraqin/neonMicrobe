@@ -1,11 +1,10 @@
 # Utilities for use in other R scripts in NEON/DoB microbial community analysis
 
-library(neonUtilities)
-library(utils)
-library(dplyr)
-
-# Load parameters from params.R
-source("./code/params.R")
+# This version of utils.R began as a copy of ./code/utils.R, and is intended for
+# writing documentation of new functions using Roxygen. It does not include all
+# of the functions in the original ./code/utils.R, like get.sample.name().
+# Those functions are either copied from or closely adapted from the DADA tutorials,
+# so they should be included in the vignettes, but not claimed as a new function.
 
 #' Write sample subsetting parameters
 #'
@@ -22,7 +21,7 @@ source("./code/params.R")
 #' to detect when a data product has already been downloaded, and if so, with what subsetting
 #' parameters.
 #'
-#' @return No value is returned
+#' @return No value is returned.
 #'
 #' @examples
 #' write_sample_subset_params(writeDir="./raw_data/", sites="all", startYrMo="2016-01", endYrMo="2019-01", target_genes="ITS", sequencing_runs=c("B69PP","C25G9"))
@@ -32,17 +31,20 @@ write_sample_subset_params <- function(writeDir, sites, startYrMo, endYrMo,
   write.table(
     data.frame(x1=c("sites", "startYrMo", "endYrMo", "target_genes", "sequencing_runs"),
                x2=c(paste0(sites, collapse=","), startYrMo, endYrMo, paste0(target_genes, collapse=","), paste0(sequencing_runs, collapse=","))),
-    file = paste(writeDir, SAMPLE_SUBSET_PARAMS_FILENAME, sep="/"),
+    file = file.path(writeDir, "sample_subset_params.txt"),
     sep=":", col.names=FALSE, quote=FALSE, row.names=FALSE
   )
 }
-## END FUNCTION
 
-
-## Function issues warning that metadata has already been downloaded, and indicates the sites
-## and date ranges for which it was downloaded. To be called within other functions.
-# TODO: May want to consider an "Overwrite? (y/n)" option instead of requiring
-#       user to manually overwrite if they want to redownload.
+#' Warn That Metadata Is Already Downloaded
+#'
+#' Issue a warning that metadata has already been downloaded, and indicates the sites and date
+#' ranges for which it was downloaded. To be called within other functions.
+#'
+#' @param PRNUM NEON data product ID, e.g. "10108".
+#' @param outdir Directory where data product has been downloaded (not the stacked folder within it).
+#'
+#' @return No value is returned.
 warn_already_downloaded <- function(PRNUM, outdir) {
   stackDir <- paste(outdir, paste0("filesToStack",PRNUM), sep="/")
   print(paste0("Warning: Data product ", PRNUM,
@@ -59,17 +61,31 @@ warn_already_downloaded <- function(PRNUM, outdir) {
                  "  sequencing_runs:", site_and_date_range[5,2]))
   }
 }
-## END FUNCTION
 
 
-## Function downloads the metadata for NEON marker gene sequencing data products
-#
-# Metadata is just one table withing DP1.10108 ("Soil microbe marker gene sequences")
-# called "mmg_soilRawDataFiles.csv"
+#' Download NEON Marker Gene Sequencing Metadata
+#'
+#' Downloads NEON data product DP1.10108 ("Soil microbe marker gene sequences"),
+#' which contains information on how to access raw sequence data. This function
+#' uses the neonUtilities package to conduct the downloads.
+#'
+#' @param sites Either the string 'all', meaning all available sites, or a character vector of 4-letter NEON site codes, e.g. c('ONAQ','RMNP'). Defaults to PRESET_SITES parameter in params.R.
+#' @param startYrMo,endYrMo Either NA, meaning all available dates, or a character vector in the form YYYY-MM, e.g. 2017-01. Defaults to PRESET_START_YR_MO in params.R.
+#' @param outdir Location where output files are saved. Defaults to PRESET_OUTDIR_SEQMETA in params.R.
+#' @param checkFileSize TRUE or FALSE. Whether the user should be told the total file size before downloading. Defaults to PRESET_CHECK_FILE_SIZE in params.R.
+#' @param return_data Whether to return part of the metadata: the table NEON table "mmg_soilRawDataFiles.csv" within NEON data product DP1.10108. If FALSE, simply downloads data to outdir and returns no value. Defaults to PRESET_RETURN_DATA.
+#' @param target_genes 'ITS', '16S', or 'all'. Defaults to TARGET_GENE in params.R.
+#' @param sequencing_runs Either the string 'all', meaning all available sequencing runs, or a character vector of NEON sequencing run IDs, e.g. c('C25G9', 'B69PP'). Defaults to SEQUENCING_RUNS parameter in params.R.
+#' @param overwrite TRUE or FALSE. If there is a previous download of this metadata in outdir, whether to overwrite that download.
+#'
+#' @return If return_data==TRUE, returns the mmg_soilRawDataFiles table from NEON.DP1.10108 ("Soil microbe marker gene sequences"). Otherwise, no value is returned.
 downloadSequenceMetadata <- function(sites = PRESET_SITES, startYrMo = PRESET_START_YR_MO, endYrMo = PRESET_END_YR_MO,
                                      outdir = PRESET_OUTDIR_SEQMETA, checkFileSize = PRESET_CHECK_FILE_SIZE, return_data = PRESET_RETURN_DATA,
                                      target_genes = TARGET_GENE, sequencing_runs = SEQUENCING_RUNS,
                                      overwrite = FALSE) {
+
+  library(neonUtilities)
+
   PRNUM <- "10108"
   dpID <- paste("DP1", PRNUM, "001", sep=".")
   stackDir <- file.path(outdir, paste0("filesToStack",PRNUM))
@@ -114,24 +130,40 @@ downloadSequenceMetadata <- function(sites = PRESET_SITES, startYrMo = PRESET_ST
     return(dat)
   }
 }
-## END FUNCTION ##
 
 
-## Function downloads the metadata for NEON marker gene sequencing data products
-## AND downloads the NEON raw sequence data files
+#' Download NEON Marker Gene Sequencing Raw Data
+#'
+#' Downloads NEON raw sequence data files to the specified filepath, by referencing
+#' URLs in the NEON table "mmg_soilRawDataFiles.csv" within data product DP1.10108
+#' ("Soil microbe marker gene sequences"). If the latter has not been downloaded,
+#' calls downloadSequenceMetadata().
+#'
+#' @param sites Either the string 'all', meaning all available sites, or a character vector of 4-letter NEON site codes, e.g. c('ONAQ','RMNP'). Defaults to PRESET_SITES parameter in params.R.
+#' @param startYrMo,endYrMo Either NA, meaning all available dates, or a character vector in the form YYYY-MM, e.g. 2017-01. Defaults to PRESET_START_YR_MO in params.R.
+#' @param outdir Location where output files are saved. Defaults to PRESET_OUTDIR_SEQMETA in params.R.
+#' @param checkFileSize TRUE or FALSE. Whether the user should be told the total file size before downloading. Defaults to PRESET_CHECK_FILE_SIZE in params.R.
+#' @param return_data Whether to return metadata. If FALSE, simply downloads data to outdir and returns no value. Defaults to PRESET_RETURN_DATA.
+#' @param target_genes 'ITS', '16S', or 'all'. Defaults to TARGET_GENE in params.R.
+#' @param sequencing_runs Either the string 'all', meaning all available sequencing runs, or a character vector of NEON sequencing run IDs, e.g. c('C25G9', 'B69PP'). Defaults to SEQUENCING_RUNS parameter in params.R.
+#' @param overwrite TRUE or FALSE. If there is a previous download of sequence metadata in outdir, whether to overwrite that download.
+#'
+#' @return If return_data==TRUE, returns the mmg_soilRawDataFiles table from NEON.DP1.10108 ("Soil microbe marker gene sequences"). Otherwise, no value is returned.
 downloadRawSequenceData <- function(sites = PRESET_SITES, startYrMo = PRESET_START_YR_MO, endYrMo = PRESET_END_YR_MO,
                                     outdir = PRESET_OUTDIR_SEQUENCE, checkFileSize = PRESET_CHECK_FILE_SIZE, return_data = PRESET_RETURN_DATA,
                                     target_genes = TARGET_GENE, sequencing_runs = SEQUENCING_RUNS,
                                     overwrite = FALSE) {
 
+  library(utils)
+  library(dplyr)
+
   metadata <- downloadSequenceMetadata(sites, startYrMo, endYrMo, checkFileSize=FALSE, return_data=TRUE,
                                        overwrite=overwrite)
-
 
   # If necessary, subset to download specific sequencing runs
   if(length(sequencing_runs) > 1) {
     if(!any(sequencing_runs=="all")) {
-      metadata <- filter(metadata, sequencerRunID %in% sequencing_runs)
+      metadata <- dplyr::filter(metadata, sequencerRunID %in% sequencing_runs)
     }
   }
 
@@ -171,21 +203,32 @@ downloadRawSequenceData <- function(sites = PRESET_SITES, startYrMo = PRESET_STA
     return(metadata)
   }
 }
-## END FUNCTION ##
 
 
-## Function downloads NEON soil data to be associated with soil microbial
-## community composition data
-#
-# Data product are
-# - DP1.10078: "Soil chemical properties (Distributed periodic)"
-# - DP1.10086: "Soil physical properties (Distributed periodic)"
+#' Download NEON Soil Data Associated with Marker Gene Sequencing Data
+#'
+#' Downloads the following data products to the specified filepath:
+#' (1) DP1.10078: "Soil chemical properties (Distributed periodic)";
+#' (2) DP1.10086: "Soil physical properties (Distributed periodic)".
+#' This function uses the neonUtilities package to conduct the downloads.
+#'
+#' @param sites Either the string 'all', meaning all available sites, or a character vector of 4-letter NEON site codes, e.g. c('ONAQ','RMNP'). Defaults to PRESET_SITES parameter in params.R.
+#' @param startYrMo,endYrMo Either NA, meaning all available dates, or a character vector in the form YYYY-MM, e.g. 2017-01. Defaults to PRESET_START_YR_MO in params.R.
+#' @param outdir Location where output files are saved. Defaults to PRESET_OUTDIR_SEQMETA in params.R.
+#' @param checkFileSize TRUE or FALSE. Whether the user should be told the total file size before downloading. Defaults to PRESET_CHECK_FILE_SIZE in params.R.
+#' @param return_data Whether to return metadata. If FALSE, simply downloads data to outdir and returns no value. Defaults to PRESET_RETURN_DATA.
+#' @param overwrite TRUE or FALSE. If there is a previous download of this metadata in outdir, whether to overwrite that download.
+#'
+#' @return If return_data==TRUE, returns a dataframe consisting of joined soil data records from DP1.10078 ("Soil chemical properties (Distributed periodic)") and DP1.10086 ("Soil physical properties (Distributed periodic)"). Otherwise, no value is returned.
 downloadRawSoilData <- function(sites = PRESET_SITES, startYrMo = PRESET_START_YR_MO, endYrMo = PRESET_END_YR_MO,
                                 outdir = PRESET_OUTDIR_SOIL, checkFileSize = PRESET_CHECK_FILE_SIZE, return_data = PRESET_RETURN_DATA,
                                 overwrite = FALSE) {
   # TODO: Why does this function sometimes return a few warnings of the form:
   # 1: In UseMethod("depth") :
   # no applicable method for 'depth' applied to an object of class "NULL"
+
+  library(dplyr)
+  library(neonUtilities)
 
   PRNUM_chem <- "10078"
   PRNUM_phys <- "10086"
@@ -280,94 +323,12 @@ downloadRawSoilData <- function(sites = PRESET_SITES, startYrMo = PRESET_START_Y
     return(dat_soil)
   }
 }
-## END FUNCTION ##
-
-
-## Function downloads ALL NEON soil data, using preset parameters
-#
-# Wrapper for downloadRawSoilData,
-# parameterized for socs-stats.ucsc.edu server,
-# and will pull data up to current month.
-downloadAllRawSoilData <- function() {
-  return(downloadRawSoilData(PRESET_SITES, PRESET_START_YR_MO, PRESET_END_YR_MO,
-                             PRESET_OUTDIR_SOIL, PRESET_CHECK_FILE_SIZE, PRESET_RETURN_DATA))
-}
-## END FUNCTION ##
-
-
-## Function to get all orients of primers for DADA2 workflow
-## (From DADA2 ITS Pipeline Workflow 1.8 Tutorial)
-allOrients <- function(primer) {
-  # Create all orientations of the input sequence
-  require(Biostrings)
-  dna <- DNAString(primer)  # The Biostrings works w/ DNAString objects rather than character vectors
-  orients <- c(Forward = dna, Complement = complement(dna), Reverse = reverse(dna),
-               RevComp = reverseComplement(dna))
-  return(sapply(orients, toString))  # Convert back to character vector
-}
-## END FUNCTION ##
-
-## Function to count the number of reads in which a primer is found
-## (From DADA2 ITS Pipeline Workflow 1.8 Tutorial)
-primerHits <- function(primer, fn) {
-  nhits <- vcountPattern(primer, sread(readFastq(fn)), fixed = FALSE, max.mismatch = 2)
-  return(sum(nhits > 0))
-}
-## END FUNCTION ##
-
-## Function to count all primer orientations in a fastq file
-## (From DADA2 ITS Pipeline Workflow 1.8 Tutorial)
-## fn_r1: full filename of R1 read
-## fn_r2: full filename of R2 read (complementary to R1; optional arg)
-## primer_fwd: forward primer sequence
-## primer_rev: reverse primer sequence
-count_primer_orients <- function(fn_r1, fn_r2=NULL, primer_fwd, primer_rev) {
-  fwd_orients <- allOrients(primer_fwd)
-  rev_orients <- allOrients(primer_rev)
-  if(is.null(fn_r2)) {
-    rbind(FWDPrimer.R1.reads = sapply(fwd_orients, primerHits, fn = fn_r1),
-          REVPrimer.R1.reads = sapply(fwd_orients, primerHits, fn = fn_r1))
-  } else {
-    rbind(FWDPrimer.R1.reads = sapply(fwd_orients, primerHits, fn = fn_r1),
-          FWDPrimer.R2.reads = sapply(fwd_orients, primerHits, fn = fn_r2),
-          REVPrimer.R1.reads = sapply(rev_orients, primerHits, fn = fn_r1),
-          REVPrimer.R2.reads = sapply(rev_orients, primerHits, fn = fn_r2))
-  }
-}
-## END FUNCTION ##
-
-## Function to get sample names from list of file names, assuming sample name
-## is the four underscore-separated pieces of the file name.
-## Adapted from DADA2 ITS Tutorial (1.8)
-get.sample.name <- function(fname) {
-  paste(strsplit(basename(fname), "_")[[1]][1:4], collapse="_") # TODO: this could be made more robust
-}
-## END FUNCTION ##
-
-# ## Function to get all unique filenames of samples with at least some
-# ## reads remaining after the DADA2 pipeline.
-# ## dir: Filenames from this directory should be listed
-# ## trim_to_internal_lab_id: Whether to trim filenames to match format of
-# ##      "internalLabID" in the mmg_soilRawDataFiles table
-# get_fastq_names <- function(dir, trim_to_internal_lab_id=FALSE) {
-#   f <- list.files(path = dir, pattern = ".fastq", full.names = TRUE)
-#   if(trim_to_internal_lab_id) {
-#     f <- basename(f)
-#     f <- sub("^run[A-Za-z0-9]*_", "", f)
-#     f <- sub("_((ITS)|(16S))_R[12].fastq(.tar)?(.gz)?(.tar)?", "", f)
-#     return(f)
-#   } else {
-#     return(f)
-#   }
-# }
-# ## END FUNCTION
-
 
 
 # NEXT FUNCTION CREATED BY LEE F STANISH. TESTING USE ONLY FOR NOW #
 #### FUNCTION downloadSequenceMetadataRev ####
-downloadSequenceMetadataRev <- function(sites='all', startYrMo, endYrMo,
-                                        targetGene= "", dpID = "DP1.10108.001", dir="") {
+downloadSequenceMetadataRev <- function(sites='all', startYrMo, endYrMo, targetGene= "",
+                                        sequencingRuns = "", dpID = "DP1.10108.001", dir="") {
   # author: Lee Stanish
   # date: 2020-06-16
   # function loads soil marker gene sequencing metadata for target gene, site(s) and date(s)
@@ -386,7 +347,7 @@ downloadSequenceMetadataRev <- function(sites='all', startYrMo, endYrMo,
   # check valid data values entered
   ## validate dpID ##
   if(!grepl("DP1", dpID) | !grepl('\\.001', dpID) | !grepl('10108|20280|20282', dpID)) {
-    print("Invalid Data Product ID: must follow convention 'DP1.[5-digit value].001' and must be a marker genes data product ID")
+    message("Invalid Data Product ID: must follow convention 'DP1.[5-digit value].001' and must be a marker genes data product ID")
     return(NULL)
   } else {
     dpID <- dpID
@@ -394,37 +355,46 @@ downloadSequenceMetadataRev <- function(sites='all', startYrMo, endYrMo,
 
   # validate target gene
   if(!grepl("16S|ITS", targetGene)) {
-    print("Invalid targetGene: must be either '16S' or 'ITS'")
+    message("Invalid targetGene: must be either '16S' or 'ITS'")
     return(NULL)
   } else {
     targetGene <- targetGene
   }
+
+  # How can we validate sequencing runs? Some match the 5-character format, while others are like "150925_M02149_0250_000000000-AHCGJ"
+  # # validate sequencing runs
+  # if(!any(grepl("[A-Z0-9]{5}|^all$", sequencingRuns))) {
+  #   message("Invalid sequencingRuns: must be 'all' or follow convention of 5-character run IDs, e.g. 'C25G9'.")
+  #   return(NULL)
+  # } else {
+  #   sequencingRuns <- sequencingRuns
+  # }
 
   # validate site(s)
   terrSiteList <- c("all","HARV","SCBI","OSBS","GUAN","UNDE","KONZ","ORNL","TALL","WOOD","CPER","CLBJ","YELL","NIWO",
                     "SRER","ONAQ","WREF","SJER","TOOL","BONA","PUUM","BART","BLAN","SERC","SCBI","DSNY","JERC","LAJA",
                     "TREE","STEI","KONA","UKFS","MLBS","GRSM","LENO","DELA","NOGP","DCFS","STER","RMNP","OAES","MOAB",
                     "JORN","ABBY","TEAK","SOAP","BARR","DEJU","HEAL")
-  if(any(sites %in% terrSiteList)==FALSE){
-    print("Invalid site(s): must be a valid NEON site or 'all'")
+  if(!any(sites %in% terrSiteList)){
+    message("Invalid site(s): must be a valid NEON site or 'all'")
     return(NULL)
   } else {
     sites <- sites
   }
 
-  print("loading metadata...")
+  message("loading metadata...")
   mmgL1 <- loadByProduct(dpID, sites, package = 'expanded', check.size = F, startdate = startYrMo, enddate = endYrMo) # output is a list of each metadata file
 
 
   # for target data product and targetGene: extract lists into data.frames
   if(grepl("10108", dpID)) {
     if(targetGene=="16S") {
-      print("filtering to 16S data")
+      message("filtering to 16S data")
       seq <- mmgL1$mmg_soilMarkerGeneSequencing_16S
       raw <- mmgL1$mmg_soilRawDataFiles
 
     } else {
-      print("filtering to ITS data")
+      message("filtering to ITS data")
       seq <- mmgL1$mmg_soilMarkerGeneSequencing_ITS
       raw <- mmgL1$mmg_soilRawDataFiles
     }
@@ -432,11 +402,11 @@ downloadSequenceMetadataRev <- function(sites='all', startYrMo, endYrMo,
 
   if(grepl("20280", dpID)) {
     if(targetGene=="16S") {
-      print("filtering to 16S data")
+      message("filtering to 16S data")
       seq <- mmgL1$mmg_benthicMarkerGeneSequencing_16S
       raw <- mmgL1$mmg_benthicRawDataFiles
     } else {
-      print("filtering to ITS data")
+      message("filtering to ITS data")
       seq <- mmgL1$mmg_benthicMarkerGeneSequencing_ITS
       raw <- mmgL1$mmg_benthicRawDataFiles
     }
@@ -444,11 +414,11 @@ downloadSequenceMetadataRev <- function(sites='all', startYrMo, endYrMo,
 
   if(grepl("20282", dpID)) {
     if(targetGene=="16S") {
-      print("filtering to 16S data")
+      message("filtering to 16S data")
       seq <- mmgL1$mmg_swMarkerGeneSequencing_16S
       raw <- mmgL1$mmg_swRawDataFiles
     } else {
-      print("filtering to ITS data")
+      message("filtering to ITS data")
       seq <- mmgL1$mmg_swMarkerGeneSequencing_ITS
       raw <- mmgL1$mmg_swRawDataFiles
     }
@@ -460,6 +430,14 @@ downloadSequenceMetadataRev <- function(sites='all', startYrMo, endYrMo,
   j <- sapply(raw, is.factor)
   raw[j] <- lapply(raw[j], as.character)
 
+  # If specified, filter by sequencing run ID
+  if(sequencingRuns!="") {
+    if(!("all" %in% sequencingRuns)) {
+      if(any(!(raw$sequencerRunID %in% sequencingRuns))) {
+        raw <- raw[-which(!(raw$sequencerRunID %in% sequencingRuns)), ]
+      }
+    }
+  }
 
   # Join sequencing metadata with raw data files metadata
   if(targetGene=="16S") {
@@ -493,3 +471,6 @@ downloadSequenceMetadataRev <- function(sites='all', startYrMo, endYrMo,
 
   ### END FUNCTION ###
 }
+
+
+meta <- downloadSequenceMetadataRev(sites="TALL", startYrMo="2014-01", endYrMo="2015-01", targetGene="ITS", dir="/data/ZHULAB/NEON_DOB/sequence_metadata")

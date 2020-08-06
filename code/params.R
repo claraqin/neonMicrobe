@@ -19,11 +19,11 @@ PRESET_RETURN_DATA = TRUE
 
 
 # Parameters for output directories and filenames
-PRESET_OUTDIR_SEQUENCE = "data/NEON_DOB/Illumina/NEON" # for sequence data (fastq files)
-PRESET_OUTDIR_SEQMETA = "data/NEON_DOB/sequence_metadata" # for sequence metadata
-PRESET_OUTDIR_SOIL = "data/NEON_DOB/soil" # for soil data
-PRESET_OUTDIR_SOIL_DB = "data/NEON_DOB" # Database containing both seqmeta and soil data
-PRESET_OUTDIR_DADA2 = "data/" # for phyloseq outputs
+PRESET_OUTDIR_SEQUENCE = "/data/ZHULAB/NEON_DOB/vignette/Illumina" # for sequence data (fastq files)
+PRESET_OUTDIR_SEQMETA = "/data/ZHULAB/NEON_DOB/vignette/sequence_metadata" # for sequence metadata
+PRESET_OUTDIR_SOIL = "/data/ZHULAB/NEON_DOB/vignette/soil" # for soil data
+PRESET_OUTDIR_SOIL_DB = "/data/ZHULAB/NEON_DOB/vignette" # Database containing both seqmeta and soil data
+PRESET_OUTDIR_DADA2 = "/raid/users/claraqin/zhulab/NEON_soil_microbe_processing/data" # for phyloseq outputs
 PRESET_FILENAME_JOINED_SEQTAB = "NEON_ITS_seqtab_nochim_DL08-13-2019_truncQ4_maxEE8.Rds"
 PRESET_FILENAME_TAXTAB = "NEON_ITS_taxa_DL08-13-2019_truncQ4_maxEE8.Rds"
 
@@ -45,7 +45,7 @@ SILVA_REF_PATH = "/projectnb/talbot-lab-data/zrwerbin/decomposition/silva_traini
 # Whether to download and process only a small subset
 SMALL_SUBSET = TRUE # If TRUE, all fastq.gz.tar files matching these parameters will still be downloaded,
 # and all fastq files within them will be unzipped, but only the first 2 forward-reverse
-# pairs of sequence files from the first sequencing run ID will be processed in 
+# pairs of sequence files from the first sequencing run ID will be processed in
 # dada2_workflow.R and in following scripts.
 
 # Whether to generate additional output in dada2_workflow_its.R
