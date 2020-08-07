@@ -1,6 +1,9 @@
 # Create relational database using SQLite for the soil-related data
 # in "./raw_data/sequence_metadata" and "./raw_data/soil"
 library(geoNEON)
+source("./code/utils.R")
+source("./code/params.R")
+#source("./code/zoey_params.R")
 
 # Download NEON's soil data and sequence metadata
 # Takes ~5 minutes to run if not previously downloaded
@@ -8,13 +11,35 @@ dat_soil <- downloadRawSoilData(sites = 'all', startYrMo = "2013-06", endYrMo = 
 
 # Takes ~4 minutes to run if not previously downloaded
 # TO-DO: The output of downloadSequenceMetadataRev() includes download date - which makes it harder to read in flexibly 
-path_seqMeta <- file.path(PRESET_OUTDIR_SEQMETA, "mmg_soilMetadata_ITS_2020-08-06.csv")
-if (file.exists(path_seqMeta)){
-  dat_sequenceMetadata <- read.csv(path_seqMeta, stringsAsFactors=FALSE, na.strings = c("NA", ""))
-  } else {
-  dat_sequenceMetadata <- downloadSequenceMetadataRev(sites = 'all', startYrMo = "2013-06", endYrMo = "2020-07", 
+path_seqMeta_ITS <- file.path(PRESET_OUTDIR_SEQMETA, "mmg_soilMetadata_ITS_2020-08-06.csv")
+path_seqMeta_16S <- file.path(PRESET_OUTDIR_SEQMETA, "mmg_soilMetadata_16S_2020-08-06.csv")
+
+# TO-DO: should downloadSequenceMetadataRev() check for previous downloads?
+if (file.exists(path_seqMeta_ITS)){
+  dat_sequenceMetadata_ITS <- read.csv(path_seqMeta_ITS, stringsAsFactors=FALSE, na.strings = c("NA", ""))
+} else {
+  dat_sequenceMetadata_ITS <- downloadSequenceMetadataRev(sites = 'all', startYrMo = "2013-06", endYrMo = "2020-07", 
                                                     targetGene = "ITS", dir = PRESET_OUTDIR_SEQMETA)
 }
+
+if (file.exists(path_seqMeta_16S)){
+  dat_sequenceMetadata_16S <- read.csv(path_seqMeta_16S, stringsAsFactors=FALSE, na.strings = c("NA", ""))
+} else {
+  dat_sequenceMetadata_16S <- downloadSequenceMetadataRev(sites = 'all', startYrMo = "2013-06", endYrMo = "2020-07", 
+                                                          targetGene = "16S", dir = PRESET_OUTDIR_SEQMETA)
+}
+  
+
+# Combine 16S and ITS sequence metadata
+dat_sequenceMetadata <- rbind(dat_sequenceMetadata_ITS, dat_sequenceMetadata_16S)
+dat_sequenceMetadata <- dat_sequenceMetadata[!duplicated(dat_sequenceMetadata),]
+# Select a subset of cols from sequence metadata
+dat_sequenceMetadata <- select(
+  dat_sequenceMetadata, domainID = domainID.x, siteID = siteID.x, plotID, dnaSampleID, 
+  rawDataFileName, rawDataFilePath, internalLabID,
+  extractionDataQF=dataQF.x, rawDataQF=dataQF.y, internalLabID
+)
+dat_sequenceMetadata$geneticSampleID <- gsub("-DNA.$", "", dat_sequenceMetadata$dnaSampleID)
 
 # remove analytical replicates
 dat_soil <- dat_soil[which(!dat_soil$analyticalRepNumber %in% c(2:4)),]
@@ -38,14 +63,6 @@ dat_soil <- rbind(dat_soil, c_n_merged)
 # Add geolocation data to soilCoreCollection
 dat_soil <- getLocTOS(dat_soil, "sls_soilCoreCollection")
 
-# Select a subset of cols from sequence metadata
-dat_sequenceMetadata <- select(
-  dat_sequenceMetadata, domainID = domainID.x, siteID = siteID.x, plotID, dnaSampleID, 
-  rawDataFileName, rawDataFilePath, internalLabID,
-  extractionDataQF=dataQF.x, rawDataQF=dataQF.y
-)
-dat_sequenceMetadata$geneticSampleID <- gsub("-DNA.$", "", dat_sequenceMetadata$dnaSampleID)
-
 # Merge: only keeping soil data if there is accompanying sequence data (won't work for legacy sequence data)
 common_cols <- intersect(colnames(dat_sequenceMetadata), colnames(dat_soil))
 out <- merge(dat_sequenceMetadata, dat_soil, all.x = T, by = common_cols) 
@@ -53,7 +70,7 @@ out <- merge(dat_sequenceMetadata, dat_soil, all.x = T, by = common_cols)
 
 # Remove duplicates and select output columns 
 out <- out[!duplicated(out),]
-out <- out %>% select(domainID, siteID, plotID, namedLocation, plotType, nlcdClass, adjDecimalLatitude, adjDecimalLongitude, 
+out <- out %>% select(domainID, siteID, internalLabID, plotID, namedLocation, plotType, nlcdClass, adjDecimalLatitude, adjDecimalLongitude, 
   adjElevation, collectDate, sampleTiming, standingWaterDepth, sampleID, horizon, soilTemp, 
   litterDepth, sampleTopDepth, sampleBottomDepth, geneticSampleID,nitrogenPercent, organicCPercent, CNratio, CNvals_merged, soilInWaterpH, soilInCaClpH
 )
