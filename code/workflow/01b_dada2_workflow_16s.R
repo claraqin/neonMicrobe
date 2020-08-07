@@ -7,8 +7,9 @@ t0 <- Sys.time()
 source("./code/params.R")
 
 # Load utility functions
-source("./code/utils.R")
-source("./code/utils_16S.r")
+# source("./code/utils.R")
+# source("./code/utils_16S.r")
+source("./R/utils.R")
 
 # Generate filepath names
 PATH_16S <- file.path(PRESET_OUTDIR_SEQUENCE, "16S")
@@ -39,14 +40,14 @@ all.seqtabs <- list()
 t1 <- Sys.time()
 ti <- c()
 first <- TRUE
-for (i in 1:loop_length) { 
+for (i in 1:loop_length) {
   runID <- unique_runs[i]
   message(paste0("Began processing ", runID, " at ", Sys.time()))
-  
+
   # Forward and reverse fastq filenames have format: SAMPLENAME_R1.fastq and SAMPLENAME_R2.fastq
-  fnFs <- sort(list.files(PATH_UNZIPPED, pattern=paste0(runID, ".*_R1.fastq"), full.names = TRUE)) 
+  fnFs <- sort(list.files(PATH_UNZIPPED, pattern=paste0(runID, ".*_R1.fastq"), full.names = TRUE))
   fnRs <- sort(list.files(PATH_UNZIPPED, pattern=paste0(runID, ".*_R2.fastq"), full.names = TRUE))
-  
+
 
   # If SMALL_SUBSET == TRUE,
   # keep only the first two forward-reverse pairs of sequence files
@@ -54,27 +55,33 @@ for (i in 1:loop_length) {
     if(length(fnFs > 2)) fnFs <- fnFs[1:2]
     if(length(fnRs > 2)) fnRs <- fnRs[1:2]
   }
-  
+
   # Remove any files that only have forward or reverse reads
-  remove_unmatched_files(fnFs, fnRs)
-  
+  matched_fn <- remove_unmatched_files(fnFs, fnRs)
+  fnFs <- matched_fn[[1]]
+  fnRs <- matched_fn[[2]]
+
   # Trim reads based on the primer lengths supplied in params.r
   trim_trackReads <- trimPrimers16S(fnFs, fnRs, PATH_CUT, PRIMER_16S_FWD, PRIMER_16S_REV, MULTITHREAD)
 
+  # TODO: rather than taking input directory, may be necessary to take input files because
+  #       we might not be interested in analyzing all files in the directory (e.g. those
+  #       preexisting from previous processing batches).
+
   # Filter reads based on the settings in params.r
   filter_trackReads <- qualityFilter16S(PATH_CUT, PATH_FILTERED, MULTITHREAD, MAX_EE_FWD, MAX_EE_REV, TRUNC.LENGTHS = c(265, 210))
-  
+
   # Now create sequence table for run
-  seqtab.list <- runDada16S(PATH_FILTERED, VERBOSE, MULTITHREAD)
-  
+  seqtab.list <- runDada16S(PATH_FILTERED, MULTITHREAD, VERBOSE)
+
   # Create output tracking file
-  track <- cbind.data.frame(trim_trackReads, 
-                            filtered = filter_trackReads[,2], 
+  track <- cbind.data.frame(trim_trackReads,
+                            filtered = filter_trackReads[,2],
                             seqtab.list$track)
-  
+
   # Append sequence table to output list
   all.seqtabs[[runID]] <- seqtab.list$seqtab.nochim
-  
+
   # Save tracking table (which tracks no. of reads remaining at each stage) and sequence table
   if(SMALL_SUBSET) {
     write.csv(track, file.path(PATH_TRACK, paste0("track_reads_",runID,"_SMALLSUBSET.csv")))

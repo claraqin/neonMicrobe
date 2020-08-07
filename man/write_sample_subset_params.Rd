@@ -37,5 +37,7 @@ to detect when a data product has already been downloaded, and if so, with what 
 parameters.
 }
 \examples{
+\dontrun{
 write_sample_subset_params(writeDir="./raw_data/", sites="all", startYrMo="2016-01", endYrMo="2019-01", target_genes="ITS", sequencing_runs=c("B69PP","C25G9"))
+}
 }
