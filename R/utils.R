@@ -319,7 +319,7 @@ downloadRawSoilData <- function(sites = PRESET_SITES, startYrMo = PRESET_START_Y
 #' @param targetGene '16S' or 'ITS'.
 #' @param sequencingRuns Either the string 'all', meaning all available sequencing runs, or a character vector of NEON sequencing run IDs, e.g. c('C25G9', 'B69PP').
 #' @param dpID NEON data product of interest. Default is soil marker gene sequences, and currently code only works for this dpID.
-#' @param dir (Optional) If a local copy of the filtered metadata is desired, provide path to output directory.
+#' @param outDir (Optional) If a local copy of the filtered metadata is desired, provide path to output directory.
 #'
 #' @return Data frame containing joined records from across the NEON soil marker gene sequence metadata, subsetted according to function arguments.
 #' @examples
@@ -327,18 +327,18 @@ downloadRawSoilData <- function(sites = PRESET_SITES, startYrMo = PRESET_START_Y
 #' meta <- downloadSequenceMetadataRev('all', '2015-01', '2016-01', '16S') # metadata is not saved to local directory
 #' meta <- downloadSequenceMetadataRev('all', '2015-01', '2016-01', '16S', dir='./data/') # metadata is saved to local directory
 #' }
-downloadSequenceMetadataRev <- function(sites='all', startYrMo, endYrMo, targetGene= "",
-                                        sequencingRuns = "", dpID = "DP1.10108.001", dir="") {
+downloadSequenceMetadataRev <- function(sites='all', startYrMo, endYrMo, targetGene= "all",
+                                        sequencingRuns = "", dpID = "DP1.10108.001", outDir="") {
   # author: Lee Stanish
-  # date: 2020-06-16
+  # date: 2020-08-13
   # function loads soil marker gene sequencing metadata for target gene, site(s) and date(s)
   # option to download output by providing a valid output directory
   # sites: character vector of valid site ID's, or 'all' for all sites
-  # targetGene: '16S' or 'ITS'
+  # targetGene: '16S',  'ITS', 'all'
   # startYrMo: start date, format YYYY-MM
   # endYrMo: end date, format YYYY-MM
   # dpID: NEON data product of interest. Default is soil marker gene sequences, and currently code only works for this dpID
-  # dir (optional): If a local copy of the filtered metadata is desired, provide path to output dir
+  # outDir (optional): If a local copy of the filtered metadata is desired, provide path to output dir
 
   library(neonUtilities)
   library(plyr)
@@ -346,16 +346,17 @@ downloadSequenceMetadataRev <- function(sites='all', startYrMo, endYrMo, targetG
 
   # check valid data values entered
   ## validate dpID ##
+  ## validate dpID ##
   if(!grepl("DP1", dpID) | !grepl('\\.001', dpID) | !grepl('10108|20280|20282', dpID)) {
     message("Invalid Data Product ID: must follow convention 'DP1.[5-digit value].001' and must be a marker genes data product ID")
     return(NULL)
   } else {
     dpID <- dpID
   }
-
+  
   # validate target gene
-  if(!grepl("16S|ITS", targetGene)) {
-    message("Invalid targetGene: must be either '16S' or 'ITS'")
+  if(!grepl("16S|ITS|all", targetGene)) {
+    message("Invalid targetGene: must be either '16S', 'ITS', 'all' ")
     return(NULL)
   } else {
     targetGene <- targetGene
@@ -379,60 +380,92 @@ downloadSequenceMetadataRev <- function(sites='all', startYrMo, endYrMo, targetG
 
   # for target data product and targetGene: extract lists into data.frames
   if(grepl("10108", dpID)) {
+    seq16S <- mmgL1$mmg_soilMarkerGeneSequencing_16S
+    seqITS <- mmgL1$mmg_soilMarkerGeneSequencing_ITS
+    raw <- mmgL1$mmg_soilRawDataFiles
+    dna <- mmgL1$mmg_soilDnaExtraction
+    seq <- rbind(seq16S, seqITS)
+    
     if(targetGene=="16S") {
       message("filtering to 16S data")
-      seq <- mmgL1$mmg_soilMarkerGeneSequencing_16S
-      raw <- mmgL1$mmg_soilRawDataFiles
-
-    } else {
+      seq <- seq16S
+    } 
+    if(targetGene=="ITS") {
       message("filtering to ITS data")
-      seq <- mmgL1$mmg_soilMarkerGeneSequencing_ITS
+      seq <- seqITS
       raw <- mmgL1$mmg_soilRawDataFiles
     }
   }
-
+  
   if(grepl("20280", dpID)) {
+    seq16S <- mmgL1$mmg_benthicMarkerGeneSequencing_16S
+    seqITS <- mmgL1$mmg_benthicMarkerGeneSequencing_ITS
+    raw <- mmgL1$mmg_benthicRawDataFiles
+    dna <- mmgL1$mmg_benthicDnaExtraction	
+    seq <- rbind(seq16S, seqITS)
+    
     if(targetGene=="16S") {
       message("filtering to 16S data")
-      seq <- mmgL1$mmg_benthicMarkerGeneSequencing_16S
-      raw <- mmgL1$mmg_benthicRawDataFiles
-    } else {
+      seq <- seq16S
+    } 
+    if(targetGene=="ITS") {
       message("filtering to ITS data")
-      seq <- mmgL1$mmg_benthicMarkerGeneSequencing_ITS
-      raw <- mmgL1$mmg_benthicRawDataFiles
+      seq <- seqITS
     }
   }
-
+  
   if(grepl("20282", dpID)) {
+    seq16S <- mmgL1$mmg_swMarkerGeneSequencing_16S
+    seqITS <- mmgL1$mmg_swMarkerGeneSequencing_ITS
+    raw <- mmgL1$mmg_swRawDataFiles
+    seq <- rbind(seq16S, seqITS)
+    dna <- mmgL1$mmg_swDnaExtraction	
+    
     if(targetGene=="16S") {
       message("filtering to 16S data")
-      seq <- mmgL1$mmg_swMarkerGeneSequencing_16S
-      raw <- mmgL1$mmg_swRawDataFiles
-    } else {
+      seq <- seq16S
+    } 
+    if(targetGene=="ITS") {
       message("filtering to ITS data")
-      seq <- mmgL1$mmg_swMarkerGeneSequencing_ITS
-      raw <- mmgL1$mmg_swRawDataFiles
+      seq <- seqITS
     }
   }
-
+  
+  # remove unnecessary/redundant columns from tables
+  raw <- select(raw, -domainID, -siteID, -namedLocation, -laboratoryName, -sequencingFacilityID, -collectDate, -dnaSampleCode)
+  dna <- select(dna, -domainID, -siteID, -namedLocation, -laboratoryName, -collectDate)
+  
   # convert factors to characters (bug in output of loadByProduct)
   i <- sapply(seq, is.factor)
   seq[i] <- lapply(seq[i], as.character)
   j <- sapply(raw, is.factor)
   raw[j] <- lapply(raw[j], as.character)
+  j <- sapply(dna, is.factor)
+  raw[j] <- lapply(dna[j], as.character)
+  
 
   # If specified, filter by sequencing run ID
-  if(length(sequencingRuns) > 1 | (length(sequencingRuns)==1 & sequencingRuns[1]!="")) {
-    if(!("all" %in% sequencingRuns)) {
-      if(any(!(raw$sequencerRunID %in% sequencingRuns))) {
-        raw <- raw[-which(!(raw$sequencerRunID %in% sequencingRuns)), ]
-        # Validate sequencing run ID argument
-        if(nrow(raw) == 0) {
-          stop("After filtering by specified sequencing run ID(s), no records remain. Double-check your sequencing run ID(s).")
-        }
-      }
+  if(sequencingRuns[1] != "") {
+    raw <- raw[which(raw$sequencerRunID %in% sequencingRuns), ]
+    # Validate sequencing run ID argument
+    if(nrow(raw) == 0) {
+      stop("After filtering by specified sequencing run ID(s), no records remain. Double-check your sequencing run 	ID(s).")
     }
   }
+  
+  # Lines 446-453 replaced commented code below
+  # If specified, filter by sequencing run ID
+  #if(length(sequencingRuns) > 1 | (length(sequencingRuns)==1 & sequencingRuns[1]!="")) {
+  #  if(!("all" %in% sequencingRuns)) {
+  #    if(any(!(raw$sequencerRunID %in% sequencingRuns))) {
+  #      raw <- raw[-which(!(raw$sequencerRunID %in% sequencingRuns)), ]
+        # Validate sequencing run ID argument
+  #      if(nrow(raw) == 0) {
+  #        stop("After filtering by specified sequencing run ID(s), no records remain. Double-check your sequencing run ID(s).")
+  #      }
+  #    }
+  #  }
+  #}
 
   # Join sequencing metadata with raw data files metadata
   if(targetGene=="16S") {
@@ -443,7 +476,8 @@ downloadSequenceMetadataRev <- function(sites='all', startYrMo, endYrMo, targetG
     }
     joinedTarget <- left_join(rawCleaned, seq, by=c('dnaSampleID', 'sequencerRunID', 'internalLabID'))
     out <- joinedTarget[!is.na(joinedTarget$uid.y), ]
-  } else if(targetGene=="ITS") {
+  } 
+  if(targetGene=="ITS") {
     if(any(grepl("16S", raw$rawDataFileName))) {
       rawCleaned <- raw[-grep("16S", raw$rawDataFileName), ]
     } else {
@@ -452,17 +486,35 @@ downloadSequenceMetadataRev <- function(sites='all', startYrMo, endYrMo, targetG
     joinedTarget <- left_join(rawCleaned, seq, by=c('dnaSampleID', 'sequencerRunID', 'internalLabID'))
     out <- joinedTarget[!is.na(joinedTarget$uid.y), ]
   }
-
-  # download local copy if user provided output dir path
-  if(dir != "") {
-    if(!dir.exists(dir)) {
-      dir.create(dir)
-    }
-    write.csv(out, paste0(dir, "/mmg_soilMetadata_", targetGene, "_", Sys.Date(), ".csv"),
-              row.names=F)
-    print(paste0("metadata downloaded to: ", dir, "/mmg_soilMetadata_", targetGene, "_", Sys.Date(), ".csv") )
+  if(targetGene=="all") {
+    joinedTarget <- left_join(raw, seq, by=c('dnaSampleID', 'sequencerRunID', 'internalLabID'))
+    out <- joinedTarget[!is.na(joinedTarget$uid.y), ]
+    message(paste0(length(grep("16S", joinedTarget$rawDataFileName)), " 16S records and ", length(grep("ITS", joinedTarget$rawDataFileName)), " ITS records found."))
   }
-  return(out)
+  
+  # clean up redundant column names
+  names(out) <- gsub("\\.x", ".rawFiles", names(out))
+  names(out) <- gsub("\\.y", ".seq", names(out))
+  
+  # join with DNA extraction metadata
+  outDNA <- left_join(out, dna, by=c('plotID', 'dnaSampleID', 'internalLabID'))
+  # clean up redundant column names
+  names(outDNA) <- gsub("\\.x", ".seq", names(outDNA))
+  names(outDNA) <- gsub("\\.y", ".dna", names(outDNA))
+  names(outDNA)[names(outDNA)=="uid"] <- 'uid.dna'
+  names(outDNA)[names(outDNA)=="remarks"] <- 'remarks.dna'
+  names(outDNA)[names(outDNA)=="dataQF"] <- 'dataQF.dna'
+  
+  # download local copy if user provided output dir path
+  if(outDir != "") {
+    if(!dir.exists(outDir)) {
+      dir.create(outDir)
+    }
+    write.csv(outDNA, paste0(outDir, "/mmg_soilMetadata_", targetGene, "_", Sys.Date(), ".csv"),
+              row.names=F)
+    print(paste0("metadata downloaded to: ", outDir, "/mmg_soilMetadata_", targetGene, "_", Sys.Date(), ".csv") )
+  }
+  return(outDNA)
 }
 
 
