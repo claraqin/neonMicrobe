@@ -6,133 +6,6 @@
 # Those functions are either copied from or closely adapted from the DADA tutorials,
 # so they should be included in the vignettes, but not claimed as a new function.
 
-#' Write sample subsetting parameters
-#'
-#' Write site and date range parameters for subsetting samples. To be called within other functions.
-#'
-#' @param writeDir Directory where the subsetting parameters should be written.
-#' @param sites Vector containing the names of sites in the subset.
-#' @param startYrMo,endYrMo Dates describing the time range of subset, formatted as "YYYY-MM".
-#' @param target_genes Marker gene used for sequencing. Currently must be one of "16S", "ITS".
-#' @param sequencing_runs Vector naming the sequencing runs in the subset.
-#'
-#' @details This function writes the sample subsetting parameters to a file. In addition to
-#' keeping a record, it is also meant to be used with \code{\link{warn_already_downloaded}}
-#' to detect when a data product has already been downloaded, and if so, with what subsetting
-#' parameters.
-#'
-#' @return No value is returned.
-#'
-#' @examples
-#' \dontrun{
-#' write_sample_subset_params(writeDir="./raw_data/", sites="all", startYrMo="2016-01", endYrMo="2019-01", target_genes="ITS", sequencing_runs=c("B69PP","C25G9"))
-#' }
-write_sample_subset_params <- function(writeDir, sites, startYrMo, endYrMo,
-                                       target_genes="", sequencing_runs="") {
-  # paste("writing in ", writeDir)
-  write.table(
-    data.frame(x1=c("sites", "startYrMo", "endYrMo", "target_genes", "sequencing_runs"),
-               x2=c(paste0(sites, collapse=","), startYrMo, endYrMo, paste0(target_genes, collapse=","), paste0(sequencing_runs, collapse=","))),
-    file = file.path(writeDir, "sample_subset_params.txt"),
-    sep=":", col.names=FALSE, quote=FALSE, row.names=FALSE
-  )
-}
-
-#' Warn That Metadata Is Already Downloaded
-#'
-#' Issue a warning that metadata has already been downloaded, and indicates the sites and date
-#' ranges for which it was downloaded. To be called within other functions.
-#'
-#' @param PRNUM NEON data product ID, e.g. "10108".
-#' @param outdir Directory where data product has been downloaded (not the stacked folder within it).
-#'
-#' @return No value is returned.
-warn_already_downloaded <- function(PRNUM, outdir) {
-  stackDir <- paste(outdir, paste0("filesToStack",PRNUM), sep="/")
-  print(paste0("Warning: Data product ", PRNUM,
-               " has already been downloaded to ", outdir, "."))
-  if(file.exists(file.path(paste(stackDir, SAMPLE_SUBSET_PARAMS_FILENAME, sep="/")))) {
-    site_and_date_range <- read.table(paste(stackDir, SAMPLE_SUBSET_PARAMS_FILENAME, sep="/"),
-                                      header=FALSE, sep=":")
-    print(paste0("Ensure that the following describes your intended data subset, ",
-                 "or else stop the current process and re-run with overwrite==TRUE. ",
-                 "  sites:", site_and_date_range[1,2],
-                 "  startYrMo:", site_and_date_range[2,2],
-                 "  endYrMo:", site_and_date_range[3,2],
-                 "  target_genes:", site_and_date_range[4,2],
-                 "  sequencing_runs:", site_and_date_range[5,2]))
-  }
-}
-
-
-#' Download NEON Marker Gene Sequencing Metadata
-#'
-#' Downloads NEON data product DP1.10108 ("Soil microbe marker gene sequences"),
-#' which contains information on how to access raw sequence data. This function
-#' uses \code{\link[neonUtilities]{zipsByProduct}} to conduct the downloads.
-#'
-#' @param sites Either the string 'all', meaning all available sites, or a character vector of 4-letter NEON site codes, e.g. c('ONAQ','RMNP'). Defaults to PRESET_SITES parameter in params.R.
-#' @param startYrMo,endYrMo Either NA, meaning all available dates, or a character vector in the form YYYY-MM, e.g. 2017-01. Defaults to PRESET_START_YR_MO in params.R.
-#' @param outdir Location where output files are saved. Defaults to PRESET_OUTDIR_SEQMETA in params.R.
-#' @param checkFileSize TRUE or FALSE. Whether the user should be told the total file size before downloading. Defaults to PRESET_CHECK_FILE_SIZE in params.R.
-#' @param return_data Whether to return part of the metadata: the table NEON table "mmg_soilRawDataFiles.csv" within NEON data product DP1.10108. If FALSE, simply downloads data to outdir and returns no value. Defaults to PRESET_RETURN_DATA.
-#' @param target_genes 'ITS', '16S', or 'all'. Defaults to TARGET_GENE in params.R.
-#' @param sequencing_runs Either the string 'all', meaning all available sequencing runs, or a character vector of NEON sequencing run IDs, e.g. c('C25G9', 'B69PP'). Defaults to SEQUENCING_RUNS parameter in params.R.
-#' @param overwrite TRUE or FALSE. If there is a previous download of this metadata in outdir, whether to overwrite that download.
-#'
-#' @return If return_data==TRUE, returns the mmg_soilRawDataFiles table from NEON.DP1.10108 ("Soil microbe marker gene sequences"). Otherwise, no value is returned.
-downloadSequenceMetadata <- function(sites = PRESET_SITES, startYrMo = PRESET_START_YR_MO, endYrMo = PRESET_END_YR_MO,
-                                     outdir = PRESET_OUTDIR_SEQMETA, checkFileSize = PRESET_CHECK_FILE_SIZE, return_data = PRESET_RETURN_DATA,
-                                     target_genes = TARGET_GENE, sequencing_runs = SEQUENCING_RUNS,
-                                     overwrite = FALSE) {
-
-  library(neonUtilities)
-
-  PRNUM <- "10108"
-  dpID <- paste("DP1", PRNUM, "001", sep=".")
-  stackDir <- file.path(outdir, paste0("filesToStack",PRNUM))
-
-  # If there is NO previous download at stackDir
-  if(!dir.exists(stackDir)) {
-    neonUtilities::zipsByProduct(dpID, site=sites, startdate=startYrMo,
-                                 enddate=endYrMo, package="expanded", check.size=checkFileSize,
-                                 savepath=outdir)
-
-    # print(paste("Attempt to stackByTable in", stackDir))
-    stackByTable(stackDir, folder = TRUE)
-
-    # Write file that records parameters
-    write_sample_subset_params(stackDir, sites, startYrMo, endYrMo, target_genes, sequencing_runs)
-
-    # If there IS a previous download at stackDir
-  } else {
-    # If overwrite==TRUE,
-    if(overwrite) {
-      # delete existing directory
-      unlink(stackDir, recursive=TRUE)
-      # and re-download data
-      neonUtilities::zipsByProduct(dpID, site=sites, startdate=startYrMo,
-                                   enddate=endYrMo, package="expanded", check.size=checkFileSize,
-                                   savepath=outdir)
-      # print(paste("Attempt to stackByTable in", stackDir))
-      stackByTable(stackDir, folder = TRUE)
-      write_sample_subset_params(stackDir, sites, startYrMo, endYrMo, target_genes, sequencing_runs)
-
-      # If overwrite==FALSE (default)
-    } else {
-      warn_already_downloaded(PRNUM, outdir)
-    }
-  }
-
-  if(return_data) { # If not, then simply downloads the data to the outdir
-    path <- paste(stackDir, "stackedFiles",
-                  "mmg_soilRawDataFiles.csv", sep="/")
-    dat <- read.delim(path, sep=",", stringsAsFactors=FALSE)
-
-    return(dat)
-  }
-}
-
 #' Download NEON Marker Gene Sequencing Raw Data
 #'
 #' Downloads NEON raw sequence data files to the specified filepath, by referencing
@@ -346,14 +219,13 @@ downloadSequenceMetadataRev <- function(sites='all', startYrMo, endYrMo, targetG
 
   # check valid data values entered
   ## validate dpID ##
-  ## validate dpID ##
   if(!grepl("DP1", dpID) | !grepl('\\.001', dpID) | !grepl('10108|20280|20282', dpID)) {
     message("Invalid Data Product ID: must follow convention 'DP1.[5-digit value].001' and must be a marker genes data product ID")
     return(NULL)
   } else {
     dpID <- dpID
   }
-  
+
   # validate target gene
   if(!grepl("16S|ITS|all", targetGene)) {
     message("Invalid targetGene: must be either '16S', 'ITS', 'all' ")
@@ -385,56 +257,56 @@ downloadSequenceMetadataRev <- function(sites='all', startYrMo, endYrMo, targetG
     raw <- mmgL1$mmg_soilRawDataFiles
     dna <- mmgL1$mmg_soilDnaExtraction
     seq <- rbind(seq16S, seqITS)
-    
+
     if(targetGene=="16S") {
       message("filtering to 16S data")
       seq <- seq16S
-    } 
+    }
     if(targetGene=="ITS") {
       message("filtering to ITS data")
       seq <- seqITS
       raw <- mmgL1$mmg_soilRawDataFiles
     }
   }
-  
+
   if(grepl("20280", dpID)) {
     seq16S <- mmgL1$mmg_benthicMarkerGeneSequencing_16S
     seqITS <- mmgL1$mmg_benthicMarkerGeneSequencing_ITS
     raw <- mmgL1$mmg_benthicRawDataFiles
-    dna <- mmgL1$mmg_benthicDnaExtraction	
+    dna <- mmgL1$mmg_benthicDnaExtraction
     seq <- rbind(seq16S, seqITS)
-    
+
     if(targetGene=="16S") {
       message("filtering to 16S data")
       seq <- seq16S
-    } 
+    }
     if(targetGene=="ITS") {
       message("filtering to ITS data")
       seq <- seqITS
     }
   }
-  
+
   if(grepl("20282", dpID)) {
     seq16S <- mmgL1$mmg_swMarkerGeneSequencing_16S
     seqITS <- mmgL1$mmg_swMarkerGeneSequencing_ITS
     raw <- mmgL1$mmg_swRawDataFiles
     seq <- rbind(seq16S, seqITS)
-    dna <- mmgL1$mmg_swDnaExtraction	
-    
+    dna <- mmgL1$mmg_swDnaExtraction
+
     if(targetGene=="16S") {
       message("filtering to 16S data")
       seq <- seq16S
-    } 
+    }
     if(targetGene=="ITS") {
       message("filtering to ITS data")
       seq <- seqITS
     }
   }
-  
+
   # remove unnecessary/redundant columns from tables
   raw <- select(raw, -domainID, -siteID, -namedLocation, -laboratoryName, -sequencingFacilityID, -collectDate, -dnaSampleCode)
   dna <- select(dna, -domainID, -siteID, -namedLocation, -laboratoryName, -collectDate)
-  
+
   # convert factors to characters (bug in output of loadByProduct)
   i <- sapply(seq, is.factor)
   seq[i] <- lapply(seq[i], as.character)
@@ -442,30 +314,16 @@ downloadSequenceMetadataRev <- function(sites='all', startYrMo, endYrMo, targetG
   raw[j] <- lapply(raw[j], as.character)
   j <- sapply(dna, is.factor)
   raw[j] <- lapply(dna[j], as.character)
-  
+
 
   # If specified, filter by sequencing run ID
   if(sequencingRuns[1] != "") {
     raw <- raw[which(raw$sequencerRunID %in% sequencingRuns), ]
     # Validate sequencing run ID argument
     if(nrow(raw) == 0) {
-      stop("After filtering by specified sequencing run ID(s), no records remain. Double-check your sequencing run 	ID(s).")
+      stop("After filtering by specified sequencing run ID(s), no records remain. Double-check your sequencing run  ID(s).")
     }
   }
-  
-  # Lines 446-453 replaced commented code below
-  # If specified, filter by sequencing run ID
-  #if(length(sequencingRuns) > 1 | (length(sequencingRuns)==1 & sequencingRuns[1]!="")) {
-  #  if(!("all" %in% sequencingRuns)) {
-  #    if(any(!(raw$sequencerRunID %in% sequencingRuns))) {
-  #      raw <- raw[-which(!(raw$sequencerRunID %in% sequencingRuns)), ]
-        # Validate sequencing run ID argument
-  #      if(nrow(raw) == 0) {
-  #        stop("After filtering by specified sequencing run ID(s), no records remain. Double-check your sequencing run ID(s).")
-  #      }
-  #    }
-  #  }
-  #}
 
   # Join sequencing metadata with raw data files metadata
   if(targetGene=="16S") {
@@ -476,7 +334,7 @@ downloadSequenceMetadataRev <- function(sites='all', startYrMo, endYrMo, targetG
     }
     joinedTarget <- left_join(rawCleaned, seq, by=c('dnaSampleID', 'sequencerRunID', 'internalLabID'))
     out <- joinedTarget[!is.na(joinedTarget$uid.y), ]
-  } 
+  }
   if(targetGene=="ITS") {
     if(any(grepl("16S", raw$rawDataFileName))) {
       rawCleaned <- raw[-grep("16S", raw$rawDataFileName), ]
@@ -491,11 +349,11 @@ downloadSequenceMetadataRev <- function(sites='all', startYrMo, endYrMo, targetG
     out <- joinedTarget[!is.na(joinedTarget$uid.y), ]
     message(paste0(length(grep("16S", joinedTarget$rawDataFileName)), " 16S records and ", length(grep("ITS", joinedTarget$rawDataFileName)), " ITS records found."))
   }
-  
+
   # clean up redundant column names
   names(out) <- gsub("\\.x", ".rawFiles", names(out))
   names(out) <- gsub("\\.y", ".seq", names(out))
-  
+
   # join with DNA extraction metadata
   outDNA <- left_join(out, dna, by=c('plotID', 'dnaSampleID', 'internalLabID'))
   # clean up redundant column names
@@ -504,7 +362,7 @@ downloadSequenceMetadataRev <- function(sites='all', startYrMo, endYrMo, targetG
   names(outDNA)[names(outDNA)=="uid"] <- 'uid.dna'
   names(outDNA)[names(outDNA)=="remarks"] <- 'remarks.dna'
   names(outDNA)[names(outDNA)=="dataQF"] <- 'dataQF.dna'
-  
+
   # download local copy if user provided output dir path
   if(outDir != "") {
     if(!dir.exists(outDir)) {
@@ -569,7 +427,7 @@ trimPrimers16S <- function(fnFs, fnRs, PATH_CUT, PRIMER_16S_FWD, PRIMER_16S_REV,
 #'
 #' @param fnFs Full name(s) of fastq file(s) containing forward-read sequence data.
 #' @param fnRs Full name(s) of fastq file(s) containing reverse-read sequence data.
-#' @param post_samplename_pattern (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
+#' @param post_samplename_pattern (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
 #'
 #' @return List of length 2. The first element is a vector of forward-read files that have reverse-read counterparts; the second element is a vector of reverse-read files that have forward-read counterparts.
 #'
@@ -577,7 +435,7 @@ trimPrimers16S <- function(fnFs, fnRs, PATH_CUT, PRIMER_16S_FWD, PRIMER_16S_REV,
 #' matched_fn <- remove_unmatched_files(c("sample1_R1.fastq", "sample2_R1.fastq"), c("sample1_R2.fastq", "sample2_R2.fastq", "sample3_R2.fastq"))
 #' fnFs <- matched_fn[[1]]
 #' fnRs <- matched_fn[[2]]
-remove_unmatched_files <- function(fnFs, fnRs, post_samplename_pattern = "_R"){
+remove_unmatched_files <- function(fnFs, fnRs, post_samplename_pattern = "_R(1|2).fastq"){
   basefilenames_Fs <- sapply(strsplit(fnFs, post_samplename_pattern), `[`, 1)
   basefilenames_Rs <- sapply(strsplit(fnRs, post_samplename_pattern), `[`, 1)
   rm_from_fnFs <- which(!(basefilenames_Fs %in% basefilenames_Rs))
@@ -610,13 +468,13 @@ remove_unmatched_files <- function(fnFs, fnRs, post_samplename_pattern = "_R"){
 #' @param MAX_EE_FWD,MAX_EE_REV The maximum number of expected errors allowed in forward/reverse reads. Read-pairs with expected errors that exceed this threshold will be removed.
 #' @param TRUNC.LENGTHS Default NULL. Single integer: truncation length to use across all files. Two-integer vector: truncation length to use for the forward-read and reverse-read files, respectively. If NULL (default), determines truncation length(s) based on \code{\link{getTruncationLength}} with a quality score threshold of trunc_qscore.
 #' @param trunc_qscore Default 23. Quality score at which point to truncate each read, if TRUNC.LENGTHS is null.
-#' @param post_samplename_pattern (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
+#' @param post_samplename_pattern (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
 #'
 #' @return Two-column matrix displaying the number of reads in input vs. output for each file.
-qualityFilter16S <- function(PATH_CUT, PATH_FILTERED, MULTITHREAD, MAX_EE_FWD, MAX_EE_REV, TRUNC.LENGTHS = NULL, trunc_qscore = 23, post_samplename_pattern = "_R" #, mean = FALSE
-                             ){
-  fnFs <- sort(list.files(PATH_CUT, pattern = "_R1.fastq.gz|_R1.fastq", full.names = TRUE)) # primer-trimmed
-  fnRs <- sort(list.files(PATH_CUT, pattern = "_R2.fastq.gz|_R2.fastq", full.names = TRUE)) # primer-trimmed
+qualityFilter16S <- function(PATH_CUT, PATH_FILTERED, MULTITHREAD, MAX_EE_FWD, MAX_EE_REV, TRUNC.LENGTHS = NULL, trunc_qscore = 23, post_samplename_pattern = "_R(1|2).fastq" #, mean = FALSE
+){
+  fnFs <- sort(list.files(PATH_CUT, pattern = "_R1.fastq", full.names = TRUE)) # primer-trimmed
+  fnRs <- sort(list.files(PATH_CUT, pattern = "_R2.fastq", full.names = TRUE)) # primer-trimmed
 
   sample.names <- sapply(strsplit(basename(fnFs), post_samplename_pattern), `[`, 1) # extract sample names
   filtFs <- file.path(PATH_FILTERED, paste0(sample.names, "_filt_R1.fastq.gz")) # create filtered filenames
@@ -629,9 +487,9 @@ qualityFilter16S <- function(PATH_CUT, PATH_FILTERED, MULTITHREAD, MAX_EE_FWD, M
     fwd.trunc.lengths <- list()
     rev.trunc.lengths <- list()
     fwd.trunc.lengths[1:n_files] <- getTruncationLength(fnFs[1:n_files], verbose = VERBOSE,
-                                                          qscore = trunc_qscore)
+                                                        qscore = trunc_qscore)
     rev.trunc.lengths[1:n_files] <- getTruncationLength(fnRs[1:n_files], verbose = VERBOSE,
-                                                          qscore = trunc_qscore)
+                                                        qscore = trunc_qscore)
     # TODO: Why this specific quality score?
 
     # remove any samples that have low-quality reads early on, to avoid spoiling the whole run
@@ -739,15 +597,15 @@ runDada16S <- function(PATH_FILTERED, MULTITHREAD, VERBOSE = FALSE, seed = NULL)
   if (!is.null(seed)) set.seed(seed)
 
   # File parsing
-  filtFs <- list.files(PATH_FILTERED, pattern="_R1.fastq.gz", full.names = TRUE)
-  filtRs <- list.files(PATH_FILTERED, pattern="_R2.fastq.gz", full.names = TRUE)
+  filtFs <- list.files(PATH_FILTERED, pattern="_R1.fastq", full.names = TRUE)
+  filtRs <- list.files(PATH_FILTERED, pattern="_R2.fastq", full.names = TRUE)
 
   # Keep files with counterpart
   remove_unmatched_files(filtFs, filtRs)
 
   # Create outnames
-  sample.names <- sapply(strsplit(basename(filtFs), "_R"), `[`, 1) # Assumes filename = samplename_XXX.fastq.gz
-  sample.namesR <- sapply(strsplit(basename(filtRs), "_R"), `[`, 1) # Assumes filename = samplename_XXX.fastq.gz
+  sample.names <- sapply(strsplit(basename(filtFs), "_R(1|2).fastq"), `[`, 1) # Assumes filename = samplename_RX.fastq.gz
+  sample.namesR <- sapply(strsplit(basename(filtRs), "_R(1|2).fastq"), `[`, 1) # Assumes filename = samplename_RX.fastq.gz
   if(!identical(sample.names, sample.namesR)) stop("Forward and reverse files do not match.")
 
   names(filtFs) <- sample.names
@@ -776,7 +634,7 @@ runDada16S <- function(PATH_FILTERED, MULTITHREAD, VERBOSE = FALSE, seed = NULL)
     ddR <- dada(derepR[[i]], err=errR, multithread=TRUE)
     merger <- mergePairs(ddF, derepF[[i]], ddR, derepR[[i]], maxMismatch=1, minOverlap = 6)
     mergers[[i]] <- merger
-    cat(paste("Exact sequence variants inferred for sample:",  sam,". \n"))
+    cat(paste("Exact sequence variants inferred for sample:", sam,". \n"))
   }
   #rm(derepF); rm(derepR)
   # Construct sequence table and remove chimeras
@@ -789,12 +647,80 @@ runDada16S <- function(PATH_FILTERED, MULTITHREAD, VERBOSE = FALSE, seed = NULL)
     print(table(nchar(getSequences(seqtab))))
     cat(paste0("\n", round(sum(seqtab.nochim)/sum(seqtab), 3), " reads remain after removal of chimeras"))
   }
-  track <- cbind.data.frame(denoisedF = sapply(derepF, getN),
-                            denoisedR = sapply(derepR, getN),
+  track <- cbind.data.frame(derepF = sapply(derepF, getN),
+                            derepR = sapply(derepR, getN),
+                            denoisedF = sapply(ddF, getN),
+                            denoisedR = sapply(ddR, getN),
                             merged = sapply(mergers, getN),
                             nonchim = rowSums(seqtab.nochim))
   return(list("seqtab" = seqtab, "seqtab.nochim" = seqtab.nochim, "track" = track))
 }
+
+
+
+#' Run Dada on R1 ITS sequences
+#'
+#' Runs the Dada algorithm to infer sample composition from R1 ITS fastq files.
+#' We recommend using only the R1 reads because attempting to merge with R2
+#' reads may result in less accurate representations of the fungal community
+#' composition (Pauvert et al., 2019).
+#' This implementation is based on Ben Callahan's vignettes at \url{https://benjjneb.github.io/dada2/bigdata.html}
+#' and \url{https://benjjneb.github.io/dada2/ITS_workflow.html}.
+#'
+#' @param PATH_FILTERED Path to directory containing input fastq files.
+#' @param MULTITHREAD Whether to use multithreading.
+#' @param VERBOSE Default FALSE. Whether to print messages regarding the dimensions of the resulting sequence table and the distribution of sequence lengths.
+#' @param seed (Optional) Integer to use as random seed for reproducibility.
+#'
+#' @return A list of three elements. \strong{seqtab} is the sequence table before removing chimeras, \strong{seqtab.nochim} is the sequence table after removing chimeras, and \strong{track} is a data frame displaying the number of reads remaining for each sample at various points throughout the processing pipeline.
+#'
+#' @examples
+#' \dontrun{
+#' seqtab.list <- runDadaITS('./seq/filtered/', TRUE, TRUE, 1010100)
+#' }
+runDadaITS <- function(PATH_FILTERED, MULTITHREAD, VERBOSE = FALSE, seed = NULL){
+  if (!is.null(seed)) set.seed(seed)
+
+  # File parsing
+  filtFs <- list.files(PATH_FILTERED, pattern="_R1.fastq", full.names = TRUE)
+
+  # Create outnames
+  sample.names <- sapply(strsplit(basename(filtFs), "_R(1|2).fastq"), `[`, 1) # Assumes filename = samplename_XXX.fastq.gz
+  names(filtFs) <- sample.names
+
+  # Learn error rates
+  errF <- learnErrors(filtFs, nbases=1e7, randomize=TRUE, multithread=MULTITHREAD)
+
+  # Create output vector
+  derepF <- vector("list", length(sample.names))
+  names(derepF) <- sample.names
+
+  # Sample inference and merger of paired-end reads
+  for(i in 1:length(sample.names)) {
+    sam <- sample.names[[i]]
+    cat("Processing:", sam, "\n")
+    derepF[[i]] <- derepFastq(filtFs[[i]])
+    ddF <- dada(derepF[[i]], err=errF, multithread=TRUE)
+    cat(paste("Exact sequence variants inferred for sample:", sam,". \n"))
+  }
+  # rm(derepF);
+
+  # Construct sequence table and remove chimeras
+  seqtab <- makeSequenceTable(mergers)
+  seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=MULTITHREAD, verbose=VERBOSE)
+
+  if(VERBOSE){
+    cat(paste0("\n\nDimensions of ESV table: ", dim(seqtab.nochim)[1], " samples, ", dim(seqtab.nochim)[2], " ESVs\n"))
+    cat("\nDistribution of sequence lengths (should be bimodal for v3v4 region):")
+    print(table(nchar(getSequences(seqtab))))
+    cat(paste0("\n", round(sum(seqtab.nochim)/sum(seqtab), 3), " reads remain after removal of chimeras"))
+  }
+  track <- cbind.data.frame(derepF = sapply(derepF, getN),
+                            denoisedF = sapply(ddF, getN),
+                            nonchim = rowSums(seqtab.nochim))
+  return(list("seqtab" = seqtab, "seqtab.nochim" = seqtab.nochim, "track" = track))
+}
+
 
 
 #' Get Number of Reads
@@ -809,3 +735,136 @@ getN <- function(x) {
   sum(getUniques(x))
 }
 
+
+
+
+####################################################################
+# The following functions will be deprecated with the completion of
+# downloadSequenceMetadataRev()
+
+#' Write sample subsetting parameters
+#'
+#' Write site and date range parameters for subsetting samples. To be called within other functions.
+#'
+#' @param writeDir Directory where the subsetting parameters should be written.
+#' @param sites Vector containing the names of sites in the subset.
+#' @param startYrMo,endYrMo Dates describing the time range of subset, formatted as "YYYY-MM".
+#' @param target_genes Marker gene used for sequencing. Currently must be one of "16S", "ITS".
+#' @param sequencing_runs Vector naming the sequencing runs in the subset.
+#'
+#' @details This function writes the sample subsetting parameters to a file. In addition to
+#' keeping a record, it is also meant to be used with \code{\link{warn_already_downloaded}}
+#' to detect when a data product has already been downloaded, and if so, with what subsetting
+#' parameters.
+#'
+#' @return No value is returned.
+#'
+#' @examples
+#' \dontrun{
+#' write_sample_subset_params(writeDir="./raw_data/", sites="all", startYrMo="2016-01", endYrMo="2019-01", target_genes="ITS", sequencing_runs=c("B69PP","C25G9"))
+#' }
+write_sample_subset_params <- function(writeDir, sites, startYrMo, endYrMo,
+                                       target_genes="", sequencing_runs="") {
+  # paste("writing in ", writeDir)
+  write.table(
+    data.frame(x1=c("sites", "startYrMo", "endYrMo", "target_genes", "sequencing_runs"),
+               x2=c(paste0(sites, collapse=","), startYrMo, endYrMo, paste0(target_genes, collapse=","), paste0(sequencing_runs, collapse=","))),
+    file = file.path(writeDir, "sample_subset_params.txt"),
+    sep=":", col.names=FALSE, quote=FALSE, row.names=FALSE
+  )
+}
+
+#' Warn That Metadata Is Already Downloaded
+#'
+#' Issue a warning that metadata has already been downloaded, and indicates the sites and date
+#' ranges for which it was downloaded. To be called within other functions.
+#'
+#' @param PRNUM NEON data product ID, e.g. "10108".
+#' @param outdir Directory where data product has been downloaded (not the stacked folder within it).
+#'
+#' @return No value is returned.
+warn_already_downloaded <- function(PRNUM, outdir) {
+  stackDir <- paste(outdir, paste0("filesToStack",PRNUM), sep="/")
+  print(paste0("Warning: Data product ", PRNUM,
+               " has already been downloaded to ", outdir, "."))
+  if(file.exists(file.path(paste(stackDir, SAMPLE_SUBSET_PARAMS_FILENAME, sep="/")))) {
+    site_and_date_range <- read.table(paste(stackDir, SAMPLE_SUBSET_PARAMS_FILENAME, sep="/"),
+                                      header=FALSE, sep=":")
+    print(paste0("Ensure that the following describes your intended data subset, ",
+                 "or else stop the current process and re-run with overwrite==TRUE. ",
+                 "  sites:", site_and_date_range[1,2],
+                 "  startYrMo:", site_and_date_range[2,2],
+                 "  endYrMo:", site_and_date_range[3,2],
+                 "  target_genes:", site_and_date_range[4,2],
+                 "  sequencing_runs:", site_and_date_range[5,2]))
+  }
+}
+
+
+#' Download NEON Marker Gene Sequencing Metadata
+#'
+#' Downloads NEON data product DP1.10108 ("Soil microbe marker gene sequences"),
+#' which contains information on how to access raw sequence data. This function
+#' uses \code{\link[neonUtilities]{zipsByProduct}} to conduct the downloads.
+#'
+#' @param sites Either the string 'all', meaning all available sites, or a character vector of 4-letter NEON site codes, e.g. c('ONAQ','RMNP'). Defaults to PRESET_SITES parameter in params.R.
+#' @param startYrMo,endYrMo Either NA, meaning all available dates, or a character vector in the form YYYY-MM, e.g. 2017-01. Defaults to PRESET_START_YR_MO in params.R.
+#' @param outdir Location where output files are saved. Defaults to PRESET_OUTDIR_SEQMETA in params.R.
+#' @param checkFileSize TRUE or FALSE. Whether the user should be told the total file size before downloading. Defaults to PRESET_CHECK_FILE_SIZE in params.R.
+#' @param return_data Whether to return part of the metadata: the table NEON table "mmg_soilRawDataFiles.csv" within NEON data product DP1.10108. If FALSE, simply downloads data to outdir and returns no value. Defaults to PRESET_RETURN_DATA.
+#' @param target_genes 'ITS', '16S', or 'all'. Defaults to TARGET_GENE in params.R.
+#' @param sequencing_runs Either the string 'all', meaning all available sequencing runs, or a character vector of NEON sequencing run IDs, e.g. c('C25G9', 'B69PP'). Defaults to SEQUENCING_RUNS parameter in params.R.
+#' @param overwrite TRUE or FALSE. If there is a previous download of this metadata in outdir, whether to overwrite that download.
+#'
+#' @return If return_data==TRUE, returns the mmg_soilRawDataFiles table from NEON.DP1.10108 ("Soil microbe marker gene sequences"). Otherwise, no value is returned.
+downloadSequenceMetadata <- function(sites = PRESET_SITES, startYrMo = PRESET_START_YR_MO, endYrMo = PRESET_END_YR_MO,
+                                     outdir = PRESET_OUTDIR_SEQMETA, checkFileSize = PRESET_CHECK_FILE_SIZE, return_data = PRESET_RETURN_DATA,
+                                     target_genes = TARGET_GENE, sequencing_runs = SEQUENCING_RUNS,
+                                     overwrite = FALSE) {
+
+  library(neonUtilities)
+
+  PRNUM <- "10108"
+  dpID <- paste("DP1", PRNUM, "001", sep=".")
+  stackDir <- file.path(outdir, paste0("filesToStack",PRNUM))
+
+  # If there is NO previous download at stackDir
+  if(!dir.exists(stackDir)) {
+    neonUtilities::zipsByProduct(dpID, site=sites, startdate=startYrMo,
+                                 enddate=endYrMo, package="expanded", check.size=checkFileSize,
+                                 savepath=outdir)
+
+    # print(paste("Attempt to stackByTable in", stackDir))
+    stackByTable(stackDir, folder = TRUE)
+
+    # Write file that records parameters
+    write_sample_subset_params(stackDir, sites, startYrMo, endYrMo, target_genes, sequencing_runs)
+
+    # If there IS a previous download at stackDir
+  } else {
+    # If overwrite==TRUE,
+    if(overwrite) {
+      # delete existing directory
+      unlink(stackDir, recursive=TRUE)
+      # and re-download data
+      neonUtilities::zipsByProduct(dpID, site=sites, startdate=startYrMo,
+                                   enddate=endYrMo, package="expanded", check.size=checkFileSize,
+                                   savepath=outdir)
+      # print(paste("Attempt to stackByTable in", stackDir))
+      stackByTable(stackDir, folder = TRUE)
+      write_sample_subset_params(stackDir, sites, startYrMo, endYrMo, target_genes, sequencing_runs)
+
+      # If overwrite==FALSE (default)
+    } else {
+      warn_already_downloaded(PRNUM, outdir)
+    }
+  }
+
+  if(return_data) { # If not, then simply downloads the data to the outdir
+    path <- paste(stackDir, "stackedFiles",
+                  "mmg_soilRawDataFiles.csv", sep="/")
+    dat <- read.delim(path, sep=",", stringsAsFactors=FALSE)
+
+    return(dat)
+  }
+}
