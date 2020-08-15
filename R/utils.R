@@ -6,6 +6,7 @@
 # Those functions are either copied from or closely adapted from the DADA tutorials,
 # so they should be included in the vignettes, but not claimed as a new function.
 
+
 #' Download NEON Marker Gene Sequencing Raw Data
 #'
 #' Downloads NEON raw sequence data files to the specified filepath, by referencing
@@ -376,11 +377,6 @@ downloadSequenceMetadataRev <- function(sites='all', startYrMo, endYrMo, targetG
 }
 
 
-#########
-# Functions for the NEON 16S workflow
-
-
-
 #' Trim Primers from 16S Sequences
 #'
 #' Trims primers from 16S sequences using \code{\link[dada2]{filterAndTrim}}. This function
@@ -388,8 +384,8 @@ downloadSequenceMetadataRev <- function(sites='all', startYrMo, endYrMo, targetG
 #' by truncating the beginning of each read by the length of its primer
 #' sequence.
 #'
-#' @param fnFs Full name(s) of fastq file(s) containing forward-read sequence data.
-#' @param fnRs Full name(s) of fastq file(s) containing reverse-read sequence data.
+#' @param fnFs Full names of fastq files containing forward-read sequence data.
+#' @param fnRs Full names of fastq files containing reverse-read sequence data.
 #' @param PATH_CUT Output directory. If it does not exist, it will be created.
 #' @param PRIMER_16S_FWD DNA sequence of forward-read primer.
 #' @param PRIMER_16S_REV DNA sequence of reverse-read primer.
@@ -399,7 +395,7 @@ downloadSequenceMetadataRev <- function(sites='all', startYrMo, endYrMo, targetG
 #'
 #' @examples
 #' \dontrun{
-#' trimPrimers16S(c("sample1_R1.fastq", "sample2_R1.fastq"), c("sample1_R2.fastq", "sample2_R2.fastq"), , "CCTACGGGNBGCASCAG", "GACTACNVGGGTATCTAATCC", MULTITHREAD = TRUE)
+#' trimPrimers16S(c("sample1_R1.fastq", "sample2_R1.fastq"), c("sample1_R2.fastq", "sample2_R2.fastq"), "path/to/output", "CCTACGGGNBGCASCAG", "GACTACNVGGGTATCTAATCC", MULTITHREAD = TRUE)
 #' }
 trimPrimers16S <- function(fnFs, fnRs, PATH_CUT, PRIMER_16S_FWD, PRIMER_16S_REV, MULTITHREAD#, quiet=T
 ){
@@ -418,6 +414,53 @@ trimPrimers16S <- function(fnFs, fnRs, PATH_CUT, PRIMER_16S_FWD, PRIMER_16S_REV,
   colnames(qa.out) <- c("input", "trimmed")
   return(qa.out)
 }
+
+
+#' Trim Primers from ITS Sequences
+#'
+#' Trims primers from ITS sequences using cutadapt. Cutadapt must be installed in order for this to work. Currently only supports R1 (forward-read) files.
+#'
+#' @param fn Full names of input fastq files, including directory paths. Files that do not exist will be ignored; however, if all files do not exist, this function will throw an error. It is assumed that these are R1 (forward-read) files only.
+#' @param path_cut Output directory. If it does not exist, it will be created.
+#' @param primer_ITS_fwd,primer_ITS_rev Default PRIMER_ITS_FWD and PRIMER_ITS_REV in params.R. DNA sequence of forward-read primer and reverse-read primer, respectively.
+#' @param cutadapt_path Default CUTADAPT_PATH in params.R. Path to cutadapt on your file system.
+#' @param post_samplename_pattern (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
+#' @param very_verbose Default FALSE. Whether to print output from cutadapt. Unlike some other "verbose" arguments associated with the functions in this package, this does not default to VERBOSE in params.R.
+#'
+#' @return No value is returned.
+#'
+#' @examples
+#' \dontrun{
+#' trimPrimersITS(c("sample1_ITS_R1.fastq", "sample2_ITS_R1.fastq"), "path/to/output", "CTTGGTCATTTAGAGGAAGTAA", multithread = TRUE)
+#' }
+trimPrimersITS <- function(fn, path_cut, primer_ITS_fwd = PRIMER_ITS_FWD, primer_ITS_rev = PRIMER_ITS_REV, cutadapt_path = CUTADAPT_PATH, post_samplename_pattern = "_R(1|2).fastq", very_verbose=FALSE#, quiet=T
+){
+
+  fnFs <- fn[file.exists(fn) & grepl("_R1.fastq", fn)]
+  if(length(fnFs) == 0) stop("No files found at specified location. Check file path.")
+
+  # Create output directory
+  if(!dir.exists(path_cut)) dir.create(path_cut)
+
+  # Create primer-trimmed file paths in output directory
+  fnFs.cut <- file.path(path_cut, basename(fnFs))
+
+  # Get reverse-complement sequence of reverse primer
+  rev_rc <- dada2:::rc(primer_ITS_rev)
+
+  # Trim forward primer and the reverse-complement of reverse primer off of R1 (forward reads)
+  R1.flags <- paste("-g", primer_ITS_fwd, "-a", rev_rc)
+
+  # Run Cutadapt
+  for(i in seq_along(fnFs)) {
+    system2(cutadapt_path, args = c(R1.flags, "-n", 2, # -n 2 required to remove FWD and REV from reads
+                                    "-o", fnFs.cut[i], # output files
+                                    fnFs[i], # input files
+                                    "--minimum-length", "1"), # min length of cutadapted reads: >0
+            stdout = ifelse(very_verbose, "", FALSE))
+  }
+}
+
 
 #' Remove Unmatched Fastq Files
 #'
@@ -480,6 +523,9 @@ qualityFilter16S <- function(PATH_CUT, PATH_FILTERED, MULTITHREAD, MAX_EE_FWD, M
   filtFs <- file.path(PATH_FILTERED, paste0(sample.names, "_filt_R1.fastq.gz")) # create filtered filenames
   filtRs <- file.path(PATH_FILTERED, paste0(sample.names, "_filt_R2.fastq.gz")) # create filtered filenames
 
+  # CLARA: I think it will be easier to keep track of samples across processing steps if we
+  # keep the filenames the same, and only vary the directory location at each step.
+
   if (is.null(TRUNC.LENGTHS)){
     # GETTING TRUNCATION LENGTH USING A SUBSET OF QUALITY SCORES
     n_files <- min(length(unique(sample.names)), 30)
@@ -527,11 +573,47 @@ qualityFilter16S <- function(PATH_CUT, PATH_FILTERED, MULTITHREAD, MAX_EE_FWD, M
 }
 
 
+#' Filter ITS Sequences
+#'
+#' Applies a quality filter to ITS sequence fastq files via the \code{\link[dada2]{filterAndTrim}} function.
+#' Currently only supports filtering forward-read sequences.
+#'
+#' @param fn Full names of input fastq files, including directory paths. Files that do not exist will be ignored; however, if all files do not exist, this function will throw an error. It is assumed that these are R1 (forward-read) files only.
+#' @param path_filtered Path to output directory where filtered fastq files will be written.
+#' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
+#' @param maxEE Default Inf. The maximum number of expected errors allowed in forward reads. Read-pairs with expected errors that exceed this threshold will be removed.
+#' @param truncQ Default 2. Quality score at which point to truncate each read.
+#' @param minLen Default 20. Read with length less than minLen are removed. minLen is enforced after trimming and truncation.
+#' @param maxN Default 0. Maximum number of ambiguous bases "N" to allow in forward reads.
+#' @param post_samplename_pattern (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
+#'
+#' @return Two-column matrix displaying the number of reads in input vs. output for each file.
+qualityFilterITS <- function(fn, path_filtered, multithread = MULTITHREAD, maxEE = Inf, truncQ = 2, minLen = 20, maxN = 0, post_samplename_pattern = "_R(1|2).fastq" #, mean = FALSE
+){
+  fnFs <- fn[file.exists(fn) & grepl("_R1.fastq", fn)]
+  if(length(fnFs) == 0) stop("No files found at specified location. Check file path.")
+
+  # sample.names <- sapply(strsplit(basename(fnFs), post_samplename_pattern), `[`, 1) # extract sample names
+  # filtFs <- file.path(path_filtered, paste0(sample.names, "_filt_R1.fastq.gz")) # create filtered filenames
+  # filtRs <- file.path(path_filtered, paste0(sample.names, "_filt_R2.fastq.gz")) # create filtered filenames
+
+  filtFs <- file.path(path_filtered, basename(fnFs))
+
+  out <- filterAndTrim(fnFs, filtFs,
+                       multithread = multithread,
+                       maxEE = maxEE,
+                       truncQ = truncQ,
+                       minLen = minLen,
+                       compress = TRUE, maxN = maxN)
+
+  return(out)
+}
+
 #' Get Truncation Length
 #'
 #' Decides on truncation length for trimmed reads based on quality score means. Default cutoff is a score of 30. Warns you if the beginning (first 10) bases are low-quality, but returns the first low-quality base after the 10th base. If no bases are below score, returns the last base. The truncation lengths can be aggregated (e.g. minimum) and used as an argument in \code{\link[dada2]{filterAndTrim}}.
 #'
-#' @param fl Full name(s) of fastq file(s).
+#' @param fl Full names of fastq files.
 #' @param qscore Default 30. Mean quality score threshold at which to truncate the remainder of the read.
 #' @param n Default 5e+05. The number of reads to sample when processing fastq files.
 #' @param verbose Default TRUE. Whether to return message regarding truncation length for each file. Includes warning messages.
@@ -647,12 +729,23 @@ runDada16S <- function(PATH_FILTERED, MULTITHREAD, VERBOSE = FALSE, seed = NULL)
     print(table(nchar(getSequences(seqtab))))
     cat(paste0("\n", round(sum(seqtab.nochim)/sum(seqtab), 3), " reads remain after removal of chimeras"))
   }
-  track <- cbind.data.frame(derepF = sapply(derepF, getN),
-                            derepR = sapply(derepR, getN),
-                            denoisedF = sapply(ddF, getN),
-                            denoisedR = sapply(ddR, getN),
-                            merged = sapply(mergers, getN),
-                            nonchim = rowSums(seqtab.nochim))
+  if(nrow(seqtab.nochim) > 1) {
+    track <- cbind.data.frame(derepF = sapply(derepF, getN),
+                              derepR = sapply(derepR, getN),
+                              denoisedF = sapply(ddF, getN),
+                              denoisedR = sapply(ddR, getN),
+                              merged = sapply(mergers, getN),
+                              nonchim = rowSums(seqtab.nochim))
+  # If processing a single sample, remove the sapply calls: e.g. replace
+  # sapply(dadaFs, getN) with getN(dadaFs)
+  } else {
+    track <- cbind.data.frame(derepF = getN(derepF),
+                              derepR = getN(derepR),
+                              denoisedF = getN(ddF),
+                              denoisedR = getN(ddR),
+                              merged = getN(mergers),
+                              nonchim = sum(seqtab.nochim))
+  }
   return(list("seqtab" = seqtab, "seqtab.nochim" = seqtab.nochim, "track" = track))
 }
 
@@ -667,10 +760,11 @@ runDada16S <- function(PATH_FILTERED, MULTITHREAD, VERBOSE = FALSE, seed = NULL)
 #' This implementation is based on Ben Callahan's vignettes at \url{https://benjjneb.github.io/dada2/bigdata.html}
 #' and \url{https://benjjneb.github.io/dada2/ITS_workflow.html}.
 #'
-#' @param PATH_FILTERED Path to directory containing input fastq files.
-#' @param MULTITHREAD Whether to use multithreading.
-#' @param VERBOSE Default FALSE. Whether to print messages regarding the dimensions of the resulting sequence table and the distribution of sequence lengths.
+#' @param fn Full names of input fastq files, including directory paths. Files that do not exist will be ignored; however, if all files do not exist, this function will throw an error. It is assumed that these are R1 (forward-read) files only, and that they contain no primers, and that they have been filtered.
+#' @param multithread Whether to use multithreading.
+#' @param verbose Default FALSE. Whether to print messages regarding the dimensions of the resulting sequence table and the distribution of sequence lengths.
 #' @param seed (Optional) Integer to use as random seed for reproducibility.
+#' @param post_samplename_pattern (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
 #'
 #' @return A list of three elements. \strong{seqtab} is the sequence table before removing chimeras, \strong{seqtab.nochim} is the sequence table after removing chimeras, and \strong{track} is a data frame displaying the number of reads remaining for each sample at various points throughout the processing pipeline.
 #'
@@ -678,46 +772,58 @@ runDada16S <- function(PATH_FILTERED, MULTITHREAD, VERBOSE = FALSE, seed = NULL)
 #' \dontrun{
 #' seqtab.list <- runDadaITS('./seq/filtered/', TRUE, TRUE, 1010100)
 #' }
-runDadaITS <- function(PATH_FILTERED, MULTITHREAD, VERBOSE = FALSE, seed = NULL){
+runDadaITS <- function(fn, multithread, verbose = FALSE, seed = NULL, post_samplename_pattern = "_R(1|2).fastq"){
   if (!is.null(seed)) set.seed(seed)
 
   # File parsing
-  filtFs <- list.files(PATH_FILTERED, pattern="_R1.fastq", full.names = TRUE)
+  filtFs <- fn[file.exists(fn) & grepl("_R1.fastq", fn)]
+  if(length(filtFs) == 0) stop("No files found at specified location. Check file path.")
 
   # Create outnames
   sample.names <- sapply(strsplit(basename(filtFs), "_R(1|2).fastq"), `[`, 1) # Assumes filename = samplename_XXX.fastq.gz
   names(filtFs) <- sample.names
 
   # Learn error rates
-  errF <- learnErrors(filtFs, nbases=1e7, randomize=TRUE, multithread=MULTITHREAD)
+  errF <- learnErrors(filtFs, nbases=1e7, randomize=TRUE, multithread=multithread)
 
   # Create output vector
   derepF <- vector("list", length(sample.names))
+  ddF <- vector("list", length(sample.names))
   names(derepF) <- sample.names
+  names(ddF) <- sample.names
 
   # Sample inference and merger of paired-end reads
   for(i in 1:length(sample.names)) {
     sam <- sample.names[[i]]
     cat("Processing:", sam, "\n")
     derepF[[i]] <- derepFastq(filtFs[[i]])
-    ddF <- dada(derepF[[i]], err=errF, multithread=TRUE)
+    ddF[[i]] <- dada(derepF[[i]], err=errF, multithread=TRUE)
     cat(paste("Exact sequence variants inferred for sample:", sam,". \n"))
   }
   # rm(derepF);
 
   # Construct sequence table and remove chimeras
-  seqtab <- makeSequenceTable(mergers)
-  seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=MULTITHREAD, verbose=VERBOSE)
+  seqtab <- makeSequenceTable(ddF)
+  seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=multithread, verbose=verbose)
 
-  if(VERBOSE){
+  if(verbose){
     cat(paste0("\n\nDimensions of ESV table: ", dim(seqtab.nochim)[1], " samples, ", dim(seqtab.nochim)[2], " ESVs\n"))
-    cat("\nDistribution of sequence lengths (should be bimodal for v3v4 region):")
+    cat("\nDistribution of sequence lengths:")
     print(table(nchar(getSequences(seqtab))))
     cat(paste0("\n", round(sum(seqtab.nochim)/sum(seqtab), 3), " reads remain after removal of chimeras"))
   }
-  track <- cbind.data.frame(derepF = sapply(derepF, getN),
-                            denoisedF = sapply(ddF, getN),
-                            nonchim = rowSums(seqtab.nochim))
+
+  if(nrow(seqtab.nochim) > 1) {
+    track <- cbind.data.frame(derepF = sapply(derepF, getN),
+                              denoisedF = sapply(ddF, getN),
+                              nonchim = rowSums(seqtab.nochim))
+  # If processing a single sample, remove the sapply calls: e.g. replace
+  # sapply(dadaFs, getN) with getN(dadaFs)
+  } else {
+    track <- cbind.data.frame(derepF = getN(derepF),
+                              denoisedF = getN(ddF),
+                              nonchim = sum(seqtab.nochim))
+  }
   return(list("seqtab" = seqtab, "seqtab.nochim" = seqtab.nochim, "track" = track))
 }
 
