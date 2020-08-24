@@ -7,17 +7,74 @@
 # so they should be included in the vignettes, but not claimed as a new function.
 
 
+#' Make Output Directories
+#'
+#' @param base_dir Default PRESET_OUTDIR in params.R. Absolute path to directory within which all output subdirectories will be nested.
+#' @param seq_dirname Default PRESET_OUTDIR_SEQUENCE in params.R. Path to append to base_dir where sequence data will be output.
+#' @param seqmeta_dirname Default PRESET_OUTDIR_SEQMETA in params.R. Path to append to base_dir where sequence metadata will be output.
+#' @param soil_dirname Default PRESET_OUTDIR_SOIL in params.R. Path to append to base_dir where soil data will be output.
+#'
+#' @return No value is returned.
+#'
+#' @examples
+#' \dontrun{
+#' makeOutputDirectories(base_dir="/data/NEON")
+#' }
+makeOutputDirectories <- function(base_dir = PRESET_OUTDIR, seq_dirname=PRESET_OUTDIR_SEQUENCE,
+                                  seqmeta_dirname=PRESET_OUTDIR_SEQMETA, soil_dirname=PRESET_OUTDIR_SOIL) {
+  if(is.null(seq_dirname) | seq_dirname == "") seq_dirname <- "raw_sequence"
+  if(is.null(seqmeta_dirname) | seqmeta_dirname == "") seqmeta_dirname <- "sequence_metadata"
+  if(is.null(soil_dirname) | soil_dirname == "") soil_dirname <- "soil"
+
+  seq_dir <- file.path(base_dir, seq_dirname)
+  seqmeta_dir <- file.path(base_dir, seqmeta_dirname)
+  soil_dir <- file.path(base_dir, soil_dirname)
+
+  message("Building output directories from base directory '", base_dir, "'.")
+  message("Using '", seq_dir, "' as sequence subdirectory.")
+  message("Using '", seqmeta_dir, "' as sequence metadata subdirectory.")
+  message("Using '", soil_dir, "' as soil data subdirectory.")
+
+  seq_its_dir <- file.path(seq_dir, "ITS")
+  seq_16s_dir <- file.path(seq_dir, "16S")
+
+  # If preset output directories do not exist, create them
+  if(!dir.exists(seq_dir)) dir.create(seq_dir, recursive=TRUE)
+  if(!dir.exists(seqmeta_dir)) dir.create(seqmeta_dir, recursive=TRUE)
+  if(!dir.exists(soil_dir)) dir.create(soil_dir, recursive=TRUE)
+
+  # If preset output directories for ITS and 16S data do not exist, create them
+  if(!dir.exists(seq_its_dir)) dir.create(seq_its_dir)
+  if(!dir.exists(seq_16s_dir)) dir.create(seq_16s_dir)
+
+  # Create intermediary directories for ITS and 16S data in the middle
+  # of being processed
+  if(!dir.exists(file.path(seq_its_dir, "0_raw"))) dir.create(file.path(seq_its_dir, "0_raw"))
+  if(!dir.exists(file.path(seq_its_dir, "1_filtN"))) dir.create(file.path(seq_its_dir, "1_filtN"))
+  if(!dir.exists(file.path(seq_its_dir, "2_trimmed"))) dir.create(file.path(seq_its_dir, "2_trimmed"))
+  if(!dir.exists(file.path(seq_its_dir, "3_filtered"))) dir.create(file.path(seq_its_dir, "3_filtered"))
+  if(!dir.exists(file.path(seq_its_dir, "4_seqtabs"))) dir.create(file.path(seq_its_dir, "4_seqtabs"))
+  if(!dir.exists(file.path(seq_its_dir, "track_reads"))) dir.create(file.path(seq_its_dir, "track_reads"))
+  if(!dir.exists(file.path(seq_16s_dir, "0_raw"))) dir.create(file.path(seq_16s_dir, "0_raw"))
+  if(!dir.exists(file.path(seq_16s_dir, "1_trimmed"))) dir.create(file.path(seq_16s_dir, "1_trimmed"))
+  if(!dir.exists(file.path(seq_16s_dir, "2_filtered"))) dir.create(file.path(seq_16s_dir, "2_filtered"))
+  if(!dir.exists(file.path(seq_16s_dir, "3_seqtabs"))) dir.create(file.path(seq_16s_dir, "3_seqtabs"))
+  if(!dir.exists(file.path(seq_16s_dir, "track_reads"))) dir.create(file.path(seq_16s_dir, "track_reads"))
+}
+
+
 #' Download NEON Marker Gene Sequencing Raw Data
 #'
 #' Downloads NEON raw sequence data files to the specified filepath, by referencing
 #' URLs in the metadata output from \code{\link{downloadSequenceMetadata}}.
 #'
 #' @param metadata The output of downloadSequenceMetadata(). Must be provided as either the data.frame returned by downloadSequenceMetadata() or as a filepath to the csv file produced by downloadSequenceMetadata() when outdir is provided.
-#' @param outdir Location where output files are saved. Defaults to PRESET_OUTDIR_SEQUENCE in params.R.
+#' @param outdir Location where output files are saved. Defaults to file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE) in params.R.
+#' @param ignore_tar_files If TRUE (default), does not download tar files. Each tar file is a batch containing an entire sequence run of fastq files. The tar file structure will soon be deprecated.
 #' @param verbose If TRUE, prints status messages and progress bars associated with file downloads.
 #'
 #' @return Returns (invisibly) an integer code: 0 indicates success of downloads and a non-zero integer indicates failure. See the help page for \code{\link[utils]{download.file}} for more details.
-downloadRawSequenceData <- function(metadata, outdir = PRESET_OUTDIR_SEQUENCE, verbose=FALSE) {
+downloadRawSequenceData <- function(metadata, outdir = file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE), ignore_tar_files=TRUE, verbose=FALSE) {
 
   library(utils)
   library(dplyr)
@@ -40,6 +97,15 @@ downloadRawSequenceData <- function(metadata, outdir = PRESET_OUTDIR_SEQUENCE, v
     stop("'metadata' must be the data.frame output from downloadSequenceMetadata() or a filepath to the local copy of the output from downloadSequenceMetadata()")
   }
 
+  if(ignore_tar_files) {
+    tar_ind <- grep('\\.tar\\.gz', metadata$rawDataFileName)
+    if(length(tar_ind) > 0) {
+      metadata <- metadata[-tar_ind, ]
+      message(length(tar_ind), " row(s) in metadata associated with batch-level sequence data
+              were ignored prior to downloading raw sequence data.")
+    }
+  }
+
   u.urls <- unique(metadata$rawDataFilePath)
   fileNms <- gsub('^.*\\/', "", u.urls)
   print(paste("There are", length(u.urls), "unique (zipped) raw sequence files to download.") )
@@ -51,13 +117,114 @@ downloadRawSequenceData <- function(metadata, outdir = PRESET_OUTDIR_SEQUENCE, v
       quiet = !verbose
     )
     if(dir.exists(outdir)) {
-      print(paste("Finished downloading", paste(outdir, fileNms[i], sep="/")))
+      message("Finished downloading ", paste(outdir, fileNms[i], sep="/"))
     } else {
-      print(paste("Finished downloading", paste(getwd(), fileNms[i], sep="/" )))
+      message("Finished downloading ", paste(getwd(), fileNms[i], sep="/" ))
     }
   }
 
   return(download_success)
+}
+
+
+#' Organize Raw Sequence Data
+#'
+#' Moves raw sequence data into the correct subdirectory for the processing pipeline,
+#' renames files to include sequencer run ID, and untars sequence data if necessary.
+#'
+#' @param fn Character vector of full names (including path) of raw sequence files. Can include tarballs.
+#' @param metadata The output of downloadSequenceMetadata(). Must be provided as either the data.frame returned by downloadSequenceMetadata() or as a filepath to the csv file produced by downloadSequenceMetadata() when outdir is provided.
+#' @param outdir_sequence Default file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE). Directory where raw sequence files are output.
+#'
+#' @return Character vector of the files (including files within tarballs) that were successfully reorganized. If no files were successfully reorganized, returns no value.
+organizeRawSequenceData <- function(fn, metadata, outdir_sequence = file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE)) {
+  metadata_load_err <- FALSE
+
+  if(class(metadata) == "data.frame") {
+    metadata <- metadata
+  } else if(class(metadata) == "character") {
+    if(file.exists(metadata)) {
+      metadata <- read.csv(metadata)
+    } else {
+      metadata_load_err <- TRUE
+    }
+  } else {
+    metadata_load_err <- TRUE
+  }
+
+  if(metadata_load_err) {
+    stop("'metadata' must be the data.frame output from downloadSequenceMetadata() or a filepath to the local copy of the output from downloadSequenceMetadata()")
+  }
+
+  runIDs <- metadata$sequencerRunID[match(basename(fn), metadata$rawDataFileName)]
+
+  if(all(is.na(runIDs))) stop("All values of metadata$sequencerRunID are NA. Cannot append runID to beginning of filenames.")
+
+  files_organized <- c()
+  for(i in 1:length(fn)) {
+    # get run ID associated with the zip file
+    runID <- runIDs[i]
+    if(is.na(runID)) next
+
+    # If the file is a tar file (unusual case)
+    if(grepl("tar.gz", fn[i])) {
+      tar_filenames <- untar(fn[i], list=TRUE)
+      untar(fn[i], list=FALSE, exdir = outdir_sequence)
+      untarred <- file.path(outdir_sequence, tar_filenames)
+      untarred_ITS <- grep("_ITS[^/]*fastq", untarred, value=TRUE)
+      untarred_16S <- grep("_16S[^/]*fastq", untarred, value=TRUE)
+      if(length(untarred_ITS) == 0 & length(untarred_16S) == 0) {
+        warning("Could not distinguish between ITS and 16S files contained within ", fn[i], ". We use regex patterns '_ITS[^/]*fastq' and '_16S[^/]*fastq'
+              on the untarred filenames to make this distinction.")
+        next
+      }
+
+      # rename untarred files by appending sequencer run ID and moving to target gene-specific subdirectory
+      untarred_ITS_rename_to <- file.path(outdir_sequence, "ITS", "0_raw", paste0("run", runID, "_", basename(untarred_ITS)))
+      untarred_16S_rename_to <- file.path(outdir_sequence, "16S", "0_raw", paste0("run", runID, "_", basename(untarred_16S)))
+      if(length(untarred_ITS) > 0) {
+        renamed <- file.rename(untarred_ITS, untarred_ITS_rename_to)
+        if(!all(renamed)) {
+          warning(sum(!renamed), " untarred ITS file(s) were not successfully renamed in sequencer run ", runID)
+        }
+        files_organized <- c(files_organized, basename(untarred_ITS[renamed]))
+      }
+      if(length(untarred_16S) > 0) {
+        renamed <- file.rename(untarred_16S, untarred_16S_rename_to)
+        if(!all(renamed)) {
+          warning(sum(!renamed), " untarred 16S file(s) were not successfully renamed in sequencer run ", runID)
+        }
+        files_organized <- c(files_organized, basename(untarred_16S[renamed]))
+      }
+
+    # If the file is not tarred (typical case)
+    } else {
+
+      # rename file by appending sequencer run ID and moving to target gene-specific subdirectory
+      if(grepl("_ITS[^/]*fastq", fn[i])) {
+        rename_to <- file.path(outdir_sequence, "ITS", "0_raw", paste0("run", runID, "_", basename(fn[i])))
+      } else if (grepl("_16S[^/]*fastq", fn[i])) {
+        rename_to <- file.path(outdir_sequence, "16S", "0_raw", paste0("run", runID, "_", basename(fn[i])))
+      } else {
+        warning("Could not distinguish target gene of ", fn[i], ". We use regex patterns '_ITS[^/]*fastq' and '_16S[^/]*fastq'
+              on the filename to make this distinction.")
+        next
+      }
+
+      renamed <- file.rename(fn[i], rename_to)
+      if(!renamed) {
+        warning(fn[i], " was not successfully renamed.")
+      } else {
+        files_organized <- c(files_organized, basename(fn[i]))
+      }
+    }
+  }
+  if(length(files_organized) > 0) {
+    message("Reorganized files can be found in ", file.path(outdir_sequence, "ITS"), " and ", file.path(outdir_sequence, "16S"), ".")
+    return(files_organized)
+  } else {
+    warning("No files were successfully reorganized")
+  }
 }
 
 
@@ -70,15 +237,15 @@ downloadRawSequenceData <- function(metadata, outdir = PRESET_OUTDIR_SEQUENCE, v
 #'
 #' @param sites Either the string 'all', meaning all available sites, or a character vector of 4-letter NEON site codes, e.g. c('ONAQ','RMNP'). Defaults to PRESET_SITES parameter in params.R.
 #' @param startYrMo,endYrMo Either NA, meaning all available dates, or a character vector in the form YYYY-MM, e.g. 2017-01. Defaults to PRESET_START_YR_MO in params.R.
-#' @param outdir Location where output files are saved. Defaults to PRESET_OUTDIR_SEQMETA in params.R.
+#' @param outdir Location where output files are saved. Defaults to file.path(PRESET_OUTDIR, PRESET_OUTDIR_SOIL) in params.R.
 #' @param checkFileSize TRUE or FALSE. Whether the user should be told the total file size before downloading. Defaults to PRESET_CHECK_FILE_SIZE in params.R.
 #' @param return_data Whether to return metadata. If FALSE, simply downloads data to outdir and returns no value. Defaults to PRESET_RETURN_DATA.
 #' @param overwrite TRUE or FALSE. If there is a previous download of this metadata in outdir, whether to overwrite that download.
 #'
 #' @return If return_data==TRUE, returns a dataframe consisting of joined soil data records from DP1.10078 ("Soil chemical properties (Distributed periodic)") and DP1.10086 ("Soil physical properties (Distributed periodic)"). Otherwise, no value is returned.
 downloadRawSoilData <- function(sites = PRESET_SITES, startYrMo = PRESET_START_YR_MO, endYrMo = PRESET_END_YR_MO,
-                                outdir = PRESET_OUTDIR_SOIL, checkFileSize = PRESET_CHECK_FILE_SIZE, return_data = PRESET_RETURN_DATA,
-                                overwrite = FALSE) {
+                                outdir = file.path(PRESET_OUTDIR, PRESET_OUTDIR_SOIL), checkFileSize = PRESET_CHECK_FILE_SIZE,
+                                return_data = PRESET_RETURN_DATA, overwrite = FALSE) {
   # TODO: Why does this function sometimes return a few warnings of the form:
   # 1: In UseMethod("depth") :
   # no applicable method for 'depth' applied to an object of class "NULL"
@@ -424,8 +591,9 @@ trimPrimers16S <- function(fnFs, fnRs, PATH_CUT, PRIMER_16S_FWD, PRIMER_16S_REV,
 #' @param path_cut Output directory. If it does not exist, it will be created.
 #' @param primer_ITS_fwd,primer_ITS_rev Default PRIMER_ITS_FWD and PRIMER_ITS_REV in params.R. DNA sequence of forward-read primer and reverse-read primer, respectively.
 #' @param cutadapt_path Default CUTADAPT_PATH in params.R. Path to cutadapt on your file system.
-#' @param post_samplename_pattern (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
+#' @param post_samplename_pattern1,post_samplename_pattern2 (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).*\\.fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
 #' @param very_verbose Default FALSE. Whether to print output from cutadapt. Unlike some other "verbose" arguments associated with the functions in this package, this does not default to VERBOSE in params.R.
+#' @param discard_untrimmed Default FALSE. Whether to discard reads where a primer could not be found, leaving only those reads in which a primer has been trimmed.
 #'
 #' @return No value is returned.
 #'
@@ -433,10 +601,10 @@ trimPrimers16S <- function(fnFs, fnRs, PATH_CUT, PRIMER_16S_FWD, PRIMER_16S_REV,
 #' \dontrun{
 #' trimPrimersITS(c("sample1_ITS_R1.fastq", "sample2_ITS_R1.fastq"), "path/to/output", "CTTGGTCATTTAGAGGAAGTAA", multithread = TRUE)
 #' }
-trimPrimersITS <- function(fn, path_cut, primer_ITS_fwd = PRIMER_ITS_FWD, primer_ITS_rev = PRIMER_ITS_REV, cutadapt_path = CUTADAPT_PATH, post_samplename_pattern = "_R(1|2).fastq", very_verbose=FALSE#, quiet=T
+trimPrimersITS <- function(fn, path_cut, primer_ITS_fwd = PRIMER_ITS_FWD, primer_ITS_rev = PRIMER_ITS_REV, cutadapt_path = CUTADAPT_PATH, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq", very_verbose=FALSE, discard_untrimmed=FALSE#, quiet=T
 ){
 
-  fnFs <- fn[file.exists(fn) & grepl("_R1.fastq", fn)]
+  fnFs <- fn[file.exists(fn) & grepl(post_samplename_pattern1, fn)]
   if(length(fnFs) == 0) stop("No files found at specified location. Check file path.")
 
   # Create output directory
@@ -451,15 +619,24 @@ trimPrimersITS <- function(fn, path_cut, primer_ITS_fwd = PRIMER_ITS_FWD, primer
   # Trim forward primer and the reverse-complement of reverse primer off of R1 (forward reads)
   R1.flags <- paste("-g", primer_ITS_fwd, "-a", rev_rc)
 
+  # Discard untrimmed reads?
+  if(discard_untrimmed) {
+    discard_untrimmed_flag <- "--discard-untrimmed"
+  } else {
+    discard_untrimmed_flag <- ""
+  }
+
   # Run Cutadapt
   for(i in seq_along(fnFs)) {
     system2(cutadapt_path, args = c(R1.flags, "-n", 2, # -n 2 required to remove FWD and REV from reads
                                     "-o", fnFs.cut[i], # output files
                                     fnFs[i], # input files
-                                    "--minimum-length", "1"), # min length of cutadapted reads: >0
+                                    "--minimum-length", "1",
+                                    discard_untrimmed_flag), # min length of cutadapted reads: >0
             stdout = ifelse(very_verbose, "", FALSE))
   }
 }
+
 
 
 #' Remove Unmatched Fastq Files
@@ -470,7 +647,7 @@ trimPrimersITS <- function(fn, path_cut, primer_ITS_fwd = PRIMER_ITS_FWD, primer
 #'
 #' @param fnFs Full name(s) of fastq file(s) containing forward-read sequence data.
 #' @param fnRs Full name(s) of fastq file(s) containing reverse-read sequence data.
-#' @param post_samplename_pattern (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
+#' @param post_samplename_pattern (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).*\\.fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
 #'
 #' @return List of length 2. The first element is a vector of forward-read files that have reverse-read counterparts; the second element is a vector of reverse-read files that have forward-read counterparts.
 #'
@@ -478,7 +655,7 @@ trimPrimersITS <- function(fn, path_cut, primer_ITS_fwd = PRIMER_ITS_FWD, primer
 #' matched_fn <- remove_unmatched_files(c("sample1_R1.fastq", "sample2_R1.fastq"), c("sample1_R2.fastq", "sample2_R2.fastq", "sample3_R2.fastq"))
 #' fnFs <- matched_fn[[1]]
 #' fnRs <- matched_fn[[2]]
-remove_unmatched_files <- function(fnFs, fnRs, post_samplename_pattern = "_R(1|2).fastq"){
+remove_unmatched_files <- function(fnFs, fnRs, post_samplename_pattern = "_R(1|2).*\\.fastq"){
   basefilenames_Fs <- sapply(strsplit(fnFs, post_samplename_pattern), `[`, 1)
   basefilenames_Rs <- sapply(strsplit(fnRs, post_samplename_pattern), `[`, 1)
   rm_from_fnFs <- which(!(basefilenames_Fs %in% basefilenames_Rs))
@@ -511,7 +688,7 @@ remove_unmatched_files <- function(fnFs, fnRs, post_samplename_pattern = "_R(1|2
 #' @param MAX_EE_FWD,MAX_EE_REV The maximum number of expected errors allowed in forward/reverse reads. Read-pairs with expected errors that exceed this threshold will be removed.
 #' @param TRUNC.LENGTHS Default NULL. Single integer: truncation length to use across all files. Two-integer vector: truncation length to use for the forward-read and reverse-read files, respectively. If NULL (default), determines truncation length(s) based on \code{\link{getTruncationLength}} with a quality score threshold of trunc_qscore.
 #' @param trunc_qscore Default 23. Quality score at which point to truncate each read, if TRUNC.LENGTHS is null.
-#' @param post_samplename_pattern (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
+#' @param post_samplename_pattern1,post_samplename_pattern2 (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).*\\.fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
 #'
 #' @return Two-column matrix displaying the number of reads in input vs. output for each file.
 qualityFilter16S <- function(PATH_CUT, PATH_FILTERED, MULTITHREAD, MAX_EE_FWD, MAX_EE_REV, TRUNC.LENGTHS = NULL, trunc_qscore = 23, post_samplename_pattern = "_R(1|2).fastq" #, mean = FALSE
@@ -573,6 +750,8 @@ qualityFilter16S <- function(PATH_CUT, PATH_FILTERED, MULTITHREAD, MAX_EE_FWD, M
 }
 
 
+# TODO: How can we add "..." to pass arbitrary parameters to filterAndTrim?
+
 #' Filter ITS Sequences
 #'
 #' Applies a quality filter to ITS sequence fastq files via the \code{\link[dada2]{filterAndTrim}} function.
@@ -585,15 +764,16 @@ qualityFilter16S <- function(PATH_CUT, PATH_FILTERED, MULTITHREAD, MAX_EE_FWD, M
 #' @param truncQ Default 2. Quality score at which point to truncate each read.
 #' @param minLen Default 20. Read with length less than minLen are removed. minLen is enforced after trimming and truncation.
 #' @param maxN Default 0. Maximum number of ambiguous bases "N" to allow in forward reads.
-#' @param post_samplename_pattern (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
+#' @param post_samplename_pattern1,post_samplename_pattern2 (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).*\\.fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
+#' @param trimLeft (Optional). Default 0. The number of nucleotides to remove from the start of each read.
 #'
 #' @return Two-column matrix displaying the number of reads in input vs. output for each file.
-qualityFilterITS <- function(fn, path_filtered, multithread = MULTITHREAD, maxEE = Inf, truncQ = 2, minLen = 20, maxN = 0, post_samplename_pattern = "_R(1|2).fastq" #, mean = FALSE
+qualityFilterITS <- function(fn, path_filtered, multithread = MULTITHREAD, maxEE = Inf, truncQ = 2, minLen = 20, maxN = 0, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq", trimLeft = 0 #, mean = FALSE
 ){
-  fnFs <- fn[file.exists(fn) & grepl("_R1.fastq", fn)]
+  fnFs <- fn[file.exists(fn) & grepl(post_samplename_pattern1, fn)]
   if(length(fnFs) == 0) stop("No files found at specified location. Check file path.")
 
-  # sample.names <- sapply(strsplit(basename(fnFs), post_samplename_pattern), `[`, 1) # extract sample names
+  sample.names <- sapply(strsplit(basename(fnFs), paste(post_samplename_pattern1, "|", post_samplename_pattern2)), `[`, 1) # extract sample names
   # filtFs <- file.path(path_filtered, paste0(sample.names, "_filt_R1.fastq.gz")) # create filtered filenames
   # filtRs <- file.path(path_filtered, paste0(sample.names, "_filt_R2.fastq.gz")) # create filtered filenames
 
@@ -604,7 +784,11 @@ qualityFilterITS <- function(fn, path_filtered, multithread = MULTITHREAD, maxEE
                        maxEE = maxEE,
                        truncQ = truncQ,
                        minLen = minLen,
-                       compress = TRUE, maxN = maxN)
+                       compress = TRUE,
+                       maxN = maxN,
+                       trimLeft = trimLeft)
+
+  rownames(out) <- sample.names
 
   return(out)
 }
@@ -750,7 +934,6 @@ runDada16S <- function(PATH_FILTERED, MULTITHREAD, VERBOSE = FALSE, seed = NULL)
 }
 
 
-
 #' Run Dada on R1 ITS sequences
 #'
 #' Runs the Dada algorithm to infer sample composition from R1 ITS fastq files.
@@ -762,9 +945,9 @@ runDada16S <- function(PATH_FILTERED, MULTITHREAD, VERBOSE = FALSE, seed = NULL)
 #'
 #' @param fn Full names of input fastq files, including directory paths. Files that do not exist will be ignored; however, if all files do not exist, this function will throw an error. It is assumed that these are R1 (forward-read) files only, and that they contain no primers, and that they have been filtered.
 #' @param multithread Whether to use multithreading.
-#' @param verbose Default FALSE. Whether to print messages regarding the dimensions of the resulting sequence table and the distribution of sequence lengths.
+#' @param verbose Default FALSE. Whether to print messages regarding the dereplication step, the denoising step, and the dimensions of the resulting sequence table and the distribution of sequence lengths.
 #' @param seed (Optional) Integer to use as random seed for reproducibility.
-#' @param post_samplename_pattern (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
+#' @param post_samplename_pattern1,post_samplename_pattern2 (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).*\\.fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
 #'
 #' @return A list of three elements. \strong{seqtab} is the sequence table before removing chimeras, \strong{seqtab.nochim} is the sequence table after removing chimeras, and \strong{track} is a data frame displaying the number of reads remaining for each sample at various points throughout the processing pipeline.
 #'
@@ -772,15 +955,15 @@ runDada16S <- function(PATH_FILTERED, MULTITHREAD, VERBOSE = FALSE, seed = NULL)
 #' \dontrun{
 #' seqtab.list <- runDadaITS('./seq/filtered/', TRUE, TRUE, 1010100)
 #' }
-runDadaITS <- function(fn, multithread, verbose = FALSE, seed = NULL, post_samplename_pattern = "_R(1|2).fastq"){
+runDadaITS <- function(fn, multithread, verbose = FALSE, seed = NULL, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq"){
   if (!is.null(seed)) set.seed(seed)
 
   # File parsing
-  filtFs <- fn[file.exists(fn) & grepl("_R1.fastq", fn)]
+  filtFs <- fn[file.exists(fn) & grepl(post_samplename_pattern1, fn)]
   if(length(filtFs) == 0) stop("No files found at specified location. Check file path.")
 
   # Create outnames
-  sample.names <- sapply(strsplit(basename(filtFs), "_R(1|2).fastq"), `[`, 1) # Assumes filename = samplename_XXX.fastq.gz
+  sample.names <- sapply(strsplit(basename(filtFs), paste(post_samplename_pattern1, "|", post_samplename_pattern2)), `[`, 1) # Assumes filename = samplename_XXX.fastq.gz
   names(filtFs) <- sample.names
 
   # Learn error rates
@@ -796,8 +979,8 @@ runDadaITS <- function(fn, multithread, verbose = FALSE, seed = NULL, post_sampl
   for(i in 1:length(sample.names)) {
     sam <- sample.names[[i]]
     cat("Processing:", sam, "\n")
-    derepF[[i]] <- derepFastq(filtFs[[i]])
-    ddF[[i]] <- dada(derepF[[i]], err=errF, multithread=TRUE)
+    derepF[[i]] <- derepFastq(filtFs[[i]], verbose=verbose)
+    ddF[[i]] <- dada(derepF[[i]], err=errF, multithread=MULTITHREAD, verbose=verbose)
     cat(paste("Exact sequence variants inferred for sample:", sam,". \n"))
   }
   # rm(derepF);
@@ -813,17 +996,9 @@ runDadaITS <- function(fn, multithread, verbose = FALSE, seed = NULL, post_sampl
     cat(paste0("\n", round(sum(seqtab.nochim)/sum(seqtab), 3), " reads remain after removal of chimeras"))
   }
 
-  if(nrow(seqtab.nochim) > 1) {
-    track <- cbind.data.frame(derepF = sapply(derepF, getN),
-                              denoisedF = sapply(ddF, getN),
-                              nonchim = rowSums(seqtab.nochim))
-  # If processing a single sample, remove the sapply calls: e.g. replace
-  # sapply(dadaFs, getN) with getN(dadaFs)
-  } else {
-    track <- cbind.data.frame(derepF = getN(derepF),
-                              denoisedF = getN(ddF),
-                              nonchim = sum(seqtab.nochim))
-  }
+  track <- cbind.data.frame(derepF = sapply(derepF, getN),
+                            denoisedF = sapply(ddF, getN),
+                            nonchim = rowSums(seqtab.nochim))
   return(list("seqtab" = seqtab, "seqtab.nochim" = seqtab.nochim, "track" = track))
 }
 
@@ -915,7 +1090,7 @@ warn_already_downloaded <- function(PRNUM, outdir) {
 #'
 #' @param sites Either the string 'all', meaning all available sites, or a character vector of 4-letter NEON site codes, e.g. c('ONAQ','RMNP'). Defaults to PRESET_SITES parameter in params.R.
 #' @param startYrMo,endYrMo Either NA, meaning all available dates, or a character vector in the form YYYY-MM, e.g. 2017-01. Defaults to PRESET_START_YR_MO in params.R.
-#' @param outdir Location where output files are saved. Defaults to PRESET_OUTDIR_SEQMETA in params.R.
+#' @param outdir Location where output files are saved. Defaults to file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQMETA) in params.R.
 #' @param checkFileSize TRUE or FALSE. Whether the user should be told the total file size before downloading. Defaults to PRESET_CHECK_FILE_SIZE in params.R.
 #' @param return_data Whether to return part of the metadata: the table NEON table "mmg_soilRawDataFiles.csv" within NEON data product DP1.10108. If FALSE, simply downloads data to outdir and returns no value. Defaults to PRESET_RETURN_DATA.
 #' @param target_genes 'ITS', '16S', or 'all'. Defaults to TARGET_GENE in params.R.
@@ -924,8 +1099,8 @@ warn_already_downloaded <- function(PRNUM, outdir) {
 #'
 #' @return If return_data==TRUE, returns the mmg_soilRawDataFiles table from NEON.DP1.10108 ("Soil microbe marker gene sequences"). Otherwise, no value is returned.
 downloadSequenceMetadata <- function(sites = PRESET_SITES, startYrMo = PRESET_START_YR_MO, endYrMo = PRESET_END_YR_MO,
-                                     outdir = PRESET_OUTDIR_SEQMETA, checkFileSize = PRESET_CHECK_FILE_SIZE, return_data = PRESET_RETURN_DATA,
-                                     target_genes = TARGET_GENE, sequencing_runs = SEQUENCING_RUNS,
+                                     outdir = file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQMETA), checkFileSize = PRESET_CHECK_FILE_SIZE,
+                                     return_data = PRESET_RETURN_DATA, target_genes = TARGET_GENE, sequencing_runs = SEQUENCING_RUNS,
                                      overwrite = FALSE) {
 
   library(neonUtilities)

@@ -14,9 +14,9 @@ source("./R/utils.R")
 
 # Generate filepath names
 PATH_ITS <- file.path(PRESET_OUTDIR_SEQUENCE, "ITS")
-PATH_UNZIPPED <- file.path(PATH_ITS, "0_unzipped")
+PATH_UNZIPPED <- file.path(PATH_ITS, "0_raw")
 PATH_FILTN <- file.path(PATH_ITS, "1_filtN")
-PATH_CUT <- file.path(PATH_ITS, "2_cutadapt")
+PATH_TRIMMED <- file.path(PATH_ITS, "2_trimmed")
 PATH_FILTERED <- file.path(PATH_ITS, "3_filtered")
 PATH_SEQTABS <- file.path(PATH_ITS, "4_seqtabs")
 PATH_TRACK <- file.path(PATH_ITS, "track_reads")
@@ -63,10 +63,10 @@ for (i in 1:loop_length) {
   prefilter_trackReads <- qualityFilterITS(fnFs, PATH_FILTN, maxN = 0)
 
   # Trim primers from ITS sequences
-  trimPrimersITS(file.path(PATH_FILTN, fnFs_base), PATH_CUT)
+  trimPrimersITS(file.path(PATH_FILTN, fnFs_base), PATH_TRIMMED)
 
   # Filter and truncate
-  filter_trackReads <- qualityFilterITS(file.path(PATH_CUT, fnFs_base), PATH_FILTERED, MULTITHREAD, MAX_EE_FWD, TRUNC_Q, MIN_LEN)
+  filter_trackReads <- qualityFilterITS(file.path(PATH_TRIMMED, fnFs_base), PATH_FILTERED, MULTITHREAD, MAX_EE_FWD, TRUNC_Q, MIN_LEN)
 
   # Now create sequence table for run
   seqtab.list <- runDadaITS(file.path(PATH_FILTERED, fnFs_base), MULTITHREAD, VERBOSE)

@@ -12,9 +12,13 @@ source("./code/params.R")
 source("./R/utils.R")
 
 # Generate filepath names
-PATH_16S <- file.path(PRESET_OUTDIR_SEQUENCE, "16S")
-PATH_UNZIPPED <- file.path(PATH_16S, "0_unzipped")
-PATH_CUT <- file.path(PATH_16S, "1_trimmed")
+if(is.null(PRESET_OUTDIR_SEQUENCE) | PRESET_OUTDIR_SEQUENCE == "") {
+  PATH_16S <- file.path(PRESET_OUTDIR, "raw_sequence", "16S")
+} else {
+  PATH_16S <- file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE, "16S")
+}
+PATH_RAW <- file.path(PATH_16S, "0_raw")
+PATH_TRIMMED <- file.path(PATH_16S, "1_trimmed")
 PATH_FILTERED <- file.path(PATH_16S, "2_filtered")
 PATH_SEQTABS <- file.path(PATH_16S, "3_seqtabs")
 PATH_TRACK <- file.path(PATH_16S, "track_reads")
@@ -26,7 +30,7 @@ library(Biostrings)
 
 # Get all run IDs so you can group by them
 unique_runs <- unique(unlist(
-  regmatches(list.files(PATH_UNZIPPED), gregexpr("^run[A-Za-z0-9]*", list.files(PATH_UNZIPPED)))
+  regmatches(list.files(PATH_RAW), gregexpr("^run[A-Za-z0-9]*", list.files(PATH_RAW)))
 ))
 
 # If SMALL_SUBSET == TRUE, run only the first runID
@@ -45,8 +49,8 @@ for (i in 1:loop_length) {
   message(paste0("Began processing ", runID, " at ", Sys.time()))
 
   # Forward and reverse fastq filenames have format: SAMPLENAME_R1.fastq and SAMPLENAME_R2.fastq
-  fnFs <- sort(list.files(PATH_UNZIPPED, pattern=paste0(runID, ".*_R1.fastq"), full.names = TRUE))
-  fnRs <- sort(list.files(PATH_UNZIPPED, pattern=paste0(runID, ".*_R2.fastq"), full.names = TRUE))
+  fnFs <- sort(list.files(PATH_RAW, pattern=paste0(runID, ".*_R1.fastq"), full.names = TRUE))
+  fnRs <- sort(list.files(PATH_RAW, pattern=paste0(runID, ".*_R2.fastq"), full.names = TRUE))
 
   # If SMALL_SUBSET == TRUE,
   # keep only the first two forward-reverse pairs of sequence files
@@ -61,14 +65,14 @@ for (i in 1:loop_length) {
   fnRs <- matched_fn[[2]]
 
   # Trim reads based on the primer lengths supplied in params.r
-  trim_trackReads <- trimPrimers16S(fnFs, fnRs, PATH_CUT, PRIMER_16S_FWD, PRIMER_16S_REV, MULTITHREAD)
+  trim_trackReads <- trimPrimers16S(fnFs, fnRs, PATH_TRIMMED, PRIMER_16S_FWD, PRIMER_16S_REV, MULTITHREAD)
 
   # TODO: rather than taking input directory, may be necessary to take input files because
   #       we might not be interested in analyzing all files in the directory (e.g. those
   #       preexisting from previous processing batches).
 
   # Filter reads based on the settings in params.r
-  filter_trackReads <- qualityFilter16S(PATH_CUT, PATH_FILTERED, MULTITHREAD, MAX_EE_FWD, MAX_EE_REV, TRUNC.LENGTHS = c(265, 210))
+  filter_trackReads <- qualityFilter16S(PATH_TRIMMED, PATH_FILTERED, MULTITHREAD, MAX_EE_FWD, MAX_EE_REV, TRUNC.LENGTHS = c(265, 210))
 
   # Now create sequence table for run
   seqtab.list <- runDada16S(PATH_FILTERED, MULTITHREAD, VERBOSE)

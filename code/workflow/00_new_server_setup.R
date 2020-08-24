@@ -24,13 +24,13 @@ if(!dir.exists(file.path(BASE_DIR, "16S"))) dir.create(file.path(BASE_DIR, "16S"
 
 # Create intermediary directories for ITS and 16S data in the middle
 # of being processed
-if(!dir.exists(file.path(BASE_DIR, "ITS", "0_unzipped"))) dir.create(file.path(BASE_DIR, "ITS", "0_unzipped"), recursive=TRUE)
+if(!dir.exists(file.path(BASE_DIR, "ITS", "0_raw"))) dir.create(file.path(BASE_DIR, "ITS", "0_raw"), recursive=TRUE)
 if(!dir.exists(file.path(BASE_DIR, "ITS", "1_filtN"))) dir.create(file.path(BASE_DIR, "ITS", "1_filtN"), recursive=TRUE)
 if(!dir.exists(file.path(BASE_DIR, "ITS", "2_cutadapt"))) dir.create(file.path(BASE_DIR, "ITS", "2_cutadapt"), recursive=TRUE)
 if(!dir.exists(file.path(BASE_DIR, "ITS", "3_filtered"))) dir.create(file.path(BASE_DIR, "ITS", "3_filtered"), recursive=TRUE)
 if(!dir.exists(file.path(BASE_DIR, "ITS", "4_seqtabs"))) dir.create(file.path(BASE_DIR, "ITS", "4_seqtabs"), recursive=TRUE)
 if(!dir.exists(file.path(BASE_DIR, "ITS", "track_reads"))) dir.create(file.path(BASE_DIR, "ITS", "track_reads"), recursive=TRUE)
-if(!dir.exists(file.path(BASE_DIR, "16S", "0_unzipped"))) dir.create(file.path(BASE_DIR, "16S", "0_unzipped"), recursive=TRUE)
+if(!dir.exists(file.path(BASE_DIR, "16S", "0_raw"))) dir.create(file.path(BASE_DIR, "16S", "0_raw"), recursive=TRUE)
 if(!dir.exists(file.path(BASE_DIR, "16S", "1_filtN"))) dir.create(file.path(BASE_DIR, "16S", "1_filtN"), recursive=TRUE)
 if(!dir.exists(file.path(BASE_DIR, "16S", "2_cutadapt"))) dir.create(file.path(BASE_DIR, "16S", "2_cutadapt"), recursive=TRUE)
 if(!dir.exists(file.path(BASE_DIR, "16S", "3_filtered"))) dir.create(file.path(BASE_DIR, "16S", "3_filtered"), recursive=TRUE)
