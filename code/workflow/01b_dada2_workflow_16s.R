@@ -48,7 +48,6 @@ for (i in 1:loop_length) {
   fnFs <- sort(list.files(PATH_UNZIPPED, pattern=paste0(runID, ".*_R1.fastq"), full.names = TRUE))
   fnRs <- sort(list.files(PATH_UNZIPPED, pattern=paste0(runID, ".*_R2.fastq"), full.names = TRUE))
 
-
   # If SMALL_SUBSET == TRUE,
   # keep only the first two forward-reverse pairs of sequence files
   if(SMALL_SUBSET){
