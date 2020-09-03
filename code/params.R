@@ -2,30 +2,21 @@
 
 ## PARAMETERS FOR NEW_SERVER_SETUP AND OUTPUT DIRECTORIES
 
-# Parameters to define subset of data to download
-# The intersection (rather than union) of these subsets is downloaded
-#PRESET_SITES = "all" # Can also be character vector of 4-letter NEON site codes e.g. c('ONAQ','RMNP')
-PRESET_SITES = c("OSBS", "CPER", "CLBJ")
-PRESET_START_YR_MO = "2018-03"
-#PRESET_END_YR_MO = format(Sys.Date(), "%Y-%m")
-PRESET_END_YR_MO = "2018-07"
-#TARGET_GENE = "ITS" # Must be "ITS", "16S", or "all"
-TARGET_GENE = "16S"
-#SEQUENCING_RUNS = c('C25G9', 'B69PP') # Default 'all'.
-SEQUENCING_RUNS = c("C5B2R")
-SAMPLE_SUBSET_PARAMS_FILENAME = "sample_subset_params.txt" # name to give file where subset params are recorded
-PRESET_CHECK_FILE_SIZE = FALSE
-PRESET_RETURN_DATA = TRUE
+# Output directory for the pipeline. Absolute path.
+PRESET_OUTDIR = "/data/ZHULAB/NEON_DOB"
 
+# Can leave the following blank to generate default directory structure.
+# Or, character string to append to the end of PRESET_OUTDIR to generate
+# and use alternative directory structures.
+PRESET_OUTDIR_SEQUENCE = "Illumina/NEON" # for sequence data (fastq files)
+PRESET_OUTDIR_SEQMETA = "" # for sequence metadata
+PRESET_OUTDIR_SOIL = "" # for soil data
 
-# Parameters for output directories and filenames
-PRESET_OUTDIR_SEQUENCE = "/data/ZHULAB/NEON_DOB/vignette/Illumina" # for sequence data (fastq files)
-PRESET_OUTDIR_SEQMETA = "/data/ZHULAB/NEON_DOB/vignette/sequence_metadata" # for sequence metadata
-PRESET_OUTDIR_SOIL = "/data/ZHULAB/NEON_DOB/vignette/soil" # for soil data
-PRESET_OUTDIR_SOIL_DB = "/data/ZHULAB/NEON_DOB/vignette" # Database containing both seqmeta and soil data
-PRESET_OUTDIR_DADA2 = "/raid/users/claraqin/zhulab/NEON_soil_microbe_processing/data" # for phyloseq outputs
-PRESET_FILENAME_JOINED_SEQTAB = "NEON_ITS_seqtab_nochim_DL08-13-2019_truncQ4_maxEE8.Rds"
-PRESET_FILENAME_TAXTAB = "NEON_ITS_taxa_DL08-13-2019_truncQ4_maxEE8.Rds"
+# Other output directories and filenames. Absolute paths.
+PRESET_OUTDIR_SOIL_DB = "/data/ZHULAB/NEON_DOB" # Database containing both seqmeta and soil data
+PRESET_OUTDIR_DADA2 = "/raid/users/claraqin/zhulab/neonSoilMicrobeProcessing/data" # for phyloseq outputs
+PRESET_FILENAME_JOINED_SEQTAB = "NEON_ITS_seqtab_nochim_DL08-13-2019_truncQ4_maxEE8_R1only.Rds"
+PRESET_FILENAME_TAXTAB = "NEON_ITS_taxa_DL08-13-2019_truncQ4_maxEE8_R1only.Rds"
 
 ## PARAMETERS FOR DADA2_WORKFLOW
 
@@ -36,14 +27,14 @@ PRIMER_16S_FWD = "CCTACGGGNBGCASCAG" # Forward primer sequence
 PRIMER_16S_REV = "GACTACNVGGGTATCTAATCC" # Reverse primer sequence
 
 # Cutadapt path
-CUTADAPT_PATH = "/share/pkg.7/cutadapt/1.18/install/bin/cutadapt"
+CUTADAPT_PATH = "/afs/cats.ucsc.edu/users/b/claraqin/.local/bin/cutadapt"
 
 # UNITE reference database (FASTA file) path
 UNITE_REF_PATH = "/data/sh_general_release_dynamic_04.02.2020.fasta"
 SILVA_REF_PATH = "/projectnb/talbot-lab-data/zrwerbin/decomposition/silva_training_set.fa.gz"
 
 # Whether to download and process only a small subset
-SMALL_SUBSET = TRUE # If TRUE, all fastq.gz.tar files matching these parameters will still be downloaded,
+SMALL_SUBSET = FALSE # If TRUE, all fastq.gz.tar files matching these parameters will still be downloaded,
 # and all fastq files within them will be unzipped, but only the first 2 forward-reverse
 # pairs of sequence files from the first sequencing run ID will be processed in
 # dada2_workflow.R and in following scripts.
@@ -54,12 +45,12 @@ VERBOSE = FALSE
 # Whether to use multithreading in DADA2 (Windows users should set to FALSE),
 # or, if integer is provided, how many threads to use
 #MULTITHREAD = TRUE
-MULTITHREAD = 2
+MULTITHREAD = 4
 
 # filterAndTrim arguments
 MAX_EE_FWD = 8 # max. allowable expected errors in forward reads that pass filter
 MAX_EE_REV = 8 # max. allowable expected errors in reverse reads that pass filter
-TRUNC_Q = 4 # base quality score after which to truncate sequence
+TRUNC_Q = 2 # base quality score after which to truncate sequence
 # NOTE: it may be desirable to set this higher than 2 if the goal
 # is to increase the proportion of reads passing the filter, as this
 # would allow fewer "expected errors" to appear in the sequence

@@ -67,36 +67,19 @@ makeOutputDirectories()
 
 # Download data
 
-All of the downloading functions will refer to the subsetting parameters in `params.R` by default. These parameters may look like the following:
-
-```
-PRESET_SITES = "all" # Default "all". Can also be character vector of 4-letter NEON site codes e.g. c('ONAQ','RMNP')
-PRESET_START_YR_MO = "2016-01"
-PRESET_END_YR_MO = format(Sys.Date(), "%Y-%m")
-TARGET_GENE = "16S" # Must be "ITS", "16S", or "all"
-SEQUENCING_RUNS = c('C25G9', 'B69PP') # Default "all". Can also be character vector of 5-letter NEON sequencing run IDs e.g. c('B69RF','BTP4N')
-```
-
-If time and space are not issues for you, you can download the entire dataset over the course of a few hours. However, these subsetting parameters can be used to specify which parts of the data you are interested in keeping for your analysis.
-
-In addition, the following parameters will be used with the downloading functions by default:
-
-```
-PRESET_CHECK_FILE_SIZE = FALSE
-PRESET_RETURN_DATA = TRUE
-```
-
-`PRESET_CHECK_FILE_SIZE` determines whether the script will give you a warning with an estimated file size before downloading a file. `PRESET_RETURN_DATA` determines whether the downloading functions return data as an R object, or simply downloads data to the specified output directory and returns no value.
-
-You can change any of these parameters on-the-fly by entering different arguments to the downloading functions. For more info, see the help pages for `downloadSequenceMetadata()`, `downloadRawSequenceData()`, and `downloadRawSoilData()`.
-
 ## Download metadata
 
-The `downloadSequenceMetadataRev()` function downloads NEON data product DP1.10108 ("Soil microbe marker gene sequences") and assembles it using the `neonUtilities` package. This data product contains a number of tables related to accessing raw sequence data. A joined table containing information about the raw data URLs and the marker gene sequencing parameters is returned by this function. In the following example, we run `downloadSequenceMetadataRev()` with a number of arguments to narrow the range of data to be downloaded. Unspecified arguments will take on the defaults defined in `params.R`.
+We begin by downloading the metadata associated with the collection and analysis of NEON soil microbial samples, using the `downloadSequenceMetadataRev()` function.
+
+The `downloadSequenceMetadataRev()` function downloads NEON data product DP1.10108 ("Soil microbe marker gene sequences") and assembles it using the `neonUtilities` package. This data product contains a number of tables related to accessing raw sequence data. A joined table containing information about the raw data URLs and the marker gene sequencing parameters is returned by this function. 
+
+If time and space limitations are not issues for you, you can download the entire dataset over the course of a few hours. However, `downloadSequenceMetadataRev()` accepts arguments that can be used to specify the subset of the data you are interested in keeping for your analysis.
+
+In the following example, we run `downloadSequenceMetadataRev()` with a number of arguments to narrow the range of data to be downloaded.
 
 ```{r}
 meta <- downloadSequenceMetadataRev(startYrMo = "2018-03", endYrMo = "2018-07", 
-                                    sites = c("OSBS"), targetGene = "16S")
+                                    sites = c("OSBS", "CPER", "CLBJ"), targetGene = "16S")
 ```
 
 ## Download raw sequence data
