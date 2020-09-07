@@ -230,128 +230,117 @@ organizeRawSequenceData <- function(fn, metadata, outdir_sequence = file.path(PR
 
 #' Download NEON Soil Data Associated with Marker Gene Sequencing Data
 #'
-#' Downloads the following data products to the specified filepath:
-#' (1) DP1.10078: "Soil chemical properties (Distributed periodic)";
-#' (2) DP1.10086: "Soil physical properties (Distributed periodic)".
-#' This function uses \code{\link[neonUtilities]{zipsByProduct}} to conduct the downloads.
+#' Downloads either or both of the following data products:
+#' (1) DP1.10078.001: "Soil chemical properties (Distributed periodic)";
+#' (2) DP1.10086.001: "Soil physical properties (Distributed periodic)".
+#' This function uses \code{\link[neonUtilities]{loadByProduct}} to conduct the downloads.
 #'
 #' @param sites Either the string 'all', meaning all available sites, or a character vector of 4-letter NEON site codes, e.g. c('ONAQ','RMNP'). Defaults to PRESET_SITES parameter in params.R.
 #' @param startYrMo,endYrMo Either NA, meaning all available dates, or a character vector in the form YYYY-MM, e.g. 2017-01. Defaults to PRESET_START_YR_MO in params.R.
-#' @param outdir Location where output files are saved. Defaults to file.path(PRESET_OUTDIR, PRESET_OUTDIR_SOIL) in params.R.
-#' @param checkFileSize TRUE or FALSE. Whether the user should be told the total file size before downloading. Defaults to PRESET_CHECK_FILE_SIZE in params.R.
-#' @param return_data Whether to return metadata. If FALSE, simply downloads data to outdir and returns no value. Defaults to PRESET_RETURN_DATA.
-#' @param overwrite TRUE or FALSE. If there is a previous download of this metadata in outdir, whether to overwrite that download.
+#' @param dpID NEON data product(s) of interest. Default is both DP1.10078.001 ("Soil chemical properties (Distributed periodic)") and DP1.10086.001 ("Soil physical properties (Distributed periodic)").
+#' @param outDir (Optional) If a local copy of the filtered metadata is desired, provide path to output directory.
 #'
 #' @return If return_data==TRUE, returns a dataframe consisting of joined soil data records from DP1.10078 ("Soil chemical properties (Distributed periodic)") and DP1.10086 ("Soil physical properties (Distributed periodic)"). Otherwise, no value is returned.
-downloadRawSoilData <- function(sites = PRESET_SITES, startYrMo = PRESET_START_YR_MO, endYrMo = PRESET_END_YR_MO,
-                                outdir = file.path(PRESET_OUTDIR, PRESET_OUTDIR_SOIL), checkFileSize = PRESET_CHECK_FILE_SIZE,
-                                return_data = PRESET_RETURN_DATA, overwrite = FALSE) {
-  # TODO: Why does this function sometimes return a few warnings of the form:
-  # 1: In UseMethod("depth") :
-  # no applicable method for 'depth' applied to an object of class "NULL"
+downloadRawSoilData <- function(sites='all', startYrMo, endYrMo, 
+                                dpID = c("DP1.10078.001", "DP1.10086.001"), outDir="") {
 
   library(dplyr)
   library(neonUtilities)
-
-  PRNUM_chem <- "10078"
-  PRNUM_phys <- "10086"
-  dpID_chem <- paste("DP1", PRNUM_chem, "001", sep=".")
-  dpID_phys <- paste("DP1", PRNUM_phys, "001", sep=".")
-  stackDir_chem <- file.path(outdir, paste0("filesToStack",PRNUM_chem))
-  stackDir_phys <- file.path(outdir, paste0("filesToStack",PRNUM_phys))
-
-  # If there is NO previous download at stackDir_chem
-  if(!dir.exists(stackDir_chem)) {
-    neonUtilities::zipsByProduct(dpID_chem, site=sites, startdate=startYrMo,
-                                 enddate=endYrMo, package="expanded", check.size=checkFileSize, savepath = outdir)
-
-    stackByTable(stackDir_chem, folder = TRUE)
-
-    # Write site_and_date_range.txt file to record parameters
-    write_sample_subset_params(stackDir_chem, sites, startYrMo, endYrMo)
-
-    # If there IS a previous download at stackDir_chem
+  
+  # check valid data values entered
+  ## validate dpID ##
+  if(!all(grepl("DP1", dpID) & grepl('\\.001', dpID) & grepl('10078|10086', dpID))) {
+    message("Invalid Data Product ID: must follow convention 'DP1.[5-digit value].001' and must be a distributed periodic soil data product ID")
+    return(NULL)
   } else {
-    # If overwrite==TRUE,
-    if(overwrite) {
-      # delete existing directory
-      unlink(stackDir_chem, recursive=TRUE)
-      # and re-download data
-      neonUtilities::zipsByProduct(dpID_chem, site=sites, startdate=startYrMo,
-                                   enddate=endYrMo, package="expanded", check.size=checkFileSize,
-                                   savepath=outdir)
-      stackByTable(stackDir_chem, folder = TRUE)
-      write_sample_subset_params(stackDir_chem, sites, startYrMo, endYrMo)
-
-      # If overwrite==FALSE (default)
-    } else {
-      warn_already_downloaded(PRNUM_chem, outdir)
-    }
+    dpID <- dpID
   }
 
-  # If there is NO previous download at stackDir_phys
-  if(!dir.exists(stackDir_phys)) {
-    neonUtilities::zipsByProduct(dpID_phys, site=sites, startdate=startYrMo,
-                                 enddate=endYrMo, package="expanded", check.size=checkFileSize, savepath = outdir)
-
-    stackByTable(stackDir_phys, folder = TRUE)
-
-    # Write site_and_date_range.txt file to record parameters
-    write_sample_subset_params(stackDir_phys, sites, startYrMo, endYrMo)
-
-    # If there IS a previous download at stackDir_phys
+  # validate site(s)
+  terrSiteList <- c("all","HARV","SCBI","OSBS","GUAN","UNDE","KONZ","ORNL","TALL","WOOD","CPER","CLBJ","YELL","NIWO",
+                    "SRER","ONAQ","WREF","SJER","TOOL","BONA","PUUM","BART","BLAN","SERC","SCBI","DSNY","JERC","LAJA",
+                    "TREE","STEI","KONA","UKFS","MLBS","GRSM","LENO","DELA","NOGP","DCFS","STER","RMNP","OAES","MOAB",
+                    "JORN","ABBY","TEAK","SOAP","BARR","DEJU","HEAL")
+  if(!any(sites %in% terrSiteList)){
+    message("Invalid site(s): must be a valid NEON site or 'all'")
+    return(NULL)
   } else {
-    # If overwrite==TRUE,
-    if(overwrite) {
-      # delete existing directory
-      unlink(stackDir_phys, recursive=TRUE)
-      # and re-download data
-      neonUtilities::zipsByProduct(dpID_phys, site=sites, startdate=startYrMo,
-                                   enddate=endYrMo, package="expanded", check.size=checkFileSize,
-                                   savepath=outdir)
-      stackByTable(stackDir_phys, folder = TRUE)
-      write_sample_subset_params(stackDir_phys, sites, startYrMo, endYrMo)
+    sites <- sites
+  }
+  
+  slsL1 <- list()
+  message("loading soil data...")
+  for(i in 1:length(dpID)) {
+    slsL1[[dpID[i]]] <- tryCatch({
+      loadByProduct(dpID[i], sites, package = 'expanded', check.size = F, startdate = startYrMo, enddate = endYrMo) # output is a list of lists of each soil data file
+    }, error = function(e) {
+      warning("No data was found for data product ", dpID[i], " at the specified sites and dates.")
+      NA
+    })
+  }
+  
+  joining_cols <- c("domainID", "siteID", "plotID", "sampleID")
+  
+  if(any(grepl('10086', dpID)) & !all(is.na(slsL1[["DP1.10086.001"]]))) {
+    # start with soilCoreCollection data...
+    dat_soil_phys <- 
+      dplyr::select(slsL1[["DP1.10086.001"]]$"sls_soilCoreCollection", 
+                    domainID, siteID, plotID, namedLocation, plotType, nlcdClass, coreCoordinateX, coreCoordinateY, geodeticDatum, decimalLatitude, decimalLongitude, elevation,
+                    sccSamplingProtocolVersion=samplingProtocolVersion, collectDate, sampleTiming, standingWaterDepth, nTransBoutType, sampleID, horizon, soilTemp, litterDepth, 
+                    sampleTopDepth, sampleBottomDepth, soilSamplingDevice, geneticSampleID, sccDataQF=dataQF) %>%
+      # merge with soilMoisture data...
+      full_join(dplyr::select(slsL1[["DP1.10086.001"]]$"sls_soilMoisture",
+                              all_of(joining_cols), moistureSampleID, smSamplingProtocolVersion=samplingProtocolVersion, soilMoisture, smDataQF), by=joining_cols) %>%
+      # finally merge with soilpH data
+      full_join(dplyr::select(slsL1[["DP1.10086.001"]]$"sls_soilpH",
+                              all_of(joining_cols), pHSampleID, pHSamplingProtocolVersion=samplingProtocolVersion, soilInWaterpH, soilInCaClpH, pHDataQF), by=joining_cols)
+  } else {
+    dat_soil_phys <- NULL
+  }
+  
+  if(any(grepl('10078', dpID)) & !all(is.na(slsL1[["DP1.10078.001"]]))) {
+    dat_soil_chem <- dplyr::select(slsL1[["DP1.10078.001"]]$"sls_soilChemistry",
+                                   all_of(joining_cols), cnSampleID, nitrogenPercent, organicCPercent, CNratio, cnTestMethod=testMethod, cnInstrument=instrument, cnDataQF=dataQF)
+  } else {
+    dat_soil_chem <- NULL
+  }
+  
+  # TODO: Confirm that the selected columns are sufficient for downstream analysis
+  # TODO: Filter by nTransBoutType to remove incubated samples?
+  
+  if(!is.null(dat_soil_phys) & !is.null(dat_soil_chem)) {
+    message("Returning soil physical and chemical variables at the specified sites and dates.")
+    dat_soil <- full_join(dat_soil_phys, dat_soil_chem, by=joining_cols)
+  } else if(!is.null(dat_soil_phys) & is.null(dat_soil_chem)) {
+    message("Returning soil physical variables (but not chemical variables) at the specified sites and dates.")
+    dat_soil <- dat_soil_phys
+  } else if(is.null(dat_soil_phys) & !is.null(dat_soil_chem)) {
+    message("Returning soil chemical variables (but not physical variables) at the specified sites and dates.")
+    dat_soil <- dat_soil_chem
+  } else {
+    warning("No soil data available at the specified sites and dates. Returning NULL.")
+    dat_soil <- NULL
+  }
 
-      # If overwrite==FALSE (default)
-    } else {
-      warn_already_downloaded(PRNUM_phys, outdir)
+  # download local copy if user provided output dir path
+  if(outDir != "") {
+    if(!dir.exists(outDir)) {
+      dir.create(outDir)
     }
+    write.csv(dat_soil, paste0(outDir, "/sls_soilData_", Sys.Date(), ".csv"),
+              row.names=F)
+    message(paste0("soil data downloaded to: ", outDir, "/sls_soilData_", Sys.Date(), ".csv") )
   }
-
-  if(return_data) { # If FALSE, then simply downloads the data to the outdir
-
-    path_soilCoreCollection <- file.path(stackDir_phys, "stackedFiles", "sls_soilCoreCollection.csv")
-    path_soilMoisture <- file.path(stackDir_phys, "stackedFiles", "sls_soilMoisture.csv")
-    path_soilpH <- file.path(stackDir_phys, "stackedFiles", "sls_soilpH.csv")
-    # path_bgcSubsampling <- file.path(stackDir_phys, "stackedFiles", "sls_bgcSubsampling.csv")
-    path_soilChemistry <- file.path(stackDir_chem, "stackedFiles", "sls_soilChemistry.csv")
-
-    dat_soilCoreCollection <- read.delim(path_soilCoreCollection, sep=",", stringsAsFactors=FALSE)
-    dat_soilMoisture <- read.delim(path_soilMoisture, sep=",", stringsAsFactors=FALSE)
-    dat_soilpH <- read.delim(path_soilpH, sep=",", stringsAsFactors=FALSE)
-    dat_soilChemistry <- read.delim(path_soilChemistry, sep=",", stringsAsFactors=FALSE)
-
-    joining_cols <- c("domainID", "siteID", "plotID", "sampleID")
-
-    # TODO: Confirm that the selected columns are sufficient for downstream analysis
-    select(dat_soilCoreCollection, domainID, siteID, plotID, namedLocation, plotType, nlcdClass, coreCoordinateX, coreCoordinateY, geodeticDatum, decimalLatitude, decimalLongitude, elevation,
-           sccSamplingProtocolVersion=samplingProtocolVersion, collectDate, sampleTiming, standingWaterDepth, nTransBoutType, sampleID, horizon, soilTemp, litterDepth, sampleTopDepth, sampleBottomDepth,
-           soilSamplingDevice, geneticSampleID, sccDataQF=dataQF) %>%
-      full_join(select(dat_soilMoisture, all_of(joining_cols), moistureSampleID, smSamplingProtocolVersion=samplingProtocolVersion, soilMoisture, smDataQF), by=joining_cols) %>%
-      full_join(select(dat_soilpH, all_of(joining_cols), pHSampleID, pHSamplingProtocolVersion=samplingProtocolVersion, soilInWaterpH, soilInCaClpH, pHDataQF), by=joining_cols) %>%
-      full_join(select(dat_soilChemistry, all_of(joining_cols), cnSampleID, nitrogenPercent, organicCPercent, CNratio, cnTestMethod=testMethod, cnInstrument=instrument, cnDataQF=dataQF), by=joining_cols) ->
-      dat_soil
-    # TODO: Filter by nTransBoutType to remove incubated samples?
-
-    return(dat_soil)
-  }
+  
+  return(dat_soil)
 }
 
 
 #' Download Sequence Metadata
 #'
 #' Loads soil marker gene sequencing metadata for specified target gene, site(s) and date(s),
-#' with an option to download output by providing a valid output directory.
+#' with an option to download output by providing a valid output directory. This function uses 
+#' \code{\link[neonUtilities]{loadByProduct}} to conduct the downloads.
 #'
 #' Function by Lee F. Stanish and Clara Qin (2020). Currently available for testing only.
 #'
@@ -359,7 +348,7 @@ downloadRawSoilData <- function(sites = PRESET_SITES, startYrMo = PRESET_START_Y
 #' @param startYrMo,endYrMo Either NA, meaning all available dates, or a character vector in the form YYYY-MM, e.g. 2017-01.
 #' @param targetGene '16S' or 'ITS'.
 #' @param sequencingRuns Either the string 'all', meaning all available sequencing runs, or a character vector of NEON sequencing run IDs, e.g. c('C25G9', 'B69PP').
-#' @param dpID NEON data product of interest. Default is soil marker gene sequences, and currently code only works for this dpID.
+#' @param dpID NEON data product of interest. Default is soil marker gene sequences, and currently code only works for marker genes data products.
 #' @param outDir (Optional) If a local copy of the filtered metadata is desired, provide path to output directory.
 #'
 #' @return Data frame containing joined records from across the NEON soil marker gene sequence metadata, subsetted according to function arguments.
@@ -472,8 +461,8 @@ downloadSequenceMetadataRev <- function(sites='all', startYrMo, endYrMo, targetG
   }
 
   # remove unnecessary/redundant columns from tables
-  raw <- select(raw, -domainID, -siteID, -namedLocation, -laboratoryName, -sequencingFacilityID, -collectDate, -dnaSampleCode)
-  dna <- select(dna, -domainID, -siteID, -namedLocation, -laboratoryName, -collectDate)
+  raw <- dplyr::select(raw, -domainID, -siteID, -namedLocation, -laboratoryName, -sequencingFacilityID, -collectDate, -dnaSampleCode)
+  dna <- dplyr::select(dna, -domainID, -siteID, -namedLocation, -laboratoryName, -collectDate)
 
   # convert factors to characters (bug in output of loadByProduct)
   i <- sapply(seq, is.factor)
@@ -538,7 +527,7 @@ downloadSequenceMetadataRev <- function(sites='all', startYrMo, endYrMo, targetG
     }
     write.csv(outDNA, paste0(outDir, "/mmg_soilMetadata_", targetGene, "_", Sys.Date(), ".csv"),
               row.names=F)
-    print(paste0("metadata downloaded to: ", outDir, "/mmg_soilMetadata_", targetGene, "_", Sys.Date(), ".csv") )
+    message(paste0("metadata downloaded to: ", outDir, "/mmg_soilMetadata_", targetGene, "_", Sys.Date(), ".csv") )
   }
   return(outDNA)
 }
@@ -1149,3 +1138,4 @@ downloadSequenceMetadata <- function(sites = PRESET_SITES, startYrMo = PRESET_ST
     return(dat)
   }
 }
+
