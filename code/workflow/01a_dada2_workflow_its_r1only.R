@@ -13,8 +13,12 @@ source("./code/params.R")
 source("./R/utils.R")
 
 # Generate filepath names
-PATH_ITS <- file.path(PRESET_OUTDIR_SEQUENCE, "ITS")
-PATH_UNZIPPED <- file.path(PATH_ITS, "0_raw")
+if(is.null(PRESET_OUTDIR_SEQUENCE) | PRESET_OUTDIR_SEQUENCE == "") {
+  PATH_ITS <- file.path(PRESET_OUTDIR, "raw_sequence", "ITS")
+} else {
+  PATH_ITS <- file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE, "ITS")
+}
+PATH_RAW <- file.path(PATH_ITS, "0_raw")
 PATH_FILTN <- file.path(PATH_ITS, "1_filtN")
 PATH_TRIMMED <- file.path(PATH_ITS, "2_trimmed")
 PATH_FILTERED <- file.path(PATH_ITS, "3_filtered")
@@ -30,7 +34,7 @@ library(dplyr)
 
 # Get all run IDs so you can group by them
 unique_runs <- unique(unlist(
-  regmatches(list.files(PATH_UNZIPPED), gregexpr("^run[A-Za-z0-9]*", list.files(PATH_UNZIPPED)))
+  regmatches(list.files(PATH_RAW), gregexpr("^run[A-Za-z0-9]*", list.files(PATH_RAW)))
 ))
 
 # If SMALL_SUBSET == TRUE, run only the first runID
@@ -49,7 +53,7 @@ for (i in 1:loop_length) {
   message(paste0("Began processing ", runID, " at ", Sys.time()))
 
   # Forward fastq filenames have format: SAMPLENAME_R1_001.fastq
-  fnFs <- sort(list.files(PATH_UNZIPPED, pattern=paste0(runID, ".*_R1.fastq"), full.names = TRUE))
+  fnFs <- sort(list.files(PATH_RAW, pattern=paste0(runID, ".*_R1.fastq"), full.names = TRUE))
 
   # If SMALL_SUBSET == TRUE,
   # keep only the first two forward-reverse pairs of sequence files
@@ -60,16 +64,16 @@ for (i in 1:loop_length) {
   fnFs_base <- basename(fnFs)
 
   # "Pre-filter" the sequences just to remove those with Ns, but perform no other filtering
-  prefilter_trackReads <- qualityFilterITS(fnFs, PATH_FILTN, maxN = 0)
+  prefilter_trackReads <- qualityFilterITS(fnFs_base, PATH_RAW, PATH_FILTN, maxN = 0)
 
   # Trim primers from ITS sequences
-  trimPrimersITS(file.path(PATH_FILTN, fnFs_base), PATH_TRIMMED)
+  trimPrimersITS(fnFs_base, PATH_FILTN, PATH_TRIMMED, "CTTGGTCATTTAGAGGAAGTAA", "GCTGCGTTCTTCATCGATGC")
 
   # Filter and truncate
-  filter_trackReads <- qualityFilterITS(file.path(PATH_TRIMMED, fnFs_base), PATH_FILTERED, MULTITHREAD, MAX_EE_FWD, TRUNC_Q, MIN_LEN)
+  filter_trackReads <- qualityFilterITS(fnFs_base, PATH_TRIMMED, PATH_FILTERED, MULTITHREAD, MAX_EE_FWD, TRUNC_Q, MIN_LEN)
 
   # Now create sequence table for run
-  seqtab.list <- runDadaITS(file.path(PATH_FILTERED, fnFs_base), MULTITHREAD, VERBOSE)
+  seqtab.list <- runDadaITS(fnFs_base, PATH_FILTERED, MULTITHREAD, VERBOSE)
 
   # Create output tracking file
   track <- cbind.data.frame(prefilter_trackReads,
@@ -88,8 +92,7 @@ for (i in 1:loop_length) {
     write.csv(track, file.path(PATH_TRACK, paste0("track_reads_",runID,".csv")))
     saveRDS(seqtab.list$seqtab.nochim, file.path(PATH_SEQTABS, paste0("NEON_ITS_seqtab_nochim_", runID, ".rds")))
   }
-  message(paste0("Finished tracking reads through pipeline in ", runID, " at ", Sys.time()))
-  message(paste0("Finished saving sequence table of ", runID, " at ", Sys.time()))
+  message(paste0("Finished processing reads in ", runID, " at ", Sys.time()))
   message(paste0("Sequencing run-specific sequence tables can be found in ", PATH_SEQTABS))
 
   ti <- c(ti, Sys.time())

@@ -13,7 +13,7 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 knitr::opts_knit$set(
-  root.dir = rprojroot::find_rstudio_root_file()
+  root.dir = "~/Documents/UCSC/Projects/NEON_soil_microbe_processing"
 )
 ```
 
@@ -69,17 +69,17 @@ makeOutputDirectories()
 
 ## Download metadata
 
-We begin by downloading the metadata associated with the collection and analysis of NEON soil microbial samples, using the `downloadSequenceMetadataRev()` function.
+We begin by downloading the metadata associated with the collection and analysis of NEON soil microbial samples, using the `downloadSequenceMetadata()` function.
 
-The `downloadSequenceMetadataRev()` function downloads NEON data product DP1.10108 ("Soil microbe marker gene sequences") and assembles it using the `neonUtilities` package. This data product contains a number of tables related to accessing raw sequence data. A joined table containing information about the raw data URLs and the marker gene sequencing parameters is returned by this function. 
+The `downloadSequenceMetadata()` function downloads NEON data product DP1.10108 ("Soil microbe marker gene sequences") and assembles it using the `neonUtilities` package. This data product contains a number of tables related to accessing raw sequence data. A joined table containing information about the raw data URLs and the marker gene sequencing parameters is returned by this function. 
 
-If time and space limitations are not issues for you, you can download the entire dataset over the course of a few hours. However, `downloadSequenceMetadataRev()` accepts arguments that can be used to specify the subset of the data you are interested in keeping for your analysis.
+If time and space limitations are not issues for you, you can download the entire dataset over the course of a few hours. However, `downloadSequenceMetadata()` accepts arguments that can be used to specify the subset of the data you are interested in keeping for your analysis.
 
-In the following example, we run `downloadSequenceMetadataRev()` with a number of arguments to narrow the range of data to be downloaded.
+In the following example, we run `downloadSequenceMetadata()` with a number of arguments to narrow the range of data to be downloaded.
 
 ```{r}
-meta <- downloadSequenceMetadataRev(startYrMo = "2018-03", endYrMo = "2018-07", 
-                                    sites = c("OSBS", "CPER", "CLBJ"), targetGene = "16S")
+meta <- downloadSequenceMetadata(startYrMo = "2018-03", endYrMo = "2018-07", 
+                                 sites = c("OSBS", "CPER", "CLBJ"), targetGene = "ITS")
 ```
 
 ## Download raw sequence data
@@ -87,7 +87,7 @@ meta <- downloadSequenceMetadataRev(startYrMo = "2018-03", endYrMo = "2018-07",
 Now that we have the metadata table loaded into memory, we retrieve a table of unique raw data files and their sequencing run IDs. 
 
 ```{r, message=1:5}
-downloaded <- downloadRawSequenceData(meta)
+download_success <- downloadRawSequenceData(meta)
 ```
 
 ## Reorganize and rename the downloaded files
@@ -102,7 +102,7 @@ fn <- list.files(path = outdir_sequence, pattern = "fastq", full.names = TRUE)
 The following function untars each file (if necessary), appends the sequencer run ID to the beginning of each filename, and moves files to subfolders within your  sequence directory according to their target gene. The terminal directory name for either target gene will be `0_raw`.
 
 ```{r}
-reorganized <- organizeRawSequenceData(fn, meta)
-head(reorganized)
+reorganized_files <- organizeRawSequenceData(fn, meta)
+head(reorganized_files)
 ```
 

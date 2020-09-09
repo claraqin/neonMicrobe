@@ -7,8 +7,6 @@ t0 <- Sys.time()
 source("./code/params.R")
 
 # Load utility functions
-# source("./code/utils.R")
-# source("./code/utils_16S.r")
 source("./R/utils.R")
 
 # Generate filepath names
@@ -63,19 +61,17 @@ for (i in 1:loop_length) {
   matched_fn <- remove_unmatched_files(fnFs, fnRs)
   fnFs <- matched_fn[[1]]
   fnRs <- matched_fn[[2]]
+  
+  fn_base <- basename(c(fnFs, fnRs))
 
   # Trim reads based on the primer lengths supplied in params.r
-  trim_trackReads <- trimPrimers16S(fnFs, fnRs, PATH_TRIMMED, PRIMER_16S_FWD, PRIMER_16S_REV, MULTITHREAD)
-
-  # TODO: rather than taking input directory, may be necessary to take input files because
-  #       we might not be interested in analyzing all files in the directory (e.g. those
-  #       preexisting from previous processing batches).
+  trim_trackReads <- trimPrimers16S(fn_base, PATH_RAW, PATH_TRIMMED, "CCTACGGGNBGCASCAG", "GACTACNVGGGTATCTAATCC")
 
   # Filter reads based on the settings in params.r
-  filter_trackReads <- qualityFilter16S(PATH_TRIMMED, PATH_FILTERED, MULTITHREAD, MAX_EE_FWD, MAX_EE_REV, TRUNC.LENGTHS = c(265, 210))
+  filter_trackReads <- qualityFilter16S(fn_base, PATH_TRIMMED, PATH_FILTERED, MULTITHREAD, MAX_EE_FWD, MAX_EE_REV, c(265, 210))
 
   # Now create sequence table for run
-  seqtab.list <- runDada16S(PATH_FILTERED, MULTITHREAD, VERBOSE)
+  seqtab.list <- runDada16S(fn_base, PATH_FILTERED, MULTITHREAD, VERBOSE)
 
   # Create output tracking file
   track <- cbind.data.frame(trim_trackReads,
@@ -93,8 +89,7 @@ for (i in 1:loop_length) {
     write.csv(track, file.path(PATH_TRACK, paste0("track_reads_",runID,".csv")))
     saveRDS(seqtab.list$seqtab.nochim, file.path(PATH_SEQTABS, paste0("NEON_16S_seqtab_nochim_", runID, ".rds")))
   }
-  message(paste0("Finished tracking reads through pipeline in ", runID, " at ", Sys.time()))
-  message(paste0("Finished saving sequence table of ", runID, " at ", Sys.time()))
+  message(paste0("Finished processing reads in ", runID, " at ", Sys.time()))
   message(paste0("Sequencing run-specific sequence tables can be found in ", PATH_SEQTABS))
 }
 
