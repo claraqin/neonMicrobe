@@ -67,7 +67,7 @@ for (i in 1:loop_length) {
   prefilter_trackReads <- qualityFilterITS(fnFs_base, PATH_RAW, PATH_FILTN, maxN = 0)
 
   # Trim primers from ITS sequences
-  trimPrimersITS(fnFs_base, PATH_FILTN, PATH_TRIMMED, "CTTGGTCATTTAGAGGAAGTAA", "GCTGCGTTCTTCATCGATGC")
+  trimPrimersITS(fnFs_base, PATH_FILTN, PATH_TRIMMED, "CTTGGTCATTTAGAGGAAGTAA", "GCTGCGTTCTTCATCGATGC", discard_untrimmed = TRUE)
 
   # Filter and truncate
   filter_trackReads <- qualityFilterITS(fnFs_base, PATH_TRIMMED, PATH_FILTERED, MULTITHREAD, MAX_EE_FWD, TRUNC_Q, MIN_LEN)
