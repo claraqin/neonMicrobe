@@ -1,0 +1,100 @@
+---
+title: "Test Cutadapt with Discard-Untrimmed"
+author: "Clara Qin"
+date: "9/14/2020"
+output: html_document
+---
+
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+knitr::opts_knit$set(
+  root.dir = "~/Documents/UCSC/Projects/NEON_soil_microbe_processing"
+)
+```
+
+Load libraries
+
+```{r message=FALSE}
+library(ShortRead)
+library(Biostrings)
+library(dada2)
+library(dplyr)
+```
+
+In addition, source files associated with this package:
+
+```{r}
+source("./R/utils.R")
+source("./code/params.R")
+```
+
+Get filepath names:
+
+```{r}
+if(is.null(PRESET_OUTDIR_SEQUENCE) | PRESET_OUTDIR_SEQUENCE == "") {
+  PATH_ITS <- file.path(PRESET_OUTDIR, "raw_sequence", "ITS")
+} else {
+  PATH_ITS <- file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE, "ITS")
+}
+PATH_FILTN <- file.path(PATH_ITS, "1_filtN")
+PATH_PRETRIMMED <- file.path(PATH_ITS, "1b_filtN_subset")
+PATH_TRIMMED <- file.path(PATH_ITS, "2b_trimmed_subset")
+PATH_KEEP_UNTRIMMED <- file.path(PATH_ITS, "2c_keep_untrimmed")
+dir.create(PATH_PRETRIMMED)
+dir.create(PATH_TRIMMED)
+dir.create(PATH_KEEP_UNTRIMMED)
+```
+
+Get all run IDs so you can group by them:
+
+```{r}
+unique_runs <- unique(unlist(
+  regmatches(list.files(PATH_RAW), gregexpr("^run[A-Za-z0-9]*", list.files(PATH_RAW)))
+))
+```
+
+Run cutadapt without `discard-untrimmed` flag and save them to `PATH_KEEP_UNTRIMMED`. Also run with `discard-untrimmed` flag and save them to `PATH_TRIMMED`.
+
+```{r}
+t1 <- Sys.time()
+ti <- c()
+for (i in 1:loop_length) {
+  runID <- unique_runs[i]
+
+  # Forward and reverse fastq filenames have format: SAMPLENAME_R1.fastq
+  fnFs <- sort(list.files(PATH_FILTN, pattern=paste0(runID, ".*_R1.fastq"), full.names = TRUE))
+
+  # keep only the first ten forward sequence files
+  if(length(fnFs > 10)) fnFs <- fnFs[1:10]
+  
+  fn_base <- basename(fnFs)
+  
+  # Copy into PATH_PRETRIMMED
+  file.copy(fnFs, file.path(PATH_PRETRIMMED, fn_base))
+
+  # Trim reads based on the primers supplied in params.r
+  trimPrimersITS(fn_base, PATH_PRETRIMMED, PATH_TRIMMED, "CTTGGTCATTTAGAGGAAGTAA", "GCTGCGTTCTTCATCGATGC", discard_untrimmed=TRUE)
+  trimPrimersITS(fn_base, PATH_PRETRIMMED, PATH_KEEP_UNTRIMMED, "CTTGGTCATTTAGAGGAAGTAA", "GCTGCGTTCTTCATCGATGC", discard_untrimmed=FALSE)
+}
+```
+
+Compare number of reads in `PATH_PRETRIMMED`, `PATH_TRIMMED`, and `PATH_KEEP_UNTRIMMED`.
+
+```{r}
+n_reads <- list()
+for (i in 1:loop_length) {
+  runID <- unique_runs[i]
+  n_reads[[i]] <- c(length(readFastq(PATH_PRETRIMMED, pattern=runID)),
+                    length(readFastq(PATH_TRIMMED, pattern=runID)),
+                    length(readFastq(PATH_KEEP_UNTRIMMED, pattern=runID)))
+}
+n_reads_df <- data.frame(matrix(unlist(n_reads), ncol=3))
+names(n_reads_df) <- c("pretrimmed", "discard_untrimmed", "keep_untrimmed")
+n_reads_df %>%
+  mutate(perc_discarded = (keep_untrimmed - discard_untrimmed) / pretrimmed) ->
+  n_reads_df
+```
