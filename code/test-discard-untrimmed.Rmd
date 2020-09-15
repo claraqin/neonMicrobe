@@ -12,7 +12,7 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 knitr::opts_knit$set(
-  root.dir = "~/Documents/UCSC/Projects/NEON_soil_microbe_processing"
+  root.dir = "~/zhulab/neonSoilMicrobeProcessing"
 )
 ```
 
@@ -53,7 +53,7 @@ Get all run IDs so you can group by them:
 
 ```{r}
 unique_runs <- unique(unlist(
-  regmatches(list.files(PATH_RAW), gregexpr("^run[A-Za-z0-9]*", list.files(PATH_RAW)))
+  regmatches(list.files(PATH_FILTN), gregexpr("^run[A-Za-z0-9]*", list.files(PATH_FILTN)))
 ))
 ```
 
@@ -62,7 +62,7 @@ Run cutadapt without `discard-untrimmed` flag and save them to `PATH_KEEP_UNTRIM
 ```{r}
 t1 <- Sys.time()
 ti <- c()
-for (i in 1:loop_length) {
+for (i in 1:length(unique_runs)) {
   runID <- unique_runs[i]
 
   # Forward and reverse fastq filenames have format: SAMPLENAME_R1.fastq
@@ -86,13 +86,13 @@ Compare number of reads in `PATH_PRETRIMMED`, `PATH_TRIMMED`, and `PATH_KEEP_UNT
 
 ```{r}
 n_reads <- list()
-for (i in 1:loop_length) {
+for (i in 1:length(unique_runs)) {
   runID <- unique_runs[i]
   n_reads[[i]] <- c(length(readFastq(PATH_PRETRIMMED, pattern=runID)),
                     length(readFastq(PATH_TRIMMED, pattern=runID)),
                     length(readFastq(PATH_KEEP_UNTRIMMED, pattern=runID)))
 }
-n_reads_df <- data.frame(matrix(unlist(n_reads), ncol=3))
+n_reads_df <- data.frame(matrix(unlist(n_reads), ncol=3, byrow=TRUE))
 names(n_reads_df) <- c("pretrimmed", "discard_untrimmed", "keep_untrimmed")
 n_reads_df %>%
   mutate(perc_discarded = (keep_untrimmed - discard_untrimmed) / pretrimmed) ->
