@@ -93,8 +93,10 @@ for (i in 1:length(unique_runs)) {
                     length(readFastq(PATH_KEEP_UNTRIMMED, pattern=runID)))
 }
 n_reads_df <- data.frame(matrix(unlist(n_reads), ncol=3, byrow=TRUE))
-names(n_reads_df) <- c("pretrimmed", "discard_untrimmed", "keep_untrimmed")
+colnames(n_reads_df) <- c("pretrimmed", "discard_untrimmed", "keep_untrimmed")
 n_reads_df %>%
   mutate(perc_discarded = (keep_untrimmed - discard_untrimmed) / pretrimmed) ->
   n_reads_df
+rownames(n_reads_df) <- unique_runs
+n_reads_df
 ```
