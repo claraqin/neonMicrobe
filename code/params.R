@@ -3,14 +3,15 @@
 ## PARAMETERS FOR NEW_SERVER_SETUP AND OUTPUT DIRECTORIES
 
 # Output directory for the pipeline. Absolute path.
-PRESET_OUTDIR = "/data/ZHULAB/NEON_DOB"
+# Output directory for the pipeline. Creates a "NEON" directory within current working directory.
+PRESET_OUTDIR = file.path(getwd(), "NEON")
 
 # Can leave the following blank to generate default directory structure.
 # Or, character string to append to the end of PRESET_OUTDIR to generate
 # and use alternative directory structures.
-PRESET_OUTDIR_SEQUENCE = "Illumina/NEON" # for sequence data (fastq files)
-PRESET_OUTDIR_SEQMETA = "" # for sequence metadata
-PRESET_OUTDIR_SOIL = "" # for soil data
+PRESET_OUTDIR_SEQUENCE = "raw_sequence" # for sequence data (fastq files)
+PRESET_OUTDIR_SEQMETA = "sequence_metadata" # for sequence metadata
+PRESET_OUTDIR_SOIL = "soil" # for soil data
 
 # Other output directories and filenames. Absolute paths.
 PRESET_OUTDIR_SOIL_DB = "/data/ZHULAB/NEON_DOB" # Database containing both seqmeta and soil data
@@ -26,8 +27,12 @@ PRIMER_ITS_REV = "GCTGCGTTCTTCATCGATGC" # Reverse primer sequence
 PRIMER_16S_FWD = "CCTACGGGNBGCASCAG" # Forward primer sequence
 PRIMER_16S_REV = "GACTACNVGGGTATCTAATCC" # Reverse primer sequence
 
-# Cutadapt path
-CUTADAPT_PATH = "/afs/cats.ucsc.edu/users/b/claraqin/.local/bin/cutadapt"
+# Search for & set the Cutadapt path
+# system2 should work on Windows, but I'm not sure if the "which" command works.
+CUTADAPT_PATH <- system2("which", args = "cutadapt", stdout = TRUE)
+if(length(CUTADAPT_PATH) == 0){
+  message("Could not find the cutadapt tool in file system. This tool is necessary for ITS (fungal) raw sequence processing. Please load the module if necessary (i.e. 'module load cutadapt') or download from https://cutadapt.readthedocs.io/en/stable/installation.html")
+}
 
 # UNITE reference database (FASTA file) path
 UNITE_REF_PATH = "/data/sh_general_release_dynamic_04.02.2020.fasta"
@@ -45,7 +50,11 @@ VERBOSE = FALSE
 # Whether to use multithreading in DADA2 (Windows users should set to FALSE),
 # or, if integer is provided, how many threads to use
 #MULTITHREAD = TRUE
-MULTITHREAD = 4
+if (Sys.info()["sysname"] == "Windows"){
+  MULTITHREAD = FALSE
+} else {
+  MULTITHREAD = 4
+}
 
 # filterAndTrim arguments
 MAX_EE_FWD = 8 # max. allowable expected errors in forward reads that pass filter
@@ -63,4 +72,4 @@ MIN_LEN = 50 # min. allowable length of reads that pass filter
 # (see previous)
 
 # VALIDITY CHECKS (do not modify)
-if(!(TARGET_GENE %in% c("ITS", "16S", "all"))) warning("TARGET_GENE must be 'ITS', '16S', or 'all'")
+# if(!(TARGET_GENE %in% c("ITS", "16S", "all"))) warning("TARGET_GENE must be 'ITS', '16S', or 'all'")
