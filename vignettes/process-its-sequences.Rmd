@@ -97,7 +97,6 @@ We use DADA2 to process reads one sequencing run at a time.
 all.seqtabs <- list()
 t1 <- Sys.time()
 ti <- c()
-first <- TRUE
 for (i in 1:loop_length) {
   runID <- unique_runs[i]
   message(paste0("Began processing ", runID, " at ", Sys.time()))
@@ -117,7 +116,10 @@ for (i in 1:loop_length) {
   prefilter_trackReads <- qualityFilterITS(fn_base, PATH_RAW, PATH_FILTN, maxN = 0)
 
   # Trim reads based on the primer lengths supplied in params.r
-  trimPrimersITS(fn_base, PATH_FILTN, PATH_TRIMMED, "CTTGGTCATTTAGAGGAAGTAA", "GCTGCGTTCTTCATCGATGC", very_verbose=TRUE)
+  trimPrimersITS(fn_base, PATH_FILTN, paste0(PATH_TRIMMED,"_mid"), "CTTGGTCATTTAGAGGAAGTAA", "GCTGCGTTCTTCATCGATGC")
+  trimPrimersITS(fn_base, paste0(PATH_TRIMMED,"_mid"), PATH_TRIMMED, "GCTGCGTTCTTCATCGATGC", "CTTGGTCATTTAGAGGAAGTAA")
+  #unlink(paste0(PATH_TRIMMED,"_mid"), recursive=TRUE)
+  # Note: We use cutadapt twice because some NEON ITS sequencing runs are in mixed orientation -- that is, some R1 sequences are actually reverse-oriented, and some R2 sequences are actually forward-oriented.
 
   # Filter reads based on the settings in params.r
   filter_trackReads <- qualityFilterITS(fn_base, PATH_TRIMMED, PATH_FILTERED, MULTITHREAD, maxEE=8)
@@ -132,15 +134,18 @@ for (i in 1:loop_length) {
   names(track)[1:4] <- c("reads.in", "prefiltered.reads", "trimmed.reads", "filtered.reads")
   
   # Append sequence table to output list
-  all.seqtabs[[runID]] <- seqtab.list$seqtab.nochim
+  # all.seqtabs[[runID]] <- seqtab.list$seqtab.nochim
+  all.seqtabs[[runID]] <- seqtab.list$seqtab
 
   # Save tracking table (which tracks no. of reads remaining at each stage) and sequence table
   if(SMALL_SUBSET) {
     write.csv(track, file.path(PATH_TRACK, paste0("track_reads_",runID,"_SMALLSUBSET.csv")))
-    saveRDS(seqtab.list$seqtab.nochim, file.path(PATH_SEQTABS, paste0("NEON_ITS_seqtab_nochim_", runID, "_SMALLSUBSET.rds")))
+    # saveRDS(seqtab.list$seqtab.nochim, file.path(PATH_SEQTABS, paste0("NEON_ITS_seqtab_nochim_", runID, "_SMALLSUBSET.rds")))
+    saveRDS(seqtab.list$seqtab, file.path(PATH_SEQTABS, paste0("NEON_ITS_seqtab_", runID, "_SMALLSUBSET.rds")))
   } else {
     write.csv(track, file.path(PATH_TRACK, paste0("track_reads_",runID,".csv")))
-    saveRDS(seqtab.list$seqtab.nochim, file.path(PATH_SEQTABS, paste0("NEON_ITS_seqtab_nochim_", runID, ".rds")))
+    # saveRDS(seqtab.list$seqtab.nochim, file.path(PATH_SEQTABS, paste0("NEON_ITS_seqtab_nochim_", runID, ".rds")))
+    saveRDS(seqtab.list$seqtab, file.path(PATH_SEQTABS, paste0("NEON_ITS_seqtab_", runID, ".rds")))
   }
   message(paste0("Finished processing reads in ", runID, " at ", Sys.time()))
   message(paste0("Sequencing run-specific sequence tables can be found in ", PATH_SEQTABS))
@@ -157,6 +162,12 @@ if(length(all.seqtabs) == 1) {
 }
 ```
 
+Remove chimeras:
+
+```{r}
+removeBimeraDenovo(seqtab_joined, method="consensus", multithread=multithread, verbose=verbose)
+```
+
 ## Assign taxonomy using the UNITE reference database
 
 ```{r eval=FALSE}
@@ -166,7 +177,8 @@ tax <- assignTaxonomy(seqtab_joined, UNITE_REF_PATH, multithread = MULTITHREAD, 
 ## Save processed data to file
 
 ```{r}
-saveRDS(seqtab_joined, "./data/NEON_ITS_seqtab_nochim.Rds")
+# saveRDS(seqtab_joined, "./data/NEON_ITS_seqtab_nochim.Rds")
+saveRDS(seqtab_joined, "./data/NEON_ITS_seqtab.Rds")
 ```
 
 ```{r eval=FALSE}
