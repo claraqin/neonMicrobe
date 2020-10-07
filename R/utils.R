@@ -241,12 +241,12 @@ organizeRawSequenceData <- function(fn, metadata, outdir_sequence = file.path(PR
 #' @param outDir (Optional) If a local copy of the filtered metadata is desired, provide path to output directory.
 #'
 #' @return If return_data==TRUE, returns a dataframe consisting of joined soil data records from DP1.10078 ("Soil chemical properties (Distributed periodic)") and DP1.10086 ("Soil physical properties (Distributed periodic)"). Otherwise, no value is returned.
-downloadRawSoilData <- function(sites='all', startYrMo, endYrMo, 
+downloadRawSoilData <- function(sites='all', startYrMo, endYrMo,
                                 dpID = c("DP1.10078.001", "DP1.10086.001"), outDir="") {
 
   library(dplyr)
   library(neonUtilities)
-  
+
   # check valid data values entered
   ## validate dpID ##
   if(!all(grepl("DP1", dpID) & grepl('\\.001', dpID) & grepl('10078|10086', dpID))) {
@@ -267,7 +267,7 @@ downloadRawSoilData <- function(sites='all', startYrMo, endYrMo,
   } else {
     sites <- sites
   }
-  
+
   slsL1 <- list()
   message("loading soil data...")
   for(i in 1:length(dpID)) {
@@ -278,15 +278,15 @@ downloadRawSoilData <- function(sites='all', startYrMo, endYrMo,
       NA
     })
   }
-  
+
   joining_cols <- c("domainID", "siteID", "plotID", "sampleID")
-  
+
   if(any(grepl('10086', dpID)) & !all(is.na(slsL1[["DP1.10086.001"]]))) {
     # start with soilCoreCollection data...
-    dat_soil_phys <- 
-      dplyr::select(slsL1[["DP1.10086.001"]]$"sls_soilCoreCollection", 
+    dat_soil_phys <-
+      dplyr::select(slsL1[["DP1.10086.001"]]$"sls_soilCoreCollection",
                     domainID, siteID, plotID, namedLocation, plotType, nlcdClass, coreCoordinateX, coreCoordinateY, geodeticDatum, decimalLatitude, decimalLongitude, elevation,
-                    sccSamplingProtocolVersion=samplingProtocolVersion, collectDate, sampleTiming, standingWaterDepth, nTransBoutType, sampleID, horizon, soilTemp, litterDepth, 
+                    sccSamplingProtocolVersion=samplingProtocolVersion, collectDate, sampleTiming, standingWaterDepth, nTransBoutType, sampleID, horizon, soilTemp, litterDepth,
                     sampleTopDepth, sampleBottomDepth, soilSamplingDevice, geneticSampleID, sccDataQF=dataQF) %>%
       # merge with soilMoisture data...
       full_join(dplyr::select(slsL1[["DP1.10086.001"]]$"sls_soilMoisture",
@@ -297,17 +297,17 @@ downloadRawSoilData <- function(sites='all', startYrMo, endYrMo,
   } else {
     dat_soil_phys <- NULL
   }
-  
+
   if(any(grepl('10078', dpID)) & !all(is.na(slsL1[["DP1.10078.001"]]))) {
     dat_soil_chem <- dplyr::select(slsL1[["DP1.10078.001"]]$"sls_soilChemistry",
                                    all_of(joining_cols), cnSampleID, nitrogenPercent, organicCPercent, CNratio, cnTestMethod=testMethod, cnInstrument=instrument, cnDataQF=dataQF)
   } else {
     dat_soil_chem <- NULL
   }
-  
+
   # TODO: Confirm that the selected columns are sufficient for downstream analysis
   # TODO: Filter by nTransBoutType to remove incubated samples?
-  
+
   if(!is.null(dat_soil_phys) & !is.null(dat_soil_chem)) {
     message("Returning soil physical and chemical variables at the specified sites and dates.")
     dat_soil <- full_join(dat_soil_phys, dat_soil_chem, by=joining_cols)
@@ -331,7 +331,7 @@ downloadRawSoilData <- function(sites='all', startYrMo, endYrMo,
               row.names=F)
     message(paste0("soil data downloaded to: ", outDir, "/sls_soilData_", Sys.Date(), ".csv") )
   }
-  
+
   return(dat_soil)
 }
 
@@ -339,7 +339,7 @@ downloadRawSoilData <- function(sites='all', startYrMo, endYrMo,
 #' Download Sequence Metadata
 #'
 #' Loads soil marker gene sequencing metadata for specified target gene, site(s) and date(s),
-#' with an option to download output by providing a valid output directory. This function uses 
+#' with an option to download output by providing a valid output directory. This function uses
 #' \code{\link[neonUtilities]{loadByProduct}} to conduct the downloads.
 #'
 #' Function by Lee F. Stanish and Clara Qin (2020). Currently available for testing only.
@@ -556,11 +556,11 @@ downloadSequenceMetadata <- function(sites='all', startYrMo, endYrMo, targetGene
 trimPrimers16S <- function(fn, dir_in, dir_out, primer_16S_fwd, primer_16S_rev, multithread = MULTITHREAD, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq"#, quiet=T
 ){
   fn_fullname <- file.path(dir_in, fn)
-  
+
   fnFs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern1, fn_fullname)]
   fnRs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern2, fn_fullname)]
   if(length(fnFs) + length(fnRs) == 0) stop("No files found at specified location. Check file path, or post_samplename_pattern argument(s).")
-  
+
   # Create output directory
   if(!dir.exists(dir_out)) dir.create(dir_out)
 
@@ -598,7 +598,7 @@ trimPrimers16S <- function(fn, dir_in, dir_out, primer_16S_fwd, primer_16S_rev, 
 #' }
 trimPrimersITS <- function(fn, dir_in, dir_out, primer_ITS_fwd, primer_ITS_rev, cutadapt_path = CUTADAPT_PATH, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq", very_verbose=FALSE, discard_untrimmed=FALSE#, quiet=T
 ){
-  
+
   fn_fullname <- file.path(dir_in, fn)
 
   fnFs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern1, fn_fullname)]
@@ -628,8 +628,9 @@ trimPrimersITS <- function(fn, dir_in, dir_out, primer_ITS_fwd, primer_ITS_rev, 
     system2(cutadapt_path, args = c(R1.flags, "-n", 2, # -n 2 required to remove FWD and REV from reads
                                     "-o", fnFs.cut[i], # output files
                                     fnFs[i], # input files
-                                    "--minimum-length", "1",
-                                    discard_untrimmed_flag), # min length of cutadapted reads: >0
+                                    "--minimum-length", "1", # min length of cutadapted reads: >0
+                                    discard_untrimmed_flag,
+                                    "-e", "0.2"), # -e 0.2 allows up to 4 mismatched bases
             stdout = ifelse(very_verbose, "", FALSE))
   }
 }
@@ -693,7 +694,7 @@ remove_unmatched_files <- function(fnFs, fnRs, post_samplename_pattern = "_R(1|2
 qualityFilter16S <- function(fn, dir_in, dir_out, multithread = MULTITHREAD, maxEE_fwd, maxEE_rev, trunc_lengths = NULL, trunc_qscore = 23, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq" #, mean = FALSE
 ){
   fn_fullname <- file.path(dir_in, fn)
-  
+
   fnFs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern1, fn_fullname)]
   fnRs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern2, fn_fullname)]
   if(length(fnFs) + length(fnRs) == 0) stop("No files found at specified location. Check file path, or post_samplename_pattern argument(s).")
@@ -742,7 +743,7 @@ qualityFilter16S <- function(fn, dir_in, dir_out, multithread = MULTITHREAD, max
                        maxEE = c(maxEE_fwd, maxEE_rev),
                        matchIDs = TRUE,
                        compress=TRUE, maxN=0)
-  
+
   rownames(out) <- sample.names
 
   return(out)
@@ -770,9 +771,9 @@ qualityFilter16S <- function(fn, dir_in, dir_out, multithread = MULTITHREAD, max
 #' @return Two-column matrix displaying the number of reads in input vs. output for each file.
 qualityFilterITS <- function(fn, dir_in, dir_out, multithread = MULTITHREAD, maxEE = Inf, truncQ = 2, minLen = 20, maxN = 0, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq", trimLeft = 0 #, mean = FALSE
 ){
-  
+
   fn_fullname <- file.path(dir_in, fn)
-  
+
   fnFs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern1, fn_fullname)]
   if(length(fnFs) == 0) stop("No files found at specified location. Check file path, or post_samplename_pattern argument(s).")
 
@@ -864,9 +865,9 @@ getTruncationLength <-function (fl, qscore = 30, n = 5e+05, verbose = TRUE){
 #' }
 runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, seed = NULL, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq"){
   if (!is.null(seed)) set.seed(seed)
-  
+
   fn_fullname <- file.path(dir_in, fn)
-  
+
   filtFs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern1, fn_fullname)]
   filtRs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern2, fn_fullname)]
   if(length(fnFs) + length(fnRs) == 0) stop("No files found at specified location. Check file path, or post_samplename_pattern argument(s).")
@@ -926,14 +927,14 @@ runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
     print(table(nchar(getSequences(seqtab))))
     cat(paste0("\n", round(sum(seqtab.nochim)/sum(seqtab), 3), " reads remain after removal of chimeras"))
   }
-  
+
   track <- cbind.data.frame(derepF = sapply(derepF, getN),
                             derepR = sapply(derepR, getN),
                             denoisedF = sapply(ddF, getN),
                             denoisedR = sapply(ddR, getN),
                             merged = sapply(mergers, getN),
                             nonchim = rowSums(seqtab.nochim))
-                            
+
   return(list("seqtab" = seqtab, "seqtab.nochim" = seqtab.nochim, "track" = track))
 }
 
@@ -962,9 +963,9 @@ runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
 #' }
 runDadaITS <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, seed = NULL, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq"){
   if (!is.null(seed)) set.seed(seed)
-  
+
   fn_fullname <- file.path(dir_in, fn)
-  
+
   filtFs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern1, fn_fullname)]
   if(length(filtFs) == 0) stop("No files found at specified location. Check file path, or post_samplename_pattern argument(s).")
 
