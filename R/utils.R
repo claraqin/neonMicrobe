@@ -525,8 +525,8 @@ downloadSequenceMetadata <- function(sites='all', startYrMo, endYrMo, targetGene
     if(!dir.exists(outDir)) {
       dir.create(outDir)
     }
-    write.csv(outDNA, paste0(outDir, "/mmg_soilMetadata_", targetGene, "_", Sys.Date(), ".csv"),
-              row.names=F)
+    write.csv(outDNA, file.path(outDir, paste0("mmg_soilMetadata_", targetGene, "_", Sys.Date(), ".csv")),
+              row.names=FALSE)
     message(paste0("metadata downloaded to: ", outDir, "/mmg_soilMetadata_", targetGene, "_", Sys.Date(), ".csv") )
   }
   return(outDNA)
