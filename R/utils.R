@@ -73,7 +73,7 @@ makeOutputDirectories <- function(base_dir = PRESET_OUTDIR, seq_dirname=PRESET_O
 #' @param ignore_tar_files If TRUE (default), does not download tar files. Each tar file is a batch containing an entire sequence run of fastq files. The tar file structure will soon be deprecated.
 #' @param verbose If TRUE, prints status messages and progress bars associated with file downloads.
 #'
-#' @return Returns (invisibly) an integer code: 0 indicates success of downloads and a non-zero integer indicates failure. See the help page for \code{\link[utils]{download.file}} for more details.
+#' @return Returns (invisibly) a list of integer codes: 0 indicates success of downloads and a non-zero integer indicates failure. See the help page for \code{\link[utils]{download.file}} for more details.
 downloadRawSequenceData <- function(metadata, outdir = file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE), ignore_tar_files=TRUE, verbose=FALSE) {
 
   library(utils)
@@ -101,21 +101,38 @@ downloadRawSequenceData <- function(metadata, outdir = file.path(PRESET_OUTDIR, 
     tar_ind <- grep('\\.tar\\.gz', metadata$rawDataFileName)
     if(length(tar_ind) > 0) {
       metadata <- metadata[-tar_ind, ]
-      message(length(tar_ind), " row(s) in metadata associated with batch-level sequence data
-              were ignored prior to downloading raw sequence data.")
+      if(nrow(metadata) > 0) {
+        message(length(tar_ind), " row(s) in metadata associated with batch-level sequence data
+                were ignored prior to downloading raw sequence data.")
+      } else {
+        stop("No rows remain in metadata after removing rows associated with batch-level sequence
+             data. Consider setting ignore_tar_files = FALSE")
+      }
     }
   }
 
   u.urls <- unique(metadata$rawDataFilePath)
   fileNms <- gsub('^.*\\/', "", u.urls)
-  print(paste("There are", length(u.urls), "unique (zipped) raw sequence files to download.") )
+  print(paste("There are", length(u.urls), "unique raw sequence files to download."))
 
+  download_success <- list()
   for(i in 1:length(u.urls)) {
-    download_success <- download.file(
-      url = as.character(u.urls[i]),
-      destfile = ifelse(dir.exists(outdir), paste(outdir, fileNms[i], sep="/"), paste(getwd(), fileNms[i], sep="/" )),
-      quiet = !verbose
-    )
+    tryCatch({
+      download_success[[i]] <- download.file(
+        url = as.character(u.urls[i]),
+        destfile = ifelse(dir.exists(outdir), paste(outdir, fileNms[i], sep="/"), paste(getwd(), fileNms[i], sep="/" )),
+        quiet = !verbose)
+    }, error = function(e) { # Occasionally an error arises because _fastq should be replaced by .fastq
+      tryCatch({
+        revised_url <- sub("_fastq", ".fastq", as.character(u.urls[i]))
+        download_success[[i]] <- download.file(
+          url = revised_url,
+          destfile = ifelse(dir.exists(outdir), paste(outdir, fileNms[i], sep="/"), paste(getwd(), fileNms[i], sep="/" )),
+          quiet = !verbose)
+      }, error = function(f) {
+        download_success[[i]] <- 2
+      })
+    })
     if(dir.exists(outdir)) {
       message("Finished downloading ", paste(outdir, fileNms[i], sep="/"))
     } else {
@@ -559,7 +576,7 @@ trimPrimers16S <- function(fn, dir_in, dir_out, primer_16S_fwd, primer_16S_rev, 
 
   fnFs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern1, fn_fullname)]
   fnRs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern2, fn_fullname)]
-  if(length(fnFs) + length(fnRs) == 0) stop("No files found at specified location. Check file path, or post_samplename_pattern argument(s).")
+  if(length(fnFs) + length(fnRs) == 0) warning(paste0("trimPrimer16S: ", "No files found at specified location(s) within ", dir_in, ". Check file path, or post_samplename_pattern argument(s)."))
 
   # Create output directory
   if(!dir.exists(dir_out)) dir.create(dir_out)
@@ -602,7 +619,7 @@ trimPrimersITS <- function(fn, dir_in, dir_out, primer_ITS_fwd, primer_ITS_rev, 
   fn_fullname <- file.path(dir_in, fn)
 
   fnFs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern1, fn_fullname)]
-  if(length(fnFs) == 0) stop("No files found at specified location. Check file path, or post_samplename_pattern argument(s).")
+  if(length(fnFs) == 0) warning(paste0("trimPrimerITS: ", "No files found at specified location(s) within ", dir_in, ". Check file path, or post_samplename_pattern argument(s)."))
 
   # Create output directory
   if(!dir.exists(dir_out)) dir.create(dir_out)
@@ -697,7 +714,7 @@ qualityFilter16S <- function(fn, dir_in, dir_out, multithread = MULTITHREAD, max
 
   fnFs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern1, fn_fullname)]
   fnRs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern2, fn_fullname)]
-  if(length(fnFs) + length(fnRs) == 0) stop("No files found at specified location. Check file path, or post_samplename_pattern argument(s).")
+  if(length(fnFs) + length(fnRs) == 0) warning(paste0("qualityFilter16S: ", "No files found at specified location(s) within ", dir_in, ". Check file path, or post_samplename_pattern argument(s)."))
 
   sample.names <- sapply(strsplit(basename(fnFs), paste0("(",post_samplename_pattern1,")|(",post_samplename_pattern2, ")")), `[`, 1) # extract sample names
   filtFs <- file.path(dir_out, basename(fnFs)) # create filtered filenames
@@ -775,7 +792,7 @@ qualityFilterITS <- function(fn, dir_in, dir_out, multithread = MULTITHREAD, max
   fn_fullname <- file.path(dir_in, fn)
 
   fnFs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern1, fn_fullname)]
-  if(length(fnFs) == 0) stop("No files found at specified location. Check file path, or post_samplename_pattern argument(s).")
+  if(length(fnFs) == 0) warning(paste0("trimPrimerITS: ", "No files found at specified location(s) within ", dir_in, ". Check file path, or post_samplename_pattern argument(s)."))
 
   sample.names <- sapply(strsplit(basename(fnFs), paste(post_samplename_pattern1, "|", post_samplename_pattern2)), `[`, 1) # extract sample names
   # filtFs <- file.path(dir_out, paste0(sample.names, "_filt_R1.fastq.gz")) # create filtered filenames
@@ -870,7 +887,7 @@ runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
 
   filtFs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern1, fn_fullname)]
   filtRs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern2, fn_fullname)]
-  if(length(fnFs) + length(fnRs) == 0) stop("No files found at specified location. Check file path, or post_samplename_pattern argument(s).")
+  if(length(fnFs) + length(fnRs) == 0) warning(paste0("runDada16S: ", "No files found at specified location(s) within ", dir_in, ". Check file path, or post_samplename_pattern argument(s)."))
 
   # Keep files with counterpart
   matched_files <- remove_unmatched_files(filtFs, filtRs)
@@ -922,7 +939,7 @@ runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
   seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=multithread, verbose=verbose)
 
   if(verbose){
-    cat(paste0("\n\nDimensions of ESV table: ", dim(seqtab.nochim)[1], " samples, ", dim(seqtab.nochim)[2], " ESVs\n"))
+    cat(paste0("\n\nDimensions of ESV table: ", dim(seqtab)[1], " samples, ", dim(seqtab)[2], " ESVs\n"))
     cat("\nDistribution of sequence lengths (should be bimodal for v3v4 region):")
     print(table(nchar(getSequences(seqtab))))
     cat(paste0("\n", round(sum(seqtab.nochim)/sum(seqtab), 3), " reads remain after removal of chimeras"))
@@ -934,8 +951,9 @@ runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
                             denoisedR = sapply(ddR, getN),
                             merged = sapply(mergers, getN),
                             nonchim = rowSums(seqtab.nochim))
-
-  return(list("seqtab" = seqtab, "seqtab.nochim" = seqtab.nochim, "track" = track))
+  return(list("seqtab" = seqtab, 
+              "seqtab.nochim" = seqtab.nochim,
+              "track" = track))
 }
 
 
@@ -967,7 +985,7 @@ runDadaITS <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
   fn_fullname <- file.path(dir_in, fn)
 
   filtFs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern1, fn_fullname)]
-  if(length(filtFs) == 0) stop("No files found at specified location. Check file path, or post_samplename_pattern argument(s).")
+  if(length(filtFs) == 0) warning(paste0("runDadaITS: ", "No files found at specified location(s) within ", dir_in, ". Check file path, or post_samplename_pattern argument(s)."))
 
   # Create outnames
   sample.names <- sapply(strsplit(basename(filtFs), paste(post_samplename_pattern1, "|", post_samplename_pattern2)), `[`, 1)
@@ -997,7 +1015,7 @@ runDadaITS <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
   seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=multithread, verbose=verbose)
 
   if(verbose){
-    cat(paste0("\n\nDimensions of ESV table: ", dim(seqtab.nochim)[1], " samples, ", dim(seqtab.nochim)[2], " ESVs\n"))
+    cat(paste0("\n\nDimensions of ESV table: ", dim(seqtab)[1], " samples, ", dim(seqtab)[2], " ESVs\n"))
     cat("\nDistribution of sequence lengths:")
     print(table(nchar(getSequences(seqtab))))
     cat(paste0("\n", round(sum(seqtab.nochim)/sum(seqtab), 3), " reads remain after removal of chimeras"))
@@ -1006,7 +1024,9 @@ runDadaITS <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
   track <- cbind.data.frame(derepF = sapply(derepF, getN),
                             denoisedF = sapply(ddF, getN),
                             nonchim = rowSums(seqtab.nochim))
-  return(list("seqtab" = seqtab, "seqtab.nochim" = seqtab.nochim, "track" = track))
+  return(list("seqtab" = seqtab, 
+              "seqtab.nochim" = seqtab.nochim,
+              "track" = track))
 }
 
 
