@@ -117,6 +117,7 @@ downloadRawSequenceData <- function(metadata, outdir = file.path(PRESET_OUTDIR, 
 
   download_success <- list()
   for(i in 1:length(u.urls)) {
+    ## TODO: download.file commands should be replaced by neonUtilities::zipsByURI
     tryCatch({
       download_success[[i]] <- download.file(
         url = as.character(u.urls[i]),
@@ -173,62 +174,70 @@ organizeRawSequenceData <- function(fn, metadata, outdir_sequence = file.path(PR
     stop("'metadata' must be the data.frame output from downloadSequenceMetadata() or a filepath to the local copy of the output from downloadSequenceMetadata()")
   }
 
-  runIDs <- metadata$sequencerRunID[match(basename(fn), metadata$rawDataFileName)]
+  # Using metadata, look up the sequencing run ID and target gene for each file
+  match_fn_to_meta <- match(basename(fn), metadata$rawDataFileName)
+  runIDs <- metadata$sequencerRunID[match_fn_to_meta]
+  targetGenes <- metadata$targetGene[match_fn_to_meta]
+  targetGenes[grep("16S", targetGenes, ignore.case=TRUE)] <- "16S"
+  targetGenes[grep("ITS", targetGenes, ignore.case=TRUE)] <- "ITS"
 
-  if(all(is.na(runIDs))) stop("All values of metadata$sequencerRunID are NA. Cannot append runID to beginning of filenames.")
+  if(all(is.na(runIDs))) stop("All sequencer run ID values are NA. Cannot proceed with reorganizing this download batch.
+                              Try a different `fn` or `metadata`.")
 
   files_organized <- c()
   for(i in 1:length(fn)) {
     # get run ID associated with the zip file
     runID <- runIDs[i]
-    if(is.na(runID)) next
+    if(is.na(runID)) {
+      warning("No recorded sequencer run ID in metadata for file: ", fn[i], ". Skipping this file.")
+      next
+    }
+
+    # get target gene associated with the zip file
+    targetGene <- targetGenes[i]
+    if(is.na(runID)) {
+      warning("No recorded target gene in metadata for file: ", fn[i], ". Skipping this file.")
+      next
+    }
+    if(!(targetGene %in% c("16S", "ITS"))) {
+      warning("Recorded target gene in metadata for file does not clearly indicate '16S' or 'ITS': ", fn[i],
+              ". Skipping this file.")
+      next
+    }
 
     # If the file is a tar file (unusual case)
     if(grepl("tar.gz", fn[i])) {
       tar_filenames <- untar(fn[i], list=TRUE)
       untar(fn[i], list=FALSE, exdir = outdir_sequence)
       untarred <- file.path(outdir_sequence, tar_filenames)
-      untarred_ITS <- grep("_ITS[^/]*fastq", untarred, value=TRUE)
-      untarred_16S <- grep("_16S[^/]*fastq", untarred, value=TRUE)
-      if(length(untarred_ITS) == 0 & length(untarred_16S) == 0) {
-        warning("Could not distinguish between ITS and 16S files contained within ", fn[i], ". We use regex patterns '_ITS[^/]*fastq' and '_16S[^/]*fastq'
-              on the untarred filenames to make this distinction.")
-        next
-      }
+      # untarred_ITS <- grep("_ITS[^/]*fastq", untarred, value=TRUE)
+      # untarred_16S <- grep("_16S[^/]*fastq", untarred, value=TRUE)
+      # if(length(untarred_ITS) == 0 & length(untarred_16S) == 0) {
+      #   warning("Could not distinguish between ITS and 16S files contained within ", fn[i], ". We use regex patterns '_ITS[^/]*fastq' and '_16S[^/]*fastq'
+      #         on the untarred filenames to make this distinction.")
+      #   next
+      # }
 
       # rename untarred files by appending sequencer run ID and moving to target gene-specific subdirectory
-      untarred_ITS_rename_to <- file.path(outdir_sequence, "ITS", "0_raw", paste0("run", runID, "_", basename(untarred_ITS)))
-      untarred_16S_rename_to <- file.path(outdir_sequence, "16S", "0_raw", paste0("run", runID, "_", basename(untarred_16S)))
-      if(length(untarred_ITS) > 0) {
-        renamed <- file.rename(untarred_ITS, untarred_ITS_rename_to)
+      untarred_rename_to <- file.path(outdir_sequence, targetGene, "0_raw", paste0("run", runID, "_", basename(untarred)))
+      # untarred_ITS_rename_to <- file.path(outdir_sequence, "ITS", "0_raw", paste0("run", runID, "_", basename(untarred_ITS)))
+      # untarred_16S_rename_to <- file.path(outdir_sequence, "16S", "0_raw", paste0("run", runID, "_", basename(untarred_16S)))
+      if(length(untarred) > 0) {
+        untarred_rename_to <- file.path(outdir_sequence, targetGene, "0_raw", paste0("run", runID, "_", basename(untarred)))
+        renamed <- file.rename(untarred, untarred_rename_to)
         if(!all(renamed)) {
-          warning(sum(!renamed), " untarred ITS file(s) were not successfully renamed in sequencer run ", runID)
+          warning(sum(!renamed), " untarred file(s) were not successfully renamed in sequencer run ", runID)
         }
-        files_organized <- c(files_organized, basename(untarred_ITS[renamed]))
-      }
-      if(length(untarred_16S) > 0) {
-        renamed <- file.rename(untarred_16S, untarred_16S_rename_to)
-        if(!all(renamed)) {
-          warning(sum(!renamed), " untarred 16S file(s) were not successfully renamed in sequencer run ", runID)
-        }
-        files_organized <- c(files_organized, basename(untarred_16S[renamed]))
+        files_organized <- c(files_organized, basename(untarred[renamed]))
       }
 
     # If the file is not tarred (typical case)
     } else {
 
       # rename file by appending sequencer run ID and moving to target gene-specific subdirectory
-      if(grepl("_ITS[^/]*fastq", fn[i])) {
-        rename_to <- file.path(outdir_sequence, "ITS", "0_raw", paste0("run", runID, "_", basename(fn[i])))
-      } else if (grepl("_16S[^/]*fastq", fn[i])) {
-        rename_to <- file.path(outdir_sequence, "16S", "0_raw", paste0("run", runID, "_", basename(fn[i])))
-      } else {
-        warning("Could not distinguish target gene of ", fn[i], ". We use regex patterns '_ITS[^/]*fastq' and '_16S[^/]*fastq'
-              on the filename to make this distinction.")
-        next
-      }
-
+      rename_to <- file.path(outdir_sequence, targetGene, "0_raw", paste0("run", runID, "_", basename(fn[i])))
       renamed <- file.rename(fn[i], rename_to)
+
       if(!renamed) {
         warning(fn[i], " was not successfully renamed.")
       } else {
@@ -237,10 +246,12 @@ organizeRawSequenceData <- function(fn, metadata, outdir_sequence = file.path(PR
     }
   }
   if(length(files_organized) > 0) {
+    message(length(files_organized), " out of ", length(fn), " files were successfully reorganized.")
     message("Reorganized files can be found in ", file.path(outdir_sequence, "ITS"), " and ", file.path(outdir_sequence, "16S"), ".")
     return(files_organized)
   } else {
     warning("No files were successfully reorganized")
+    return(NULL)
   }
 }
 
