@@ -428,58 +428,73 @@ downloadSequenceMetadata <- function(sites='all', startYrMo, endYrMo, targetGene
   if(grepl("10108", dpID)) {
     seq16S <- mmgL1$mmg_soilMarkerGeneSequencing_16S
     seqITS <- mmgL1$mmg_soilMarkerGeneSequencing_ITS
+    pcr16S <- mmgL1$mmg_soilPcrAmplification_16S
+    pcrITS <- mmgL1$mmg_soilPcrAmplification_ITS
     raw <- mmgL1$mmg_soilRawDataFiles
     dna <- mmgL1$mmg_soilDnaExtraction
     seq <- rbind(seq16S, seqITS)
+    pcr <- rbind(pcr16S, pcrITS)
 
     if(targetGene=="16S") {
       message("filtering to 16S data")
       seq <- seq16S
+      pcr <- pcr16S
     }
     if(targetGene=="ITS") {
       message("filtering to ITS data")
       seq <- seqITS
-      raw <- mmgL1$mmg_soilRawDataFiles
+      pcr <- pcrITS
     }
   }
 
   if(grepl("20280", dpID)) {
     seq16S <- mmgL1$mmg_benthicMarkerGeneSequencing_16S
     seqITS <- mmgL1$mmg_benthicMarkerGeneSequencing_ITS
+    pcr16S <- mmgL1$mmg_benthicPcrAmplification_16S
+    pcrITS <- mmgL1$mmg_benthicPcrAmplification_ITS
     raw <- mmgL1$mmg_benthicRawDataFiles
     dna <- mmgL1$mmg_benthicDnaExtraction
     seq <- rbind(seq16S, seqITS)
+    pcr <- rbind(pcr16S, pcrITS)
 
     if(targetGene=="16S") {
       message("filtering to 16S data")
       seq <- seq16S
+      pcr <- pcr16S
     }
     if(targetGene=="ITS") {
       message("filtering to ITS data")
       seq <- seqITS
+      pcr <- pcrITS
     }
   }
 
   if(grepl("20282", dpID)) {
     seq16S <- mmgL1$mmg_swMarkerGeneSequencing_16S
     seqITS <- mmgL1$mmg_swMarkerGeneSequencing_ITS
+    pcr16S <- mmgL1$mmg_swPcrAmplification_16S
+    pcrITS <- mmgL1$mmg_swPcrAmplification_ITS
     raw <- mmgL1$mmg_swRawDataFiles
-    seq <- rbind(seq16S, seqITS)
     dna <- mmgL1$mmg_swDnaExtraction
+    seq <- rbind(seq16S, seqITS)
+    pcr <- rbind(pcr16S, pcrITS)
 
     if(targetGene=="16S") {
       message("filtering to 16S data")
       seq <- seq16S
+      pcr <- pcr16S
     }
     if(targetGene=="ITS") {
       message("filtering to ITS data")
       seq <- seqITS
+      pcr <- pcrITS
     }
   }
 
   # remove unnecessary/redundant columns from tables
   raw <- dplyr::select(raw, -domainID, -siteID, -namedLocation, -laboratoryName, -sequencingFacilityID, -collectDate, -dnaSampleCode)
   dna <- dplyr::select(dna, -domainID, -siteID, -namedLocation, -laboratoryName, -collectDate)
+  pcr <- dplyr::select(pcr, -domainID, -siteID, -namedLocation, -laboratoryName, -collectDate)
 
   # convert factors to characters (bug in output of loadByProduct)
   i <- sapply(seq, is.factor)
@@ -536,17 +551,32 @@ downloadSequenceMetadata <- function(sites='all', startYrMo, endYrMo, targetGene
   names(outDNA)[names(outDNA)=="uid"] <- 'uid.dna'
   names(outDNA)[names(outDNA)=="remarks"] <- 'remarks.dna'
   names(outDNA)[names(outDNA)=="dataQF"] <- 'dataQF.dna'
+  names(outDNA)[names(outDNA)=="processedBy"] <- 'processedBy.seq'
+  names(outDNA)[names(outDNA)=="processedDate"] <- 'processedDate.dna'
+  names(outDNA)[names(outDNA)=="publicationDate"] <- 'publicationDate.dna'
+  names(outDNA)[names(outDNA)=="dnaProcessedBy"] <- 'processedBy.dna'
+
+  # join with PCR amplification metadata
+  outPCR <- left_join(outDNA, pcr, by=c('plotID', 'dnaSampleID', 'internalLabID'))
+  names(outPCR)[names(outPCR)=="uid"] <- "uid.pcr"
+  names(outPCR)[names(outPCR)=="processedDate"] <- "processedDate.pcr"
+  names(outPCR)[names(outPCR)=="testProtocolVersion"] <- "testProtocolVersion.pcr"
+  names(outPCR)[names(outPCR)=="qaqcStatus"] <- "qaqcStatus.pcr"
+  names(outPCR)[names(outPCR)=="processedBy"] <- "processedBy.pcr"
+  names(outPCR)[names(outPCR)=="remarks"] <- "remarks.pcr"
+  names(outPCR)[names(outPCR)=="dataQF"] <- "dataQF.pcr"
+  names(outPCR)[names(outPCR)=="publicationDate"] <- "publicationDate.pcr"
 
   # download local copy if user provided output dir path
   if(outDir != "") {
     if(!dir.exists(outDir)) {
       dir.create(outDir)
     }
-    write.csv(outDNA, file.path(outDir, paste0("mmg_soilMetadata_", targetGene, "_", Sys.Date(), ".csv")),
+    write.csv(outPCR, file.path(outDir, paste0("mmg_soilMetadata_", targetGene, "_", Sys.Date(), ".csv")),
               row.names=FALSE)
     message(paste0("metadata downloaded to: ", outDir, "/mmg_soilMetadata_", targetGene, "_", Sys.Date(), ".csv") )
   }
-  return(outDNA)
+  return(outPCR)
 }
 
 
@@ -951,7 +981,7 @@ runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
                             denoisedR = sapply(ddR, getN),
                             merged = sapply(mergers, getN),
                             nonchim = rowSums(seqtab.nochim))
-  return(list("seqtab" = seqtab, 
+  return(list("seqtab" = seqtab,
               "seqtab.nochim" = seqtab.nochim,
               "track" = track))
 }
@@ -1024,7 +1054,7 @@ runDadaITS <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
   track <- cbind.data.frame(derepF = sapply(derepF, getN),
                             denoisedF = sapply(ddF, getN),
                             nonchim = rowSums(seqtab.nochim))
-  return(list("seqtab" = seqtab, 
+  return(list("seqtab" = seqtab,
               "seqtab.nochim" = seqtab.nochim,
               "track" = track))
 }
