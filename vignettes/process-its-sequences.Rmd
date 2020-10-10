@@ -134,17 +134,17 @@ for (i in 1:loop_length) {
   names(track)[1:4] <- c("reads.in", "prefiltered.reads", "trimmed.reads", "filtered.reads")
   
   # Append sequence table to output list
-  # all.seqtabs[[runID]] <- seqtab.list$seqtab.nochim
-  all.seqtabs[[runID]] <- seqtab.list$seqtab
+  all.seqtabs[[runID]] <- seqtab.list$seqtab.nochim
+  # all.seqtabs[[runID]] <- seqtab.list$seqtab
 
   # Save tracking table (which tracks no. of reads remaining at each stage) and sequence table
   if(SMALL_SUBSET) {
     write.csv(track, file.path(PATH_TRACK, paste0("track_reads_",runID,"_SMALLSUBSET.csv")))
-    # saveRDS(seqtab.list$seqtab.nochim, file.path(PATH_SEQTABS, paste0("NEON_ITS_seqtab_nochim_", runID, "_SMALLSUBSET.rds")))
+    saveRDS(seqtab.list$seqtab.nochim, file.path(PATH_SEQTABS, paste0("NEON_ITS_seqtab_nochim_", runID, "_SMALLSUBSET.rds")))
     saveRDS(seqtab.list$seqtab, file.path(PATH_SEQTABS, paste0("NEON_ITS_seqtab_", runID, "_SMALLSUBSET.rds")))
   } else {
     write.csv(track, file.path(PATH_TRACK, paste0("track_reads_",runID,".csv")))
-    # saveRDS(seqtab.list$seqtab.nochim, file.path(PATH_SEQTABS, paste0("NEON_ITS_seqtab_nochim_", runID, ".rds")))
+    saveRDS(seqtab.list$seqtab.nochim, file.path(PATH_SEQTABS, paste0("NEON_ITS_seqtab_nochim_", runID, ".rds")))
     saveRDS(seqtab.list$seqtab, file.path(PATH_SEQTABS, paste0("NEON_ITS_seqtab_", runID, ".rds")))
   }
   message(paste0("Finished processing reads in ", runID, " at ", Sys.time()))
@@ -162,11 +162,6 @@ if(length(all.seqtabs) == 1) {
 }
 ```
 
-Remove chimeras:
-
-```{r}
-removeBimeraDenovo(seqtab_joined, method="consensus", multithread=multithread, verbose=verbose)
-```
 
 ## Assign taxonomy using the UNITE reference database
 
