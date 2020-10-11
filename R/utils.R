@@ -209,19 +209,11 @@ organizeRawSequenceData <- function(fn, metadata, outdir_sequence = file.path(PR
     if(grepl("tar.gz", fn[i])) {
       tar_filenames <- untar(fn[i], list=TRUE)
       untar(fn[i], list=FALSE, exdir = outdir_sequence)
+      file.remove(fn[i])
       untarred <- file.path(outdir_sequence, tar_filenames)
-      # untarred_ITS <- grep("_ITS[^/]*fastq", untarred, value=TRUE)
-      # untarred_16S <- grep("_16S[^/]*fastq", untarred, value=TRUE)
-      # if(length(untarred_ITS) == 0 & length(untarred_16S) == 0) {
-      #   warning("Could not distinguish between ITS and 16S files contained within ", fn[i], ". We use regex patterns '_ITS[^/]*fastq' and '_16S[^/]*fastq'
-      #         on the untarred filenames to make this distinction.")
-      #   next
-      # }
 
       # rename untarred files by appending sequencer run ID and moving to target gene-specific subdirectory
       untarred_rename_to <- file.path(outdir_sequence, targetGene, "0_raw", paste0("run", runID, "_", basename(untarred)))
-      # untarred_ITS_rename_to <- file.path(outdir_sequence, "ITS", "0_raw", paste0("run", runID, "_", basename(untarred_ITS)))
-      # untarred_16S_rename_to <- file.path(outdir_sequence, "16S", "0_raw", paste0("run", runID, "_", basename(untarred_16S)))
       if(length(untarred) > 0) {
         untarred_rename_to <- file.path(outdir_sequence, targetGene, "0_raw", paste0("run", runID, "_", basename(untarred)))
         renamed <- file.rename(untarred, untarred_rename_to)
