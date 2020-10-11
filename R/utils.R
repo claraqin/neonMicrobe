@@ -177,7 +177,7 @@ organizeRawSequenceData <- function(fn, metadata, outdir_sequence = file.path(PR
   # Using metadata, look up the sequencing run ID and target gene for each file
   match_fn_to_meta <- match(basename(fn), metadata$rawDataFileName)
   runIDs <- metadata$sequencerRunID[match_fn_to_meta]
-  targetGenes <- metadata$targetGene[match_fn_to_meta]
+  targetGenes <- as.character(metadata$targetGene[match_fn_to_meta])
   targetGenes[grep("16S", targetGenes, ignore.case=TRUE)] <- "16S"
   targetGenes[grep("ITS", targetGenes, ignore.case=TRUE)] <- "ITS"
 
@@ -208,9 +208,11 @@ organizeRawSequenceData <- function(fn, metadata, outdir_sequence = file.path(PR
     # If the file is a tar file (unusual case)
     if(grepl("tar.gz", fn[i])) {
       tar_filenames <- untar(fn[i], list=TRUE)
-      untar(fn[i], list=FALSE, exdir = outdir_sequence)
+      untarred_dir <- file.path(outdir_sequence, "untarred")
+      untar_dir <- if(!dir.exists(untarred_dir)) dir.create(untarred_dir)
+      untar(fn[i], list=FALSE, exdir = untarred_dir)
       file.remove(fn[i])
-      untarred <- file.path(outdir_sequence, tar_filenames)
+      untarred <- file.path(untarred_dir, tar_filenames)
 
       # rename untarred files by appending sequencer run ID and moving to target gene-specific subdirectory
       untarred_rename_to <- file.path(outdir_sequence, targetGene, "0_raw", paste0("run", runID, "_", basename(untarred)))
