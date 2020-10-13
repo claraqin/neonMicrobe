@@ -224,6 +224,7 @@ organizeRawSequenceData <- function(fn, metadata, outdir_sequence = file.path(PR
         }
         files_organized <- c(files_organized, basename(untarred[renamed]))
       }
+      message("Extracted files from ", basename(fn[i]), " and reorganized its contents.")
 
     # If the file is not tarred (typical case)
     } else {
@@ -237,6 +238,7 @@ organizeRawSequenceData <- function(fn, metadata, outdir_sequence = file.path(PR
       } else {
         files_organized <- c(files_organized, basename(fn[i]))
       }
+      message("Reorganized ", basename(fn[i]))
     }
   }
   if(length(files_organized) > 0) {
