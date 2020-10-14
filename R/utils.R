@@ -615,6 +615,9 @@ trimPrimers16S <- function(fn, dir_in, dir_out, primer_16S_fwd, primer_16S_rev, 
   fnRs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern2, fn_fullname)]
   if(length(fnFs) + length(fnRs) == 0) warning(paste0("trimPrimer16S: ", "No files found at specified location(s) within ", dir_in, ". Check file path, or post_samplename_pattern argument(s)."))
 
+  # Extract sample names
+  sample.names <- sapply(strsplit(basename(fnFs), paste0("(",post_samplename_pattern1,")|(",post_samplename_pattern2, ")")), `[`, 1)
+
   # Create output directory
   if(!dir.exists(dir_out)) dir.create(dir_out)
 
@@ -627,6 +630,7 @@ trimPrimers16S <- function(fn, dir_in, dir_out, primer_16S_fwd, primer_16S_rev, 
                           matchIDs = TRUE, trimLeft = c(nchar(primer_16S_fwd), nchar(primer_16S_rev)), compress=F)
 
   colnames(qa.out) <- c("input", "trimmed")
+  rownames(qa.out) <- sample.names
   return(qa.out)
 }
 
@@ -657,6 +661,9 @@ trimPrimersITS <- function(fn, dir_in, dir_out, primer_ITS_fwd, primer_ITS_rev, 
 
   fnFs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern1, fn_fullname)]
   if(length(fnFs) == 0) warning(paste0("trimPrimerITS: ", "No files found at specified location(s) within ", dir_in, ". Check file path, or post_samplename_pattern argument(s)."))
+
+  # Extract sample names
+  sample.names <- sapply(strsplit(basename(fnFs), paste0("(",post_samplename_pattern1,")|(",post_samplename_pattern2, ")")), `[`, 1)
 
   # Create output directory
   if(!dir.exists(dir_out)) dir.create(dir_out)
@@ -831,7 +838,7 @@ qualityFilterITS <- function(fn, dir_in, dir_out, multithread = MULTITHREAD, max
   fnFs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern1, fn_fullname)]
   if(length(fnFs) == 0) warning(paste0("trimPrimerITS: ", "No files found at specified location(s) within ", dir_in, ". Check file path, or post_samplename_pattern argument(s)."))
 
-  sample.names <- sapply(strsplit(basename(fnFs), paste(post_samplename_pattern1, "|", post_samplename_pattern2)), `[`, 1) # extract sample names
+  sample.names <- sapply(strsplit(basename(fnFs), paste0("(",post_samplename_pattern1,")|(",post_samplename_pattern2, ")")), `[`, 1) # extract sample names
   # filtFs <- file.path(dir_out, paste0(sample.names, "_filt_R1.fastq.gz")) # create filtered filenames
   # filtRs <- file.path(dir_out, paste0(sample.names, "_filt_R2.fastq.gz")) # create filtered filenames
 
@@ -970,7 +977,7 @@ runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
     mergers[[i]] <- merger
     cat(paste("Exact sequence variants inferred for sample:", sam,". \n"))
   }
-  #rm(derepF); rm(derepR)
+
   # Construct sequence table and remove chimeras
   seqtab <- makeSequenceTable(mergers)
   seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=multithread, verbose=verbose)
@@ -979,15 +986,22 @@ runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
     cat(paste0("\n\nDimensions of ESV table: ", dim(seqtab)[1], " samples, ", dim(seqtab)[2], " ESVs\n"))
     cat("\nDistribution of sequence lengths (should be bimodal for v3v4 region):")
     print(table(nchar(getSequences(seqtab))))
-    cat(paste0("\n", round(sum(seqtab.nochim)/sum(seqtab), 3), " reads remain after removal of chimeras"))
+    cat(paste0("\n", round(sum(seqtab.nochim)/sum(seqtab), 3)*100, "% reads remain after removal of chimeras"))
   }
 
-  track <- cbind.data.frame(derepF = sapply(derepF, getN),
-                            derepR = sapply(derepR, getN),
-                            denoisedF = sapply(ddF, getN),
-                            denoisedR = sapply(ddR, getN),
-                            merged = sapply(mergers, getN),
-                            nonchim = rowSums(seqtab.nochim))
+  # Track reads through this part of the pipeline
+  track <- Reduce(
+    function(x, y, ...) transform(merge(x, y, by=0, all = TRUE, ...), row.names=Row.names, Row.names=NULL),
+    list(sapply(derepF, getN),
+         sapply(derepR, getN),
+         sapply(ddF, getN),
+         denoisedR = sapply(ddR, getN),
+         sapply(mergers, getN),
+         rowSums(seqtab.nochim))
+  )
+  names(track) <- c("derepF", "derepR", "denoisedF", "denoisedR", "merged", "nonchim")
+  track[is.na(track)] <- 0
+
   return(list("seqtab" = seqtab,
               "seqtab.nochim" = seqtab.nochim,
               "track" = track))
@@ -1025,7 +1039,7 @@ runDadaITS <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
   if(length(filtFs) == 0) warning(paste0("runDadaITS: ", "No files found at specified location(s) within ", dir_in, ". Check file path, or post_samplename_pattern argument(s)."))
 
   # Create outnames
-  sample.names <- sapply(strsplit(basename(filtFs), paste(post_samplename_pattern1, "|", post_samplename_pattern2)), `[`, 1)
+  sample.names <- sapply(strsplit(basename(filtFs), paste0("(",post_samplename_pattern1,")|(",post_samplename_pattern2,")")), `[`, 1)
   names(filtFs) <- sample.names
 
   # Learn error rates
@@ -1055,12 +1069,19 @@ runDadaITS <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
     cat(paste0("\n\nDimensions of ESV table: ", dim(seqtab)[1], " samples, ", dim(seqtab)[2], " ESVs\n"))
     cat("\nDistribution of sequence lengths:")
     print(table(nchar(getSequences(seqtab))))
-    cat(paste0("\n", round(sum(seqtab.nochim)/sum(seqtab), 3), " reads remain after removal of chimeras"))
+    cat(paste0("\n", round(sum(seqtab.nochim)/sum(seqtab), 3)*100, "% reads remain after removal of chimeras"))
   }
 
-  track <- cbind.data.frame(derepF = sapply(derepF, getN),
-                            denoisedF = sapply(ddF, getN),
-                            nonchim = rowSums(seqtab.nochim))
+  # Track reads through this part of the pipeline
+  track <- Reduce(
+    function(x, y, ...) transform(merge(x, y, by=0, all = TRUE, ...), row.names=Row.names, Row.names=NULL),
+    list(sapply(derepF, getN),
+         sapply(ddF, getN),
+         rowSums(seqtab.nochim))
+  )
+  names(track) <- c("derepF", "denoisedF", "nonchim")
+  track[is.na(track)] <- 0
+
   return(list("seqtab" = seqtab,
               "seqtab.nochim" = seqtab.nochim,
               "track" = track))

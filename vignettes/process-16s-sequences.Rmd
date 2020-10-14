@@ -13,7 +13,7 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 knitr::opts_knit$set(
-  root.dir = "~/Documents/UCSC/Projects/NEON_soil_microbe_processing"
+  root.dir = "~/zhulab/neonSoilMicrobeProcessing/"
 )
 ```
 
@@ -127,9 +127,14 @@ for (i in 1:loop_length) {
   seqtab.list <- runDada16S(fn_base, PATH_FILTERED, MULTITHREAD, VERBOSE)
 
   # Create output tracking file
-  track <- cbind.data.frame(trim_trackReads,
-                            filtered = filter_trackReads[,2],
-                            seqtab.list$track)
+  track2 <- Reduce(
+    function(x, y, ...) transform(merge(x, y, by=0, all = TRUE, ...), row.names=Row.names, Row.names=NULL),
+    list(trim_trackReads, 
+         filter_trackReads[,2,drop=FALSE], 
+         seqtab.list$track)
+  )
+  names(track2)[3] <- "filtered"
+  track2[is.na(track2)] <- 0
 
   # Append sequence table to output list
   all.seqtabs[[runID]] <- seqtab.list$seqtab.nochim

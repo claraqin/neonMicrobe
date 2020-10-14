@@ -13,7 +13,7 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 knitr::opts_knit$set(
-  root.dir = "~/Documents/UCSC/Projects/NEON_soil_microbe_processing"
+  root.dir = "~/zhulab/neonSoilMicrobeProcessing/"
 )
 ```
 
@@ -79,7 +79,8 @@ In the following example, we run `downloadSequenceMetadata()` with a number of a
 
 ```{r}
 meta <- downloadSequenceMetadata(startYrMo = "2018-03", endYrMo = "2018-07", 
-                                 sites = c("OSBS", "CPER", "CLBJ"), targetGene = "ITS")
+                                 sites = c("CLBJ", "CPER", "OSBS"),
+                                 targetGene = "ITS")
 ```
 
 ## Download raw sequence data
@@ -96,7 +97,8 @@ Get the names of all downloaded files.
 
 ```{r}
 outdir_sequence <- file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE)
-fn <- list.files(path = outdir_sequence, pattern = "fastq", full.names = TRUE)
+fn0 <- file.path("./NEON/raw_sequence", meta$rawDataFileName)
+fn <- unique(fn0[file.exists(fn0)])
 ```
 
 The following function untars each file (if necessary), appends the sequencer run ID to the beginning of each filename, and moves files to subfolders within your  sequence directory according to their target gene. The terminal directory name for either target gene will be `0_raw`.
