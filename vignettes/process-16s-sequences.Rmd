@@ -127,14 +127,14 @@ for (i in 1:loop_length) {
   seqtab.list <- runDada16S(fn_base, PATH_FILTERED, MULTITHREAD, VERBOSE)
 
   # Create output tracking file
-  track2 <- Reduce(
+  track <- Reduce(
     function(x, y, ...) transform(merge(x, y, by=0, all = TRUE, ...), row.names=Row.names, Row.names=NULL),
     list(trim_trackReads, 
          filter_trackReads[,2,drop=FALSE], 
          seqtab.list$track)
   )
-  names(track2)[3] <- "filtered"
-  track2[is.na(track2)] <- 0
+  names(track)[3] <- "filtered"
+  track[is.na(track)] <- 0
 
   # Append sequence table to output list
   all.seqtabs[[runID]] <- seqtab.list$seqtab.nochim
