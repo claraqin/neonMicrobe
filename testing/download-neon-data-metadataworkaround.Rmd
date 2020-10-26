@@ -1,0 +1,127 @@
+---
+title: "Download NEON Data with Metadata Workaround"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{download-neon-data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+knitr::opts_knit$set(
+  root.dir = rprojroot::find_rstudio_root_file() # Update as necessary
+)
+```
+
+
+This vignette demonstrates how to use the functions and parameters in this package to download the specific scope NEON soil microbe marker gene sequence data and associated data relevant to your analysis. 
+
+**This version of of the Download NEON Data vignette does not use the `downloadSequenceMetadata()` function to download metadata, and instead loads it from memory. This is meant to be a temporary workaround until the NEON API is updated in late 2020 or early 2021 to reflect new naming conventions.**
+
+**To download the "good" NEON soil microbe sequence metadata, click [here](https://drive.google.com/file/d/1Rd41yHeHYoNl5HsKWUTO2uFOSLrbcIg9/view?usp=sharing). Decompress and move the files into your working directory before running the rest of this vignette.**
+
+# Dependencies
+
+To begin, ensure that you have installed all dependencies.
+
+From CRAN:
+```{r, eval=FALSE}
+install.packages("dplyr")
+install.packages("neonUtilities")
+install.packages("R.utils")
+```
+
+```{r, message=FALSE}
+library(dplyr)
+library(neonUtilities)
+library(R.utils)
+```
+
+In addition, source files associated with this package:
+
+```{r}
+source("./R/utils.R")
+source("./code/params.R")
+```
+
+# Set up directories
+
+Set up the directory structure associated with the various NEON data products. The structure will depend on what you have written in `params.R`. For example:
+
+```
+PRESET_OUTDIR = "/data/NEON"
+PRESET_OUTDIR_SEQUENCE = "raw_sequence"
+PRESET_OUTDIR_SEQMETA = "sequence_metadata"
+PRESET_OUTDIR_SOIL = "soil"
+```
+
+This will generate (recursively) the following output directories:
+
+```
+/data/NEON/raw_sequence
+/data/NEON/sequence_metadata
+/data/NEON/soil
+```
+
+```{r}
+makeOutputDirectories()
+```
+
+# Download data
+
+## Download metadata
+
+We begin by downloading the metadata associated with the collection and analysis of NEON soil microbial samples. **In this version of the vignette only, we load metadata from file. In the original version of this vignette, we use the `downloadSequenceMetadata()` function.**
+
+```{r}
+meta_ITS <- read.csv("./rawFilesGood_ITS.csv") # For ITS data
+# meta_16S <- read.csv("./rawFilesGood_16S.csv") # For 16S data
+```
+
+**In the remaining code, we use only the ITS sequence metadata `meta_ITS`, but the 16S sequence metadata `meta_16S` can be substituted in order to download and process 16S data instead.**
+
+Optionally, subset the metadata to select specific sites, dates, or sequencing runs.
+
+```{r}
+run_subset_ITS <- c("B69PP", "B69RF", "B69RN", "B9994", "BDR3T", "BF8M2", "BF8W6", "BFDG8", "BMCBD", "BMCC4", "BNBWL")
+meta <- meta_ITS[meta_ITS$sequencerRunID %in% run_subset_ITS]
+
+# Other options for subsetting by sequencing runs:
+
+# run_subset_ITS <- c("BNM5M", "BNM6G", "BNMDC", "BRGWK", "BTJKN", "BTK8C", "BTNFM", "BVKHJ", "BVM74", "C25G9", "C25VD", "C3CN4")
+# run_subset_ITS <- c("C3CNF", "C3D5Y", "C4M7L", "C5D7D", "C5DB5", "C5DCH", "C97GV", "C97PR", "C9852", "CBJG3", "CBRDC")
+
+# run_subset_16S <- c("B69PP", "B69RF", "B69RN", "B9994", "BDNB6", "BF462", "BF8M2", "BFDG8", "BJ8RK", "BMC64", "BMCBJ")
+# run_subset_16S <- c("BNMJ5", "BNMWB", "BRF6G", "BRPH4", "BTP4N", "BTV4F", "BVKCR", "BVMB4", "BVPNR", "C24VW", "C25T6")
+# run_subset_16S <- c("C38TW", "C5B2R", "C5C7P", "C7WK3", "C8VMV", "C977L", "C983L", "CBJYB", "CBTWG", "CDJ5J")
+```
+
+## Download raw sequence data
+
+Now that we have the metadata table loaded into memory, we retrieve a table of unique raw data files and their sequencing run IDs. 
+
+```{r, message=1:5}
+download_success <- downloadRawSequenceData(meta_ITS)
+```
+
+## Reorganize and rename the downloaded files
+
+Get the names of all downloaded files.
+
+```{r}
+outdir_sequence <- file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE)
+fn0 <- file.path("./NEON/raw_sequence", meta_ITS$rawDataFileName)
+fn <- unique(fn0[file.exists(fn0)])
+```
+
+The following function untars each file (if necessary), appends the sequencer run ID to the beginning of each filename, and moves files to subfolders within your  sequence directory according to their target gene. The terminal directory name for either target gene will be `0_raw`.
+
+```{r}
+reorganized_files <- organizeRawSequenceData(fn, meta_ITS)
+head(reorganized_files)
+```
+
