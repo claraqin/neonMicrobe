@@ -28,11 +28,13 @@ From CRAN:
 ```{r, eval=FALSE}
 install.packages("dplyr")
 install.packages("neonUtilities")
+install.packages("R.utils")
 ```
 
-```{r}
+```{r, message=FALSE}
 library(dplyr)
 library(neonUtilities)
+library(R.utils)
 ```
 
 In addition, source files associated with this package:

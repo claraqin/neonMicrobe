@@ -152,10 +152,12 @@ downloadRawSequenceData <- function(metadata, outdir = file.path(PRESET_OUTDIR, 
 #'
 #' @param fn Character vector of full names (including path) of raw sequence files. Can include tarballs.
 #' @param metadata The output of downloadSequenceMetadata(). Must be provided as either the data.frame returned by downloadSequenceMetadata() or as a filepath to the csv file produced by downloadSequenceMetadata() when outdir is provided.
-#' @param outdir_sequence Default file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE). Directory where raw sequence files are output.
+#' @param outdir_sequence Default file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE). Directory where raw sequence files can be found before reorganizing.
 #'
 #' @return Character vector of the files (including files within tarballs) that were successfully reorganized. If no files were successfully reorganized, returns no value.
 organizeRawSequenceData <- function(fn, metadata, outdir_sequence = file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE)) {
+  library(R.utils)
+
   metadata_load_err <- FALSE
 
   if(class(metadata) == "data.frame") {
@@ -220,9 +222,9 @@ organizeRawSequenceData <- function(fn, metadata, outdir_sequence = file.path(PR
         untarred_rename_to <- file.path(outdir_sequence, targetGene, "0_raw", paste0("run", runID, "_", basename(untarred)))
         renamed <- file.rename(untarred, untarred_rename_to)
         if(!all(renamed)) {
-          warning(sum(!renamed), " untarred file(s) were not successfully renamed in sequencer run ", runID)
+          warning(sum(!renamed), " untarred file(s) in sequencer run ", runID, "were not successfully reorganized")
         }
-        files_organized <- c(files_organized, basename(untarred[renamed]))
+        files_organized <- c(files_organized, untarred_rename_to[renamed])
       }
       message("Extracted files from ", basename(fn[i]), " and reorganized its contents.")
 
@@ -234,15 +236,23 @@ organizeRawSequenceData <- function(fn, metadata, outdir_sequence = file.path(PR
       renamed <- file.rename(fn[i], rename_to)
 
       if(!renamed) {
-        warning(fn[i], " was not successfully renamed.")
+        warning(fn[i], " was not successfully reorganized")
       } else {
-        files_organized <- c(files_organized, basename(fn[i]))
+        files_organized <- c(files_organized, rename_to)
       }
       message("Reorganized ", basename(fn[i]))
     }
   }
+
+  # Gzip all non-gzipped fastq files
+  for(i in 1:length(files_organized)) {
+    if(!grepl(".gz$", files_organized[i])) {
+      gzip(files_organized[i])
+    }
+  }
+
   if(length(files_organized) > 0) {
-    message(length(files_organized), " out of ", length(fn), " files were successfully reorganized.")
+    message(length(files_organized), " out of ", length(fn), " files in sequencer run ", runID, " were successfully reorganized.")
     message("Reorganized files can be found in ", file.path(outdir_sequence, "ITS"), " and ", file.path(outdir_sequence, "16S"), ".")
     return(files_organized)
   } else {
@@ -369,7 +379,7 @@ downloadRawSoilData <- function(sites='all', startYrMo, endYrMo,
 #' Function by Lee F. Stanish and Clara Qin (2020). Currently available for testing only.
 #'
 #' @param sites Either the string 'all', meaning all available sites, or a character vector of 4-letter NEON site codes, e.g. c('ONAQ','RMNP'). Defaults to PRESET_SITES parameter in params.R.
-#' @param startYrMo,endYrMo Either NA, meaning all available dates, or a character vector in the form YYYY-MM, e.g. 2017-01.
+#' @param startYrMo,endYrMo Either NA (default), meaning all available dates, or a character vector in the form YYYY-MM, e.g. 2017-01.
 #' @param targetGene '16S' or 'ITS'.
 #' @param sequencingRuns Either the string 'all', meaning all available sequencing runs, or a character vector of NEON sequencing run IDs, e.g. c('C25G9', 'B69PP').
 #' @param dpID NEON data product of interest. Default is soil marker gene sequences, and currently code only works for marker genes data products.
@@ -381,7 +391,7 @@ downloadRawSoilData <- function(sites='all', startYrMo, endYrMo,
 #' meta <- downloadSequenceMetadataRev('all', '2015-01', '2016-01', '16S') # metadata is not saved to local directory
 #' meta <- downloadSequenceMetadataRev('all', '2015-01', '2016-01', '16S', dir='./data/') # metadata is saved to local directory
 #' }
-downloadSequenceMetadata <- function(sites='all', startYrMo, endYrMo, targetGene= "all",
+downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targetGene= "all",
                                      sequencingRuns = "", dpID = "DP1.10108.001", outDir="") {
   # author: Lee Stanish
   # date: 2020-08-13
@@ -517,7 +527,8 @@ downloadSequenceMetadata <- function(sites='all', startYrMo, endYrMo, targetGene
     raw <- raw[which(raw$sequencerRunID %in% sequencingRuns), ]
     # Validate sequencing run ID argument
     if(nrow(raw) == 0) {
-      stop("After filtering by specified sequencing run ID(s), no records remain. Double-check your sequencing run  ID(s).")
+      warning("After filtering by specified sequencing run ID(s), no records remain. Double-check your sequencing run  ID(s).")
+      return(NULL)
     }
   }
 
@@ -842,7 +853,13 @@ qualityFilterITS <- function(fn, dir_in, dir_out, multithread = MULTITHREAD, max
   # filtFs <- file.path(dir_out, paste0(sample.names, "_filt_R1.fastq.gz")) # create filtered filenames
   # filtRs <- file.path(dir_out, paste0(sample.names, "_filt_R2.fastq.gz")) # create filtered filenames
 
-  filtFs <- file.path(dir_out, basename(fnFs))
+  gz_ind <- grepl("\\.gz$", basename(fnFs))
+  if(!all(gz_ind)) {
+    filtFs <- file.path(dir_out, basename(fnFs))
+    filtFs[!gz_ind] <- paste0(filtFs, ".gz")
+  } else {
+    filtFs <- file.path(dir_out, basename(fnFs))
+  }
 
   out <- filterAndTrim(fnFs, filtFs,
                        multithread = multithread,
