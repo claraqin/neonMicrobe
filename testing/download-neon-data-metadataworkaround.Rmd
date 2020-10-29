@@ -13,7 +13,7 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 knitr::opts_knit$set(
-  root.dir = rprojroot::find_rstudio_root_file() # Update as necessary
+  root.dir = rprojroot::find_rstudio_root_file() # Update as necessary. Should refer to the absolute filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
 )
 ```
 
@@ -88,7 +88,7 @@ Optionally, subset the metadata to select specific sites, dates, or sequencing r
 
 ```{r}
 run_subset_ITS <- c("B69PP", "B69RF", "B69RN", "B9994", "BDR3T", "BF8M2", "BF8W6", "BFDG8", "BMCBD", "BMCC4", "BNBWL")
-meta <- meta_ITS[meta_ITS$sequencerRunID %in% run_subset_ITS]
+meta <- meta_ITS[meta_ITS$sequencerRunID %in% run_subset_ITS,]
 
 # Other options for subsetting by sequencing runs:
 
@@ -105,7 +105,7 @@ meta <- meta_ITS[meta_ITS$sequencerRunID %in% run_subset_ITS]
 Now that we have the metadata table loaded into memory, we retrieve a table of unique raw data files and their sequencing run IDs. 
 
 ```{r, message=1:5}
-download_success <- downloadRawSequenceData(meta_ITS)
+download_success <- downloadRawSequenceData(meta)
 ```
 
 ## Reorganize and rename the downloaded files
@@ -114,14 +114,14 @@ Get the names of all downloaded files.
 
 ```{r}
 outdir_sequence <- file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE)
-fn0 <- file.path("./NEON/raw_sequence", meta_ITS$rawDataFileName)
+fn0 <- file.path("./NEON/raw_sequence", meta$rawDataFileName)
 fn <- unique(fn0[file.exists(fn0)])
 ```
 
 The following function untars each file (if necessary), appends the sequencer run ID to the beginning of each filename, and moves files to subfolders within your  sequence directory according to their target gene. The terminal directory name for either target gene will be `0_raw`.
 
 ```{r}
-reorganized_files <- organizeRawSequenceData(fn, meta_ITS)
+reorganized_files <- organizeRawSequenceData(fn, meta)
 head(reorganized_files)
 ```
 

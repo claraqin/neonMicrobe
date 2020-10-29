@@ -13,7 +13,7 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 knitr::opts_knit$set(
-  root.dir = rprojroot::find_rstudio_root_file() # Update as necessary
+  root.dir = rprojroot::find_rstudio_root_file() # Update as necessary. Should refer to the absolute filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
 )
 ```
 
@@ -79,7 +79,7 @@ unique_runs <- unique(unlist(
 ))
 ```
 
-If SMALL_SUBSET == TRUE, run only the first runID. This can be useful for debugging.
+If SMALL_SUBSET == TRUE, run only the first runID. This can be useful for debugging. (SMALL_SUBSET is a parameter that can be found within params.R.)
 
 ```{r}
 if (SMALL_SUBSET) {
@@ -94,7 +94,7 @@ if (SMALL_SUBSET) {
 We use DADA2 to process reads one sequencing run at a time.
 
 ```{r}
-# all.seqtabs <- list() # Removed for seqtabs-only version
+# all.seqtabs <- list() # Removed for testing version
 t1 <- Sys.time()
 ti <- c()
 first <- TRUE
@@ -140,7 +140,7 @@ for (i in 1:loop_length) {
   track[is.na(track)] <- 0
 
   # Append sequence table to output list
-  # all.seqtabs[[runID]] <- seqtab.list$seqtab.nochim # Removed for seqtabs-only version
+  # all.seqtabs[[runID]] <- seqtab.list$seqtab.nochim # Removed for testing version
 
   # Save tracking table (which tracks no. of reads remaining at each stage) and sequence table
   if(SMALL_SUBSET) {

@@ -253,7 +253,7 @@ organizeRawSequenceData <- function(fn, metadata, outdir_sequence = file.path(PR
 
   if(length(files_organized) > 0) {
     message(length(files_organized), " out of ", length(fn), " files in sequencer run ", runID, " were successfully reorganized.")
-    message("Reorganized files can be found in ", file.path(outdir_sequence, "ITS"), " and ", file.path(outdir_sequence, "16S"), ".")
+    message("Reorganized files can be found in ", file.path(outdir_sequence, "ITS", "0_raw"), " and ", file.path(outdir_sequence, "16S", "0_raw"), ".")
     return(files_organized)
   } else {
     warning("No files were successfully reorganized")

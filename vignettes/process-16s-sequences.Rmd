@@ -13,7 +13,7 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 knitr::opts_knit$set(
-  root.dir = "~/zhulab/neonSoilMicrobeProcessing/"
+  root.dir = "~/zhulab/neonSoilMicrobeProcessing/" # Update as necessary. Should refer to the absolute filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
 )
 ```
 
@@ -76,7 +76,7 @@ unique_runs <- unique(unlist(
 ))
 ```
 
-If SMALL_SUBSET == TRUE, run only the first runID. This can be useful for debugging.
+If SMALL_SUBSET == TRUE, run only the first runID. This can be useful for debugging. (SMALL_SUBSET is a parameter that can be found within params.R.)
 
 ```{r}
 if (SMALL_SUBSET) {
