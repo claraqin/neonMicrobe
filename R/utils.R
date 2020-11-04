@@ -627,7 +627,7 @@ trimPrimers16S <- function(fn, dir_in, dir_out, primer_16S_fwd, primer_16S_rev, 
   if(length(fnFs) + length(fnRs) == 0) warning(paste0("trimPrimer16S: ", "No files found at specified location(s) within ", dir_in, ". Check file path, or post_samplename_pattern argument(s)."))
 
   # Extract sample names
-  sample.names <- sapply(strsplit(basename(fnFs), paste0("(",post_samplename_pattern1,")|(",post_samplename_pattern2, ")")), `[`, 1)
+  sample.names <- getSampleName(fnFs)
 
   # Create output directory
   if(!dir.exists(dir_out)) dir.create(dir_out)
@@ -674,7 +674,7 @@ trimPrimersITS <- function(fn, dir_in, dir_out, primer_ITS_fwd, primer_ITS_rev, 
   if(length(fnFs) == 0) warning(paste0("trimPrimerITS: ", "No files found at specified location(s) within ", dir_in, ". Check file path, or post_samplename_pattern argument(s)."))
 
   # Extract sample names
-  sample.names <- sapply(strsplit(basename(fnFs), paste0("(",post_samplename_pattern1,")|(",post_samplename_pattern2, ")")), `[`, 1)
+  sample.names <- getSampleName(fnFs)
 
   # Create output directory
   if(!dir.exists(dir_out)) dir.create(dir_out)
@@ -771,7 +771,7 @@ qualityFilter16S <- function(fn, dir_in, dir_out, multithread = MULTITHREAD, max
   fnRs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern2, fn_fullname)]
   if(length(fnFs) + length(fnRs) == 0) warning(paste0("qualityFilter16S: ", "No files found at specified location(s) within ", dir_in, ". Check file path, or post_samplename_pattern argument(s)."))
 
-  sample.names <- sapply(strsplit(basename(fnFs), paste0("(",post_samplename_pattern1,")|(",post_samplename_pattern2, ")")), `[`, 1) # extract sample names
+  sample.names <- getSampleName(fnFs) # extract sample names
   filtFs <- file.path(dir_out, basename(fnFs)) # create filtered filenames
   filtRs <- file.path(dir_out, basename(fnRs)) # create filtered filenames
 
@@ -849,7 +849,7 @@ qualityFilterITS <- function(fn, dir_in, dir_out, multithread = MULTITHREAD, max
   fnFs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern1, fn_fullname)]
   if(length(fnFs) == 0) warning(paste0("trimPrimerITS: ", "No files found at specified location(s) within ", dir_in, ". Check file path, or post_samplename_pattern argument(s)."))
 
-  sample.names <- sapply(strsplit(basename(fnFs), paste0("(",post_samplename_pattern1,")|(",post_samplename_pattern2, ")")), `[`, 1) # extract sample names
+  sample.names <- getSampleName(fnFs) # extract sample names
   # filtFs <- file.path(dir_out, paste0(sample.names, "_filt_R1.fastq.gz")) # create filtered filenames
   # filtRs <- file.path(dir_out, paste0(sample.names, "_filt_R2.fastq.gz")) # create filtered filenames
 
@@ -1116,4 +1116,20 @@ runDadaITS <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
 #' @return Integer; total number of reads in the dada-class object.
 getN <- function(x) {
   sum(getUniques(x))
+}
+
+
+#' Get Sample Name from Fastq Filename
+#'
+#' Extracts the sample names from fastq filenames, given regular expressions
+#' denoting the different endings of R1 and R2 filenames.
+#'
+#' @param fn Fastq filename(s).
+#' @param post_samplename_pattern1,post_samplename_pattern2 Default "_R1.*\\.fastq" and "_R2.*\\.fastq". Regular expressions denoting the ends of the R1 and R2 filenames, respectively, which will be trimmed away, leaving identical names between corresponding R1 and R2 files.
+#'
+#' @return Character vector; sample names of the input fastq filenames.
+#'
+#' @examples
+getSampleName <- function(fn, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq") {
+  sapply(strsplit(basename(fn), paste0("(",post_samplename_pattern1,")|(",post_samplename_pattern2, ")")), `[`, 1)
 }
