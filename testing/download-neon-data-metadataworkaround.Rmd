@@ -24,6 +24,8 @@ This vignette demonstrates how to use the functions and parameters in this packa
 
 **To download the "good" NEON soil microbe sequence metadata, click [here](https://drive.google.com/file/d/1Rd41yHeHYoNl5HsKWUTO2uFOSLrbcIg9/view?usp=sharing). Decompress and move the files into your working directory before running the rest of this vignette.**
 
+**Note:** If you are using this vignette as a reference, rather than running it as an RMarkdown script, be aware that you will need to manually set the working directory to the project root directory, e.g. `setwd(".../neonSoilMicrobeProcessing")`.
+
 # Dependencies
 
 To begin, ensure that you have installed all dependencies.
@@ -114,7 +116,7 @@ Get the names of all downloaded files.
 
 ```{r}
 outdir_sequence <- file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE)
-fn0 <- file.path("./NEON/raw_sequence", meta$rawDataFileName)
+fn0 <- file.path(outdir_sequence, meta$rawDataFileName)
 fn <- unique(fn0[file.exists(fn0)])
 ```
 

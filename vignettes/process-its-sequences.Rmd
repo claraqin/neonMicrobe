@@ -19,6 +19,8 @@ knitr::opts_knit$set(
 
 This vignette demonstrates how to use the functions and parameters in this package to process the raw NEON ITS sequence data into ASV tables. This vignette processes only the forward ITS reads, following recommendations by Pauvert et al. (2019).
 
+**Note:** If you are using this vignette as a reference, rather than running it as an RMarkdown script, be aware that you will need to manually set the working directory to the project root directory, e.g. `setwd(".../neonSoilMicrobeProcessing")`.
+
 # Dependencies
 
 To begin, ensure that you have installed all dependencies.
