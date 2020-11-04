@@ -554,7 +554,7 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
   if(targetGene=="all") {
     joinedTarget <- left_join(raw, seq, by=c('dnaSampleID', 'sequencerRunID', 'internalLabID'))
     out <- joinedTarget[!is.na(joinedTarget$uid.y), ]
-    message(paste0(length(grep("16S", joinedTarget$rawDataFileName)), " 16S records and ", length(grep("ITS", joinedTarget$rawDataFileName)), " ITS records found."))
+    message(paste0(length(grep("16S", joinedTarget$rawDataFileName)), " 16S raw sequence records and ", length(grep("ITS", joinedTarget$rawDataFileName)), " ITS records found."))
   }
 
   # clean up redundant column names
@@ -562,7 +562,7 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
   names(out) <- gsub("\\.y", ".seq", names(out))
 
   # join with DNA extraction metadata
-  outDNA <- left_join(out, dna, by=c('plotID', 'dnaSampleID', 'internalLabID'))
+  outDNA <- left_join(out, dna, by=c('plotID', 'dnaSampleID'))
   # clean up redundant column names
   names(outDNA) <- gsub("\\.x", ".seq", names(outDNA))
   names(outDNA) <- gsub("\\.y", ".dna", names(outDNA))
@@ -575,10 +575,12 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
   names(outDNA)[names(outDNA)=="dnaProcessedBy"] <- 'processedBy.dna'
 
   # join with PCR amplification metadata
-  outPCR <- left_join(outDNA, pcr, by=c('plotID', 'dnaSampleID', 'internalLabID'))
+  outPCR <- left_join(outDNA, pcr, by=c('plotID', 'dnaSampleID'))
+  # clean up redundant column names
   names(outPCR)[names(outPCR)=="uid"] <- "uid.pcr"
   names(outPCR)[names(outPCR)=="processedDate"] <- "processedDate.pcr"
   names(outPCR)[names(outPCR)=="testProtocolVersion"] <- "testProtocolVersion.pcr"
+  names(outPCR)[names(outPCR)=="internalLabID"] <- "internalLabID.pcr"
   names(outPCR)[names(outPCR)=="qaqcStatus"] <- "qaqcStatus.pcr"
   names(outPCR)[names(outPCR)=="processedBy"] <- "processedBy.pcr"
   names(outPCR)[names(outPCR)=="remarks"] <- "remarks.pcr"
