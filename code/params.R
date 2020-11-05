@@ -28,10 +28,9 @@ PRIMER_16S_FWD = "CCTACGGGNBGCASCAG" # Forward primer sequence
 PRIMER_16S_REV = "GACTACNVGGGTATCTAATCC" # Reverse primer sequence
 
 # Search for & set the Cutadapt path
-# system2 should work on Windows, but I'm not sure if the "which" command works.
-CUTADAPT_PATH <- system2("which", args = "cutadapt", stdout = TRUE)
-if(length(CUTADAPT_PATH) == 0){
-  message("Could not find the cutadapt tool in file system. This tool is necessary for ITS (fungal) raw sequence processing. Please load the module if necessary (i.e. 'module load cutadapt') or download from https://cutadapt.readthedocs.io/en/stable/installation.html")
+CUTADAPT_PATH <- ""
+if(!file.exists(CUTADAPT_PATH)){
+  message("Could not find the cutadapt tool in file system. This tool is necessary for ITS (fungal) raw sequence processing. Please load the module if necessary on an HPC (i.e. 'module load cutadapt') or download from https://cutadapt.readthedocs.io/en/stable/installation.html")
 }
 
 # UNITE reference database (FASTA file) path

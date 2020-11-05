@@ -10,10 +10,10 @@ source("./code/params.R")
 source("./code/utils.R")
 
 # Generate filepath names
-PATH_ITS <- file.path(PRESET_OUTDIR_SEQUENCE, "ITS")
-PATH_UNZIPPED <- file.path(PATH_ITS, "0_unzipped")
+PATH_ITS <- file.path("/raid/users/claraqin/zhulab/neonSoilMicrobeProcessing/raw_data/Illumina/NEON/ITS")
+PATH_RAW <- file.path(PATH_ITS, "0_raw")
 PATH_FILTN <- file.path(PATH_ITS, "1_filtN")
-PATH_CUT <- file.path(PATH_ITS, "2_cutadapt")
+PATH_TRIMMED <- file.path(PATH_ITS, "2_trimmed")
 PATH_FILTERED <- file.path(PATH_ITS, "3_filtered")
 PATH_SEQTABS <- file.path(PATH_ITS, "4_seqtabs")
 PATH_TRACK <- file.path(PATH_ITS, "track_reads")
@@ -27,7 +27,7 @@ library(dplyr)
 
 # Get all run IDs so you can group by them
 unique_runs <- unique(unlist(
-  regmatches(list.files(PATH_UNZIPPED), gregexpr("^run[A-Za-z0-9]*", list.files(PATH_UNZIPPED)))
+  regmatches(list.files(PATH_RAW), gregexpr("^run[A-Za-z0-9]*", list.files(PATH_RAW)))
 ))
 
 # If SMALL_SUBSET == TRUE, run only the first runID
@@ -61,6 +61,16 @@ trim_primers <- function(in.fwd, in.rev, out.fwd, out.rev) {
   }
 }
 
+# CODE BY BENJAMIN CALLAHAN https://benjjneb.github.io/dada2/ITS_workflow.html
+allOrients <- function(primer) {
+  # Create all orientations of the input sequence
+  require(Biostrings)
+  dna <- DNAString(primer)  # The Biostrings works w/ DNAString objects rather than character vectors
+  orients <- c(Forward = dna, Complement = complement(dna), Reverse = reverse(dna),
+               RevComp = reverseComplement(dna))
+  return(sapply(orients, toString))  # Convert back to character vector
+}
+
 # runDada2_fwd.reads <- function(filtpath, out.file, seed = NULL, ...){
 #   if (!is.null(seed)) set.seed(seed)
 #
@@ -92,8 +102,8 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN)
   message(paste0("Began processing ", runID, " at ", Sys.time()))
 
   # Forward and reverse fastq filenames have format: SAMPLENAME_R1_001.fastq and SAMPLENAME_R2_001.fastq
-  fnFs <- sort(list.files(PATH_UNZIPPED, pattern=paste0(runID, ".*_R1.fastq"), full.names = TRUE)) # If set to be FALSE, then working directory must contain the files
-  fnRs <- sort(list.files(PATH_UNZIPPED, pattern=paste0(runID, ".*_R2.fastq"), full.names = TRUE))
+  fnFs <- sort(list.files(PATH_RAW, pattern=paste0(runID, ".*_R1.fastq"), full.names = TRUE)) # If set to be FALSE, then working directory must contain the files
+  fnRs <- sort(list.files(PATH_RAW, pattern=paste0(runID, ".*_R2.fastq"), full.names = TRUE))
 
   # Remove any forward files that don't have reverse counterparts, and vise versa
   # (filterAndTrim will throw an error if fnFs and fnRs have any mismatches)
@@ -104,11 +114,11 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN)
 
   for(name in rm_from_fnFs) {
     if(VERBOSE) message(paste(name, "does not have an R2 counterpart. Omitting from this analysis."))
-    fnFs <- fnFs[-which(fnFs == paste0(PATH_UNZIPPED, "/", name, "_R1.fastq"))]
+    fnFs <- fnFs[-which(fnFs == paste0(PATH_RAW, "/", name, "_R1.fastq"))]
   }
   for(name in rm_from_fnRs) {
     if(VERBOSE) message(paste(name, "does not have an R1 counterpart. Omitting from this analysis."))
-    fnRs <- fnRs[-which(fnRs == paste0(PATH_UNZIPPED, "/", name, "_R2.fastq"))]
+    fnRs <- fnRs[-which(fnRs == paste0(PATH_RAW, "/", name, "_R2.fastq"))]
   }
   rm(rm_from_fnFs)
   rm(rm_from_fnRs)
@@ -150,20 +160,23 @@ for (i in 1:loop_length) { # <-- TODO: need to re-run #15 (runBTJKN)
   # TODO: Fix the mixed-orientation reads issue
 
   # Remove primers using cutadapt
-  fnFs.cut_mid <- file.path(PATH_CUT, paste0("mid_cutadapt_", basename(fnFs.filtN)))
-  fnRs.cut_mid <- file.path(PATH_CUT, paste0("mid_cutadapt_", basename(fnRs.filtN)))
+  fnFs.cut_mid <- file.path(PATH_TRIMMED, paste0("mid_cutadapt_", basename(fnFs.filtN)))
+  fnRs.cut_mid <- file.path(PATH_TRIMMED, paste0("mid_cutadapt_", basename(fnRs.filtN)))
 
   trim_primers(fnFs.filtN, fnRs.filtN, fnFs.cut_mid, fnRs.cut_mid)
 
+  PATH_TRIMMED_MID <- paste0(PATH_TRIMMED, "_mid")
+  trimPrimersITS(basename(fnRs.filtN), PATH_FILTN, PATH_TRIMMED_MID, "CTTGGTCATTTAGAGGAAGTAA", "GCTGCGTTCTTCATCGATGC", cutadapt_path = CUTADAPT_PATH)
+
   # Since not all primer counts are zero yet, remove all other orientations of primers
 
-  fnFs.cut <- file.path(PATH_CUT, sub("mid_cutadapt_", "", basename(fnFs.cut_mid)))
-  fnRs.cut <- file.path(PATH_CUT, sub("mid_cutadapt_", "", basename(fnRs.cut_mid)))
+  fnFs.cut <- file.path(PATH_TRIMMED, sub("mid_cutadapt_", "", basename(fnFs.cut_mid)))
+  fnRs.cut <- file.path(PATH_TRIMMED, sub("mid_cutadapt_", "", basename(fnRs.cut_mid)))
 
   trim_primers(fnFs.cut_mid, fnRs.cut_mid, fnFs.cut, fnRs.cut)
 
   # Remove intermediary files associated with first step of cutadapt
-  file.remove(list.files(path=PATH_CUT, pattern = "mid_cutadapt_", full.names=TRUE))
+  file.remove(list.files(path=PATH_TRIMMED, pattern = "mid_cutadapt_", full.names=TRUE))
 
   # Keep only the filenames for the samples with reads remaining:
   cutFs <- fnFs.cut[file.exists(fnFs.cut)]
