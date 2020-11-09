@@ -74,7 +74,7 @@ makeOutputDirectories()
 
 We begin by downloading the metadata associated with the collection and analysis of NEON soil microbial samples, using the `downloadSequenceMetadata()` function.
 
-The `downloadSequenceMetadata()` function downloads NEON data product DP1.10108 ("Soil microbe marker gene sequences") and assembles it using the `neonUtilities` package. This data product contains a number of tables related to accessing raw sequence data. A joined table containing information about the raw data URLs and the marker gene sequencing parameters is returned by this function. 
+The `downloadSequenceMetadata()` function downloads NEON data product NEON.DP1.10108.001 ("Soil microbe marker gene sequences") and assembles it using the `neonUtilities` package. This data product contains a number of tables related to accessing raw sequence data. A joined table containing information about the raw data URLs and the marker gene sequencing parameters is returned by this function. 
 
 If time and space limitations are not issues for you, you can download the entire dataset over the course of a few hours. However, `downloadSequenceMetadata()` accepts arguments that can be used to specify the subset of the data you are interested in keeping for your analysis.
 

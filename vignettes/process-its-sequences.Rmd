@@ -104,7 +104,7 @@ for (i in 1:loop_length) {
   message(paste0("Began processing ", runID, " at ", Sys.time()))
 
   # Forward and reverse fastq filenames have format: SAMPLENAME_R1.fastq
-  fnFs <- sort(list.files(PATH_RAW, pattern=paste0(runID, ".*_R1.fastq"), full.names = TRUE))
+  fnFs <- sort(list.files(PATH_RAW, pattern=paste0(runID, ".*_R1\\.fastq"), full.names = TRUE))
 
   # If SMALL_SUBSET == TRUE,
   # keep only the first two forward-reverse pairs of sequence files
