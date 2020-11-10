@@ -756,14 +756,14 @@ remove_unmatched_files <- function(fnFs, fnRs, post_samplename_pattern = "_R(1|2
 #' @param fn Names of input fastq files, excluding directory path which is specified by dir_in. Files that do not exist will be ignored; however, if all files do not exist, this function will throw an error.
 #' @param dir_in Directory containing input fastq files.
 #' @param dir_out Path to output directory where filtered fastq files will be written.
-#' @param truncLen Default NULL. Single integer: truncation length to use across all files. Two-integer vector: truncation length to use for the forward-read and reverse-read files, respectively. If NULL (default), determines truncation length(s) based on \code{\link{getTruncationLength}} with a quality score threshold of trunc_qscore.
+#' @param truncLen_manual Default NULL. Single integer: truncation length to use across all files. Two-integer vector: truncation length to use for the forward-read and reverse-read files, respectively. If NULL (default), determines truncation length(s) based on \code{\link{getTruncationLength}} with a quality score threshold of trunc_qscore.
 #' @param trunc_qscore Default 23. Quality score at which point to truncate each read, if truncLen is NULL.
 #' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
 #' @param post_samplename_pattern1,post_samplename_pattern2 (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).*\\.fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
 #' @param ... Other arguments to be passed to \code{\link[dada2]{filterAndTrim}}, such as maxEE. See documentation for more details.
 #'
 #' @return Two-column matrix displaying the number of reads in input vs. output for each file.
-qualityFilter16S <- function(fn, dir_in, dir_out, truncLen=NULL, trunc_qscore = 23, multithread = MULTITHREAD, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq", ...){
+qualityFilter16S <- function(fn, dir_in, dir_out, truncLen_manual=NULL, trunc_qscore = 23, multithread = MULTITHREAD, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq", ...){
   fn_fullname <- file.path(dir_in, fn)
 
   fnFs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern1, fn_fullname)]
@@ -774,7 +774,7 @@ qualityFilter16S <- function(fn, dir_in, dir_out, truncLen=NULL, trunc_qscore = 
   filtFs <- file.path(dir_out, basename(fnFs)) # create filtered filenames
   filtRs <- file.path(dir_out, basename(fnRs)) # create filtered filenames
 
-  if (is.null(truncLen)){
+  if (is.null(truncLen_manual)){
     # GETTING TRUNCATION LENGTH USING A SUBSET OF QUALITY SCORES
     n_files <- min(length(unique(sample.names)), 30)
 
@@ -808,13 +808,11 @@ qualityFilter16S <- function(fn, dir_in, dir_out, truncLen=NULL, trunc_qscore = 
     truncLen <- c(fwd.trunc.length, rev.trunc.length)
   }
 
-  out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs,
-                       compress = TRUE,
-                       truncLen = truncLen,
-                       maxN = 0,
-                       matchIDs = TRUE,
-                       multithread = multithread,
-                       ...)
+  dots <- list(...)
+  if ("truncLen" %in% names(dots)) dots$truncLen <- NULL
+  arguments <- c(list(fnFs, filtFs, fnRs, filtRs, compress=TRUE, truncLen=truncLen, multithread=multithread), dots)
+
+  out <- do.call(filterAndTrim, arguments)
 
   rownames(out) <- sample.names
 
@@ -852,9 +850,8 @@ qualityFilterITS <- function(fn, dir_in, dir_out, multithread = MULTITHREAD, pos
     filtFs <- file.path(dir_out, basename(fnFs))
   }
 
-  out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs,
+  out <- filterAndTrim(fnFs, filtFs,
                        compress = TRUE,
-                       maxN = 0,
                        matchIDs = TRUE,
                        multithread = multithread,
                        ...)
