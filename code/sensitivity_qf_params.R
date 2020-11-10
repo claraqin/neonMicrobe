@@ -22,16 +22,20 @@
 ##############
 # Preset values for sensitivity analysis
 
-# Hard-coded quality filter parameters, which we do not vary in this sensitivity analysis
+# Quality filter parameters that we do not vary in this sensitivity analysis
 MAX_EE_FWD <- 8
-TRUNC_LEN_FWD <- 220
+TRUNC_LEN_FWD <- 240
 MIN_LEN <- 50
-N_SAMPLES <- 2
+
+# Parameters specific to this sensitivity analysis
+N_SAMPLES <- 40
+DIRNAME_TEST <- "qf_test_11-09-2020"
+runIDs <- c("C5B2R", "CBTWG")
 
 # Parameter value grid. The following allows testing of two quality filtering parameters at a time.
 PARAM1 <- "maxEE.R"
 PARAM2 <- "truncLen.R"
-grid <- expand.grid(2^seq(2,4), c(150, 200, 250))
+grid <- expand.grid(c(4, 8, 16), c(160, 220, 280))
 params <- matrix(
   c(grid[,1],     # PARAM1
     grid[,2]),    # PARAM2
@@ -67,11 +71,11 @@ if(is.null(PRESET_OUTDIR_SEQUENCE) | PRESET_OUTDIR_SEQUENCE == "") {
 }
 PATH_RAW <- file.path(PATH_16S, "0_raw")
 PATH_TRIMMED <- file.path(PATH_16S, "1_trimmed")
-PATH_TEST <- file.path(PATH_16S, "qf_test_11-04-2020")
+PATH_TEST <- file.path(PATH_16S, DIRNAME_TEST)
+dir.create(file.path(PATH_TEST, "results"))
 
 ##############
 # Runs to use:
-runIDs <- c("C5B2R")
 rawFs <- sort(list.files(PATH_RAW, pattern = paste0("(",paste0("(", runIDs, ")", collapse="|"),")", ".*_R1\\.fastq"), full.names = TRUE))
 rawRs <- sort(list.files(PATH_RAW, pattern = paste0("(",paste0("(", runIDs, ")", collapse="|"),")", ".*_R2\\.fastq"), full.names = TRUE))
 # cutFs <- sort(list.files(PATH_TRIMMED, pattern = paste0("(",paste0("(", runIDs, ")", collapse="|"),")", ".*_R1\\.fastq"), full.names = TRUE))
@@ -102,17 +106,19 @@ if(length(rawFs) > N_SAMPLES) {
 }
 
 # Plot quality profiles
-gridExtra::grid.arrange(plotQualityProfile(cutFs, aggregate=TRUE),
-                        plotQualityProfile(cutRs, aggregate=TRUE))
+gridExtra::grid.arrange(plotQualityProfile(rawFs, aggregate=TRUE),
+                        plotQualityProfile(rawRs, aggregate=TRUE))
 
 # Split complete filenames into "basenames" and directory names
-fn_base <- basename(c(cutFs, cutRs))
+fn_base <- basename(c(rawFs, rawRs))
 PATH_PARAMSETS <- file.path(PATH_TEST, param_sets)
 
+t1 <- Sys.time()
 # Trim reads based on the primer lengths supplied in params.r
 trim_trackReads <- trimPrimers16S(fn_base, PATH_RAW, PATH_TRIMMED, "CCTACGGGNBGCASCAG", "GACTACNVGGGTATCTAATCC")
 
 # Run quality filter on 16S sequences
+t2 <- Sys.time()
 filter_trackReads <- list()
 for(i in 1:length(param_sets)) {
   filter_trackReads[[i]] <- qualityFilter16S(
@@ -127,31 +133,16 @@ for(i in 1:length(param_sets)) {
 }
 filter_trackReads_mat <- do.call(rbind, filter_trackReads)
 
-# Code for plotting moved to test_dada2_params_plots.Rmd
-
-# These plots don't tell us much, because there is no guarantee that
-# any of these reads are of sufficient quality to be assigned taxonomy,
-# or that they will merge.
-
 ###############
 # Run parts of dada2 (post-filterAndTrim) to see downstream effects on merging,
 # taxonomic resolution, diversity
 
-# # Ensure that all of the output filenames exist
-# filtFs <- lapply(filtFs, function(x) { x <- x[file.exists(x)] })
-# filtRs <- lapply(filtRs, function(x) { x <- x[file.exists(x)] })
+seqtabs <- dada_trackReads <- lapply(1:length(param_sets), function(x) lapply(1:length(runIDs), function(y) list()))
 
-# The following objects, which will be output as Rds objects, are nested
-# accordingly:
-# - first layer [1:2] indexes across sequencing runs
-# - second layer [1:16] indexes across parameter sets
+t3 <- Sys.time() # t1 - t3 on 11/09/2020: 8 min
 
-dadaFs_list <- dadaRs_list <- seqtabs <- mergers <- n_merged <- prop_merged <- dada_trackReads <- lapply(1:length(param_sets), function(x) lapply(1:length(runIDs), function(y) list()))
-
-# names(dadaFs_list) <- names(dadaRs_list) <- names(seqtabs) <- names(mergers) <- names(n_merged) <- names(prop_merged) <- names(dada_trackReads) <- NULL
-
-system.time({ # When run on runC5B2R_BMI_Plate77WellA10_16S_C5B2R and runC5B2R_BMI_Plate77WellA11_16S_C5B2R,
-              # on 8 cores, takes ~35 min.
+# system.time({ # When run on runC5B2R_BMI_Plate77WellA10_16S_C5B2R and runC5B2R_BMI_Plate77WellA11_16S_C5B2R,
+#               # on 8 cores, takes ~35 min.
 for(i in 1:length(param_sets)) {
   for(j in 1:length(runIDs)) {
     message("Sensitivity analysis: parameter set ", param_sets[i], ", sequencing run ",  runIDs[j])
@@ -167,9 +158,10 @@ for(i in 1:length(param_sets)) {
     rownames(dada_trackReads[[i]][[j]]) <- paste0(param_sets[i], "|", rownames(dada_trackReads[[i]][[j]]))
   }
 }
-})
+# })
 dada_trackReads_mat <- do.call(rbind, lapply(dada_trackReads, function(x) do.call(rbind, x)))
 
+t4 <- Sys.time()
 # Combine all tracking tables -- first requires modification of trim_trackReads
 trim_trackReads_mat <- do.call(rbind, lapply(1:length(param_sets), function(i) {
   rownames(trim_trackReads) <- paste0(param_sets[i], "|", rownames(trim_trackReads))
@@ -184,24 +176,6 @@ track <- Reduce(
 )
 names(track) <- c("input", "trimmed", "filtered", colnames(dada_trackReads_mat))
 track[is.na(track)] <- 0
-
-# # Proportion of forward reads that were assigned an ASV
-# prop_Fs_mapped_to_asv <- lapply(1:length(runIDs), function(x) lapply(dadaFs_list[[x]], function(y) lapply(y, function(z) mean(!is.na(z$map)))))
-# prop_Fs_mapped_to_asv_mat <- matrix(
-#   unlist(prop_Fs_mapped_to_asv),
-#   ncol=N_SAMPLES,
-#   nrow=length(param_sets),
-#   dimnames=list(param_sets, basename(cutFs))
-# )
-#
-# # Proportion of reverse reads that were assigned an ASV
-# prop_Rs_mapped_to_asv <- lapply(1:length(runIDs), function(x) lapply(dadaRs_list[[x]], function(y) lapply(y, function(z) mean(!is.na(z$map)))))
-# prop_Rs_mapped_to_asv_mat <- matrix(
-#   unlist(prop_Rs_mapped_to_asv),
-#   ncol=N_SAMPLES,
-#   nrow=length(param_sets),
-#   dimnames=list(param_sets, basename(cutRs))
-# )
 
 # For community analyses, join sequencing runs together for each parameter set
 seqtabs_joinrun <- lapply(1:length(param_sets), function(x) list())
@@ -225,22 +199,23 @@ track_long <- tidyr::gather(track, key = "step", value = "reads", input:nonchim)
 track_long <- track_long[!grepl("F$", track_long$step),]
 # Aggregate read counts by run ID
 track_long[["step"]] <- factor(track_long[["step"]], levels=colnames(track)[1:9])
-track_aggRun <- group_by(track_long, maxEE.R, truncLen, runID, step) %>%
+track_aggRun <- group_by(track_long, maxEE.R, truncLen.R, runID, step) %>%
   dplyr::summarise(reads = sum(reads))
 
 # Plot
 theme_set(theme_bw())
 ggplot(track_aggRun, aes(x=step, y=reads, col=as.factor(maxEE.R))) +
-  geom_line(aes(linetype=as.factor(truncLen), group=interaction(maxEE.R, truncLen))) +
-  facet_wrap(~runID) +
-  labs(linetype="truncLen", color="maxEE.R") +
+  geom_line(aes(linetype=as.factor(truncLen.R), group=interaction(maxEE.R, truncLen.R))) +
+  facet_wrap(~runID, scales="free_y") +
+  labs(linetype="truncLen.R", color="maxEE.R") +
   scale_linetype_manual(values=c("dotted", "dashed", "solid")) +
   theme(axis.text.x = element_text(angle=45, hjust=1))
-ggsave(file.path(PATH_TEST, "results", "track_reads_plot.png"), width=5, height=3.5, units="in")
+ggsave(file.path(PATH_TEST, "results", "track_reads_plot.png"), width=9, height=3.5, units="in")
 
 ###
 # Assign taxonomy using the UNITE database
 # Warning: this can take several days. If available, load from file
+t5 <- Sys.time()
 taxas <- list()
 tax_t0 <- Sys.time()
 tax_t <- c()
@@ -250,24 +225,15 @@ for (i in 1:length(seqtabs_joinrun)) { # When run on runC5B2R_BMI_Plate77WellA10
   tax_t <- c(tax_t, Sys.time())
 }
 names(taxas) <- param_sets
+t6 <- Sys.time()
 
-taxas.print <- taxas[[1]]
-rownames(taxas.print) <- NULL
-tail(taxas.print)
+# taxas.print <- taxas[[1]]
+# rownames(taxas.print) <- NULL
+# tail(taxas.print)
 
 # Save the data thus far
 saveRDS(taxas, file.path(PATH_TEST, "results", "sensitivity_taxas_list.Rds"))
 
-
-# saveRDS(cutFs, file.path(PATH_TEST, "sensitivity_cutFs.Rds"))
-# saveRDS(params, file.path(PATH_TEST, "sensitivity_params.Rds"))
-# saveRDS(out_list, file.path(PATH_TEST, "sensitivity_filterAndTrim_out_list.Rds"))
-# saveRDS(prop_Fs_mapped_to_asv_mat, file.path(PATH_TEST, "sensitivity_prop_Fs_mapped.Rds"))
-# saveRDS(prop_Rs_mapped_to_asv_mat, file.path(PATH_TEST, "sensitivity_prop_Rs_mapped.Rds"))
-# saveRDS(dadaFs_list, file.path(PATH_TEST, "sensitivity_dadaFs_list.Rds"))
-# saveRDS(dadaRs_list, file.path(PATH_TEST, "sensitivity_dadaRs_list.Rds"))
-# saveRDS(seqtabs, file.path(PATH_TEST, "sensitivity_seqtabs_list.Rds"))
-# saveRDS(taxas, file.path(PATH_TEST, "results", "sensitivity_taxas_list.Rds"))
 
 ###################
 # Evaluate effects on taxonomic resolution.
@@ -319,54 +285,36 @@ tidyr::gather(n_reads_assigned_rank_df, key="rank", value="n_assigned_reads", Ki
 # Plot
 theme_set(theme_bw())
 ggplot(reads_assigned_rank_df, aes(x=rank, y=p_assigned_reads, col=as.factor(maxEE.R))) +
-  geom_line(aes(linetype=as.factor(truncLen), group=interaction(maxEE.R, truncLen))) +
-  labs(linetype="truncLen", color="maxEE.R") +
+  geom_line(aes(linetype=as.factor(truncLen.R), group=interaction(maxEE.R, truncLen.R))) +
+  labs(linetype="truncLen.R", color="maxEE.R") +
   scale_linetype_manual(values=c("dotted", "dashed", "solid")) +
   theme(axis.text.x = element_text(angle=45, hjust=1))
 ggsave(file.path(PATH_TEST, "results", "reads_assigned_taxonomy.png"), width=5, height=3.5, units="in")
 
-# # Remake summary_df with additional columns
-# summary_df <-
-#   data.frame(
-#     maxEE = params[,1],
-#     truncQ = params[,3],
-#     # prop.Fs.mapped = unlist(lapply(prop_Fs_mapped_to_asv, function(x) median(unlist(x)))),
-#     # prop.merged = unlist(lapply(prop_merged, function(x) median(x))),
-#     # rate.merged = unlist(lapply(merged_variants_per_input_read, function(x) median(x))),
-#     abund.spp.classification = unlist(abund_spp_classification),
-#     prop.spp.classification = unlist(prop_spp_classification),
-#     n.spp.classification = unlist(n_spp_classification)
-#   )
-
-# (Moved plotting code to test_dada2_params_plots.Rmd)
-
-# FINDING: This is intuitive; as filtering parameters become more
-# stringent, the proportion of ASVs which are assigned to the species
-# level increases. However, this does not mean that the absolute
-# number of spp-identified ASVs increases; only the spp identification
-# rate.
 
 ##################
+# Effects on alpha-diversity
+
 # What's the best way to evaluate effects on diversity estimates?
 # Do the parameters affect the shape of the rarefaction curves (evenness),
 # or just the sequencing depth (number of reads)?
+# # par(mfrow=c(2,2))
+# # lapply(seqtabs_joinrun, function(x) {
+# #   rarecurve(x, step=50, label=FALSE)
+# # })
+# # par(mfrow=c(1,1))
+# # rarecurve(seqtabs[[4]], sample=50)
+#
+# # rarefactions <- list()
+# # for(i in 1:length(param_sets)) {
+# #   max_depth <- max(rowSums(seqtabs_joinrun[[i]]))
+# #   rarefy(seqtabs_joinrun[[i]], sample=)
+# # }
+# # rarefy(seqtabs_joinrun[[1]], sample=c(50, 100, 150, 200))
 
-# par(mfrow=c(2,2))
-# lapply(seqtabs_joinrun, function(x) {
-#   rarecurve(x, step=50, label=FALSE)
-# })
-# par(mfrow=c(1,1))
-# rarecurve(seqtabs[[4]], sample=50)
+t7 <- Sys.time()
 
-# rarefactions <- list()
-# for(i in 1:length(param_sets)) {
-#   max_depth <- max(rowSums(seqtabs_joinrun[[i]]))
-#   rarefy(seqtabs_joinrun[[i]], sample=)
-# }
-# rarefy(seqtabs_joinrun[[1]], sample=c(50, 100, 150, 200))
-
-# Use phyloseq's estimate_richness function?
-estimate_richness(physeqs[[1]])
+# Use phyloseq's estimate_richness function
 # Ben Callahan recommends not using diversity estimates that rely on singletons.
 # This leaves Shannon and Simpson's indices. https://github.com/benjjneb/dada2/issues/214
 estimate_richness(physeqs[[1]], measures=c("Observed","Shannon"))
@@ -397,29 +345,33 @@ ggplot(diversity_df, aes(y=value, col=as.factor(maxEE.R), x=as.factor(truncLen.R
   geom_boxplot() +
   facet_grid(index~., scales="free_y") +
   labs(col="maxEE.R", x="truncLen.R")
-ggsave(file.path(PATH_TEST, "results", "alpha_diversity_plot.png"), width=5, height=3.5, units="in")
+ggsave(file.path(PATH_TEST, "results", "alpha_diversity_plot.png"), width=5, height=5, units="in")
 
 
 ##############
 # Evaluate effects on beta-diversity inference,
 # using ordinations and permANOVA
 
-# (Some of this code is redundant with test_dada2_params_plots.Rmd)
+t8 <- Sys.time()
 
 # Combine all seqtabs into ONE physeq
 seqtab_joined <- mergeSequenceTables(tables=seqtabs_joinrun)
 
 # Sample data (parameters)
-sampledata <- parseParamsFromRownames(seqtab_joined, PARAM1, PARAM2, keep_original_cols = FALSE)
+sampledata <- parseParamsFromRownames(seqtab_joined, PARAM1, PARAM2, keep_rownames=TRUE, keep_original_cols = FALSE)
 
 # Taxa table
 # Warning: this can take several hours. If available, load from file instead
-system.time({ # When run on runC5B2R_BMI_Plate77WellA10_16S_C5B2R and runC5B2R_BMI_Plate77WellA11_16S_C5B2R,
+t9 <- Sys.time()
+# system.time({ # When run on runC5B2R_BMI_Plate77WellA10_16S_C5B2R and runC5B2R_BMI_Plate77WellA11_16S_C5B2R,
   # with 9 parameter sets, on 8 cores, takes ~15 min.
 taxa_joined <- assignTaxonomy(seqtab_joined, UNITE_REF_PATH, multithread = MULTITHREAD, tryRC = TRUE)
-})
-saveRDS(taxa_joined, "./data/sensitivity_taxa_joined.Rds")
+# })
+
+saveRDS(taxa_joined, file.path(PATH_TEST, "results", "sensitivity_taxa_joined.Rds"))
 # taxa_joined <- readRDS("./data/sensitivity_taxa_joined.Rds")
+
+t10 <- Sys.time()
 
 # Combine elements into physeq
 physeq_joined <- phyloseq(otu_table(seqtab_joined,taxa_are_rows=FALSE),
@@ -429,13 +381,24 @@ physeq_joined <- phyloseq(otu_table(seqtab_joined,taxa_are_rows=FALSE),
 # Remove samples with zero total counts
 physeq_joined_nonzero <- prune_samples(sample_sums(physeq_joined) > 0, physeq_joined)
 
+# Optional: Keep only taxa with at least 10 reads
+# physeq_joined_nonzero <- prune_taxa(taxa_sums(physeq_joined) > 10, physeq_joined)
+
 # Ordinate
-# ordination <- ordinate(physeq_joined_nonzero, "NMDS", "bray", k=2)
-# saveRDS(ordination, "./data/sensitivity_ordination.Rds")
-ordination <- readRDS("./data/sensitivity_ordination.Rds")
+ordination <- ordinate(physeq_joined_nonzero, "NMDS", "bray", k=2)
+
+saveRDS(ordination, file.path(PATH_TEST, "results", "sensitivity_ordination.Rds"))
+
+t11 <- Sys.time()
+
+
+
+############################## PAUSE HERE ON 11/09/2020
+
+ordination <- readRDS(file.path(PATH_TEST, "results", "sensitivity_ordination.Rds"))
 plot_ordination(physeq_joined_nonzero, ordination, type="samples",
-                col="truncQ") +
-  coord_cartesian(xlim=c(-0.096, -0.09), ylim=c(-0.002, 0.001)) +
+                col="runID") +
+  # coord_cartesian(xlim=c(-0.096, -0.09), ylim=c(-0.002, 0.001)) +
   NULL
 
 ordination_scores <- scores(ordination)

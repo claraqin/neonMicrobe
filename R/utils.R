@@ -937,7 +937,7 @@ runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
 
   filtFs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern1, fn_fullname)]
   filtRs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern2, fn_fullname)]
-  if(length(fnFs) + length(fnRs) == 0) warning(paste0("runDada16S: ", "No files found at specified location(s) within ", dir_in, ". Check file path, or post_samplename_pattern argument(s)."))
+  if(length(filtFs) + length(filtRs) == 0) warning(paste0("runDada16S: ", "No files found at specified location(s) within ", dir_in, ". Check file path, or post_samplename_pattern argument(s)."))
 
   # Keep files with counterpart
   matched_files <- remove_unmatched_files(filtFs, filtRs)
