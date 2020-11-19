@@ -13,7 +13,7 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 knitr::opts_knit$set(
-  root.dir = "~/zhulab/neonSoilMicrobeProcessing/" # Update as necessary. Should refer to the absolute filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
+  root.dir = rprojroot::find_rstudio_root_file() # Update as necessary. Should refer to the absolute filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
 )
 ```
 
@@ -102,8 +102,8 @@ for (i in 1:loop_length) {
   message(paste0("Began processing ", runID, " at ", Sys.time()))
 
   # Forward and reverse fastq filenames have format: SAMPLENAME_R1.fastq and SAMPLENAME_R2.fastq
-  fnFs <- sort(list.files(PATH_RAW, pattern=paste0(runID, ".*_R1.fastq"), full.names = TRUE))
-  fnRs <- sort(list.files(PATH_RAW, pattern=paste0(runID, ".*_R2.fastq"), full.names = TRUE))
+  fnFs <- sort(list.files(PATH_RAW, pattern=paste0(runID, ".*_R1\\.fastq"), full.names = TRUE))
+  fnRs <- sort(list.files(PATH_RAW, pattern=paste0(runID, ".*_R2\\.fastq"), full.names = TRUE))
 
   # If SMALL_SUBSET == TRUE,
   # keep only the first two forward-reverse pairs of sequence files
@@ -123,14 +123,14 @@ for (i in 1:loop_length) {
   trim_trackReads <- trimPrimers16S(fn_base, PATH_RAW, PATH_TRIMMED, "CCTACGGGNBGCASCAG", "GACTACNVGGGTATCTAATCC")
 
   # Filter reads based on the settings in params.r
-  filter_trackReads <- qualityFilter16S(fn_base, PATH_TRIMMED, PATH_FILTERED, MULTITHREAD, MAX_EE_FWD, MAX_EE_REV, trunc_lengths=NULL) # truncation lengths will be determined automatically using get_truncation_length()
+  filter_trackReads <- qualityFilter16S(fn_base, PATH_TRIMMED, PATH_FILTERED, MULTITHREAD, maxEE = c(MAX_EE_FWD, MAX_EE_REV), truncLen_manual = NULL, truncLen=220) # truncation lengths will be determined automatically using get_truncation_length()
 
   # Now create sequence table for run
   seqtab.list <- runDada16S(fn_base, PATH_FILTERED, MULTITHREAD, VERBOSE)
 
   # Create output tracking file
   track <- Reduce(
-    function(x, y, ...) transform(merge(x, y, by=0, all = TRUE, ...), row.names=Row.names, Row.names=NULL),
+    function(x, y, ...) transform(merge(x, y, by = 0, all = TRUE, ...), row.names=Row.names, Row.names = NULL),
     list(trim_trackReads, 
          filter_trackReads[,2,drop=FALSE], 
          seqtab.list$track)
@@ -143,10 +143,10 @@ for (i in 1:loop_length) {
 
   # Save tracking table (which tracks no. of reads remaining at each stage) and sequence table
   if(SMALL_SUBSET) {
-    write.csv(track, file.path(PATH_TRACK, paste0("track_reads_",runID,"_SMALLSUBSET.csv")))
+    write.csv(track, file.path(PATH_TRACK, paste0("track_reads_", runID, "_SMALLSUBSET.csv")))
     saveRDS(seqtab.list$seqtab.nochim, file.path(PATH_SEQTABS, paste0("NEON_16S_seqtab_nochim_", runID, "_SMALLSUBSET.rds")))
   } else {
-    write.csv(track, file.path(PATH_TRACK, paste0("track_reads_",runID,".csv")))
+    write.csv(track, file.path(PATH_TRACK, paste0("track_reads_", runID, ".csv")))
     saveRDS(seqtab.list$seqtab.nochim, file.path(PATH_SEQTABS, paste0("NEON_16S_seqtab_nochim_", runID, ".rds")))
   }
   message(paste0("Finished processing reads in ", runID, " at ", Sys.time()))

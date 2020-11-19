@@ -756,15 +756,14 @@ remove_unmatched_files <- function(fnFs, fnRs, post_samplename_pattern = "_R(1|2
 #' @param fn Names of input fastq files, excluding directory path which is specified by dir_in. Files that do not exist will be ignored; however, if all files do not exist, this function will throw an error.
 #' @param dir_in Directory containing input fastq files.
 #' @param dir_out Path to output directory where filtered fastq files will be written.
+#' @param truncLen_manual Default NULL. Single integer: truncation length to use across all files. Two-integer vector: truncation length to use for the forward-read and reverse-read files, respectively. If NULL (default), determines truncation length(s) based on \code{\link{getTruncationLength}} with a quality score threshold of trunc_qscore.
+#' @param trunc_qscore Default 23. Quality score at which point to truncate each read, if truncLen is NULL.
 #' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
-#' @param maxEE_fwd,maxEE_rev The maximum number of expected errors allowed in forward/reverse reads. Read-pairs with expected errors that exceed this threshold will be removed.
-#' @param trunc_lengths Default NULL. Single integer: truncation length to use across all files. Two-integer vector: truncation length to use for the forward-read and reverse-read files, respectively. If NULL (default), determines truncation length(s) based on \code{\link{getTruncationLength}} with a quality score threshold of trunc_qscore.
-#' @param trunc_qscore Default 23. Quality score at which point to truncate each read, if trunc_lengths is null.
 #' @param post_samplename_pattern1,post_samplename_pattern2 (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).*\\.fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
+#' @param ... Other arguments to be passed to \code{\link[dada2]{filterAndTrim}}, such as maxEE. See documentation for more details.
 #'
 #' @return Two-column matrix displaying the number of reads in input vs. output for each file.
-qualityFilter16S <- function(fn, dir_in, dir_out, multithread = MULTITHREAD, maxEE_fwd, maxEE_rev, trunc_lengths = NULL, trunc_qscore = 23, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq" #, mean = FALSE
-){
+qualityFilter16S <- function(fn, dir_in, dir_out, truncLen_manual=NULL, trunc_qscore = 23, multithread = MULTITHREAD, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq", ...){
   fn_fullname <- file.path(dir_in, fn)
 
   fnFs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern1, fn_fullname)]
@@ -775,7 +774,7 @@ qualityFilter16S <- function(fn, dir_in, dir_out, multithread = MULTITHREAD, max
   filtFs <- file.path(dir_out, basename(fnFs)) # create filtered filenames
   filtRs <- file.path(dir_out, basename(fnRs)) # create filtered filenames
 
-  if (is.null(trunc_lengths)){
+  if (is.null(truncLen_manual)){
     # GETTING TRUNCATION LENGTH USING A SUBSET OF QUALITY SCORES
     n_files <- min(length(unique(sample.names)), 30)
 
@@ -806,23 +805,20 @@ qualityFilter16S <- function(fn, dir_in, dir_out, multithread = MULTITHREAD, max
     if (rev.trunc.length < 200) rev.trunc.length <- 200
     if (fwd.trunc.length < 245) fwd.trunc.length <- 245
     cat(paste0("Fwd truncation length: ", fwd.trunc.length, "\nRev truncation length: ", rev.trunc.length, "\n"))
-    trunc_lengths <- c(fwd.trunc.length, rev.trunc.length)
+    truncLen <- c(fwd.trunc.length, rev.trunc.length)
   }
 
-  out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs,
-                       multithread=multithread,
-                       truncLen=trunc_lengths,
-                       maxEE = c(maxEE_fwd, maxEE_rev),
-                       matchIDs = TRUE,
-                       compress=TRUE, maxN=0)
+  dots <- list(...)
+  if ("truncLen" %in% names(dots)) dots$truncLen <- NULL
+  arguments <- c(list(fnFs, filtFs, fnRs, filtRs, compress=TRUE, truncLen=truncLen, multithread=multithread), dots)
+
+  out <- do.call(filterAndTrim, arguments)
 
   rownames(out) <- sample.names
 
   return(out)
 }
 
-
-# TODO: How can we add "..." to pass arbitrary parameters to filterAndTrim?
 
 #' Filter ITS Sequences
 #'
@@ -833,16 +829,11 @@ qualityFilter16S <- function(fn, dir_in, dir_out, multithread = MULTITHREAD, max
 #' @param dir_in Directory containing input fastq files.
 #' @param dir_out Path to output directory where filtered fastq files will be written.
 #' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
-#' @param maxEE Default Inf. The maximum number of expected errors allowed in forward reads. Read-pairs with expected errors that exceed this threshold will be removed.
-#' @param truncQ Default 2. Quality score at which point to truncate each read.
-#' @param minLen Default 20. Read with length less than minLen are removed. minLen is enforced after trimming and truncation.
-#' @param maxN Default 0. Maximum number of ambiguous bases "N" to allow in forward reads.
 #' @param post_samplename_pattern1,post_samplename_pattern2 (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).*\\.fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
-#' @param trimLeft (Optional). Default 0. The number of nucleotides to remove from the start of each read.
+#' @param ... Other arguments to be passed to \code{\link[dada2]{filterAndTrim}}, such as maxEE. See documentation for more details.
 #'
 #' @return Two-column matrix displaying the number of reads in input vs. output for each file.
-qualityFilterITS <- function(fn, dir_in, dir_out, multithread = MULTITHREAD, maxEE = Inf, truncQ = 2, minLen = 20, maxN = 0, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq", trimLeft = 0 #, mean = FALSE
-){
+qualityFilterITS <- function(fn, dir_in, dir_out, multithread = MULTITHREAD, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq", ...){
 
   fn_fullname <- file.path(dir_in, fn)
 
@@ -850,8 +841,6 @@ qualityFilterITS <- function(fn, dir_in, dir_out, multithread = MULTITHREAD, max
   if(length(fnFs) == 0) warning(paste0("trimPrimerITS: ", "No files found at specified location(s) within ", dir_in, ". Check file path, or post_samplename_pattern argument(s)."))
 
   sample.names <- getSampleName(fnFs) # extract sample names
-  # filtFs <- file.path(dir_out, paste0(sample.names, "_filt_R1.fastq.gz")) # create filtered filenames
-  # filtRs <- file.path(dir_out, paste0(sample.names, "_filt_R2.fastq.gz")) # create filtered filenames
 
   gz_ind <- grepl("\\.gz$", basename(fnFs))
   if(!all(gz_ind)) {
@@ -862,13 +851,10 @@ qualityFilterITS <- function(fn, dir_in, dir_out, multithread = MULTITHREAD, max
   }
 
   out <- filterAndTrim(fnFs, filtFs,
-                       multithread = multithread,
-                       maxEE = maxEE,
-                       truncQ = truncQ,
-                       minLen = minLen,
                        compress = TRUE,
-                       maxN = maxN,
-                       trimLeft = trimLeft)
+                       matchIDs = TRUE,
+                       multithread = multithread,
+                       ...)
 
   rownames(out) <- sample.names
 
@@ -948,7 +934,7 @@ runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
 
   filtFs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern1, fn_fullname)]
   filtRs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern2, fn_fullname)]
-  if(length(fnFs) + length(fnRs) == 0) warning(paste0("runDada16S: ", "No files found at specified location(s) within ", dir_in, ". Check file path, or post_samplename_pattern argument(s)."))
+  if(length(filtFs) + length(filtRs) == 0) warning(paste0("runDada16S: ", "No files found at specified location(s) within ", dir_in, ". Check file path, or post_samplename_pattern argument(s)."))
 
   # Keep files with counterpart
   matched_files <- remove_unmatched_files(filtFs, filtRs)
@@ -1007,7 +993,8 @@ runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
   }
 
   # Track reads through this part of the pipeline
-  track <- Reduce(
+  suppressWarnings({
+    track <- Reduce(
     function(x, y, ...) transform(merge(x, y, by=0, all = TRUE, ...), row.names=Row.names, Row.names=NULL),
     list(sapply(derepF, getN),
          sapply(derepR, getN),
@@ -1015,7 +1002,8 @@ runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
          denoisedR = sapply(ddR, getN),
          sapply(mergers, getN),
          rowSums(seqtab.nochim))
-  )
+    )
+  })
   names(track) <- c("derepF", "derepR", "denoisedF", "denoisedR", "merged", "nonchim")
   track[is.na(track)] <- 0
 
@@ -1132,4 +1120,39 @@ getN <- function(x) {
 #' @examples
 getSampleName <- function(fn, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq") {
   sapply(strsplit(basename(fn), paste0("(",post_samplename_pattern1,")|(",post_samplename_pattern2, ")")), `[`, 1)
+}
+
+
+#' Parse Parameter Values from Rownames
+#'
+#' Parses parameter values from rownames. Particularly useful for sensitivity analyses, when rows have been constructed to contain information about the parameter values, e.g. "maxEE.R_8_truncLen.R_250".
+#'
+#' @param df Data frame with rownames containing parameter values of the form [param_name1]_[param_value1]_[param_name2]_[param_value2].
+#' @param keep_rownames (Default FALSE) Whether to keep the rownames of the original dataframe.
+#' @param keep_original_cols (Default TRUE) Whether to keep the columns of the original dataframe.
+#' @param param1,param2 Parameter names embedded within the rownames of df.
+#'
+#' @return A data frame containing columns corresponding to the values of the parameters of interest, extracted from the rownames of the original data frame.
+#'
+#' @examples \dontrun{ trackReadsWithParamVals <- parseParamsFromRownames(trackReads, PARAM1, PARAM2) }
+parseParamsFromRownames <- function(df, param1, param2, keep_rownames=FALSE, keep_original_cols=TRUE) {
+  if(class(df)=="matrix") df <- as.data.frame(df)
+  param1.0 <- as.numeric(unlist(regmatches(rownames(df), gregexpr(paste0(param1, "_\\K[0-9]*"), rownames(df), perl=TRUE))))
+  param2.0 <- as.numeric(unlist(regmatches(rownames(df), gregexpr(paste0(param2, "_\\K[0-9]*"), rownames(df), perl=TRUE))))
+  runID0 <- unlist(regmatches(rownames(df), gregexpr("\\|\\Krun[A-Za-z0-9]*", rownames(df), perl=TRUE)))
+  sampleID0 <- unlist(regmatches(rownames(df), gregexpr("\\|\\K.*", rownames(df), perl=TRUE)))
+  if(length(param1.0)==nrow(df)) df[[param1]] <- param1.0
+  if(length(param2.0)==nrow(df)) df[[param2]] <- param2.0
+  if(length(runID0)==nrow(df)) df[["runID"]] <- runID0
+  if(length(sampleID0)==nrow(df)) df[["sampleID"]] <- sampleID0
+  if(!keep_rownames) {
+    rownames(df) <- NULL
+  }
+  if(keep_original_cols) {
+    return(df)
+  } else {
+    param1 <- enquo(param1)
+    param2 <- enquo(param2)
+    return(dplyr::select(df, any_of(c(!!param1, !!param2, "runID", "sampleID"))))
+  }
 }
