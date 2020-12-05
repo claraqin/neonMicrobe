@@ -1,14 +1,15 @@
 <!DOCTYPE html>
 
-<html>
+<html xmlns="http://www.w3.org/1999/xhtml">
 
 <head>
 
 <meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
 
 
@@ -115,6 +116,9 @@ padding-right: 2em;
 font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
 font-size: 14px;
 line-height: 1.35;
+}
+#header {
+text-align: center;
 }
 #TOC {
 clear: both;
@@ -283,8 +287,7 @@ code > span.st { color: #d14; }
 code > span.co { color: #888888; font-style: italic; } 
 code > span.ot { color: #007020; } 
 code > span.al { color: #ff0000; font-weight: bold; } 
-code > span.fu { color: #900; font-weight: bold; } 
-code > span.er { color: #a61717; background-color: #e3d2d2; } 
+code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61717; background-color: #e3d2d2; } 
 </style>
 
 
@@ -302,25 +305,32 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 
 <p>This vignette demonstrates how to use the functions and parameters in this package to download the specific scope NEON soil microbe marker gene sequence data and associated data relevant to your analysis.</p>
+<p><strong>Note:</strong> If you are using this vignette as a reference, rather than running it as an RMarkdown script, be aware that you will need to manually set the working directory to the project root directory, e.g. <code>setwd(&quot;.../neonSoilMicrobeProcessing&quot;)</code>.</p>
 <div id="dependencies" class="section level1">
 <h1>Dependencies</h1>
 <p>To begin, ensure that you have installed all dependencies.</p>
 <p>From CRAN:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb1-1" data-line-number="1"><span class="kw">install.packages</span>(<span class="st">&quot;dplyr&quot;</span>)</a>
-<a class="sourceLine" id="cb1-2" data-line-number="2"><span class="kw">install.packages</span>(<span class="st">&quot;neonUtilities&quot;</span>)</a></code></pre></div>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb2-1" data-line-number="1"><span class="kw">library</span>(dplyr)</a>
-<a class="sourceLine" id="cb2-2" data-line-number="2"><span class="co">#&gt; </span></a>
-<a class="sourceLine" id="cb2-3" data-line-number="3"><span class="co">#&gt; Attaching package: 'dplyr'</span></a>
-<a class="sourceLine" id="cb2-4" data-line-number="4"><span class="co">#&gt; The following objects are masked from 'package:stats':</span></a>
-<a class="sourceLine" id="cb2-5" data-line-number="5"><span class="co">#&gt; </span></a>
-<a class="sourceLine" id="cb2-6" data-line-number="6"><span class="co">#&gt;     filter, lag</span></a>
-<a class="sourceLine" id="cb2-7" data-line-number="7"><span class="co">#&gt; The following objects are masked from 'package:base':</span></a>
-<a class="sourceLine" id="cb2-8" data-line-number="8"><span class="co">#&gt; </span></a>
-<a class="sourceLine" id="cb2-9" data-line-number="9"><span class="co">#&gt;     intersect, setdiff, setequal, union</span></a>
-<a class="sourceLine" id="cb2-10" data-line-number="10"><span class="kw">library</span>(neonUtilities)</a></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb1-1" data-line-number="1"><span class="co">## First specify the packages of interest</span></a>
+<a class="sourceLine" id="cb1-2" data-line-number="2">packages =<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;plyr&quot;</span>, <span class="st">&quot;dplyr&quot;</span>,</a>
+<a class="sourceLine" id="cb1-3" data-line-number="3">             <span class="st">&quot;neonUtilities&quot;</span>, <span class="st">&quot;R.utils&quot;</span>)</a>
+<a class="sourceLine" id="cb1-4" data-line-number="4"></a>
+<a class="sourceLine" id="cb1-5" data-line-number="5"><span class="co">## Now load or install&amp;load all</span></a>
+<a class="sourceLine" id="cb1-6" data-line-number="6">package.check &lt;-<span class="st"> </span><span class="kw">lapply</span>(</a>
+<a class="sourceLine" id="cb1-7" data-line-number="7">  packages,</a>
+<a class="sourceLine" id="cb1-8" data-line-number="8">  <span class="dt">FUN =</span> <span class="cf">function</span>(x) {</a>
+<a class="sourceLine" id="cb1-9" data-line-number="9">    <span class="cf">if</span> (<span class="op">!</span><span class="kw">require</span>(x, <span class="dt">character.only =</span> <span class="ot">TRUE</span>)) {</a>
+<a class="sourceLine" id="cb1-10" data-line-number="10">      <span class="kw">install.packages</span>(x, <span class="dt">dependencies =</span> <span class="ot">TRUE</span>)</a>
+<a class="sourceLine" id="cb1-11" data-line-number="11">      <span class="kw">library</span>(x, <span class="dt">character.only =</span> <span class="ot">TRUE</span>)</a>
+<a class="sourceLine" id="cb1-12" data-line-number="12">    }</a>
+<a class="sourceLine" id="cb1-13" data-line-number="13">  }</a>
+<a class="sourceLine" id="cb1-14" data-line-number="14">)</a></code></pre></div>
 <p>In addition, source files associated with this package:</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb3-1" data-line-number="1"><span class="kw">source</span>(<span class="st">&quot;./R/utils.R&quot;</span>)</a>
-<a class="sourceLine" id="cb3-2" data-line-number="2"><span class="kw">source</span>(<span class="st">&quot;./code/params.R&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb2-1" data-line-number="1"><span class="co">#source(&quot;./R/utils.R&quot;)</span></a>
+<a class="sourceLine" id="cb2-2" data-line-number="2"><span class="co">#source(&quot;./code/params.R&quot;)</span></a>
+<a class="sourceLine" id="cb2-3" data-line-number="3"></a>
+<a class="sourceLine" id="cb2-4" data-line-number="4"><span class="kw">source</span>(<span class="kw">paste0</span>(root.dir, <span class="st">&quot;R/utils.R&quot;</span>) )</a>
+<a class="sourceLine" id="cb2-5" data-line-number="5"><span class="kw">source</span>(<span class="kw">paste0</span>(root.dir, <span class="st">&quot;code/params.R&quot;</span>) )</a>
+<a class="sourceLine" id="cb2-6" data-line-number="6"><span class="co">#&gt; Could not find the cutadapt tool in file system. This tool is necessary for ITS (fungal) raw sequence processing. Please load the module if necessary on an HPC (i.e. 'module load cutadapt') or download from https://cutadapt.readthedocs.io/en/stable/installation.html</span></a></code></pre></div>
 </div>
 <div id="set-up-directories" class="section level1">
 <h1>Set up directories</h1>
@@ -333,108 +343,214 @@ PRESET_OUTDIR_SOIL = &quot;soil&quot;</code></pre>
 <pre><code>/data/NEON/raw_sequence
 /data/NEON/sequence_metadata
 /data/NEON/soil</code></pre>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb6-1" data-line-number="1"><span class="kw">makeOutputDirectories</span>()</a>
-<a class="sourceLine" id="cb6-2" data-line-number="2"><span class="co">#&gt; Building output directories from base directory '~/Documents/UCSC/Projects/NEON_soil_microbe_processing/raw_data'.</span></a>
-<a class="sourceLine" id="cb6-3" data-line-number="3"><span class="co">#&gt; Using '~/Documents/UCSC/Projects/NEON_soil_microbe_processing/raw_data/Illumina/NEON' as sequence subdirectory.</span></a>
-<a class="sourceLine" id="cb6-4" data-line-number="4"><span class="co">#&gt; Using '~/Documents/UCSC/Projects/NEON_soil_microbe_processing/raw_data/sequence_metadata' as sequence metadata subdirectory.</span></a>
-<a class="sourceLine" id="cb6-5" data-line-number="5"><span class="co">#&gt; Using '~/Documents/UCSC/Projects/NEON_soil_microbe_processing/raw_data/soil' as soil data subdirectory.</span></a></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb5-1" data-line-number="1"><span class="kw">makeOutputDirectories</span>()</a>
+<a class="sourceLine" id="cb5-2" data-line-number="2"><span class="co">#&gt; Building output directories from base directory '/Users/lstanish/Github/NEON_soil_microbe_processing/vignettes/NEON'.</span></a>
+<a class="sourceLine" id="cb5-3" data-line-number="3"><span class="co">#&gt; Using '/Users/lstanish/Github/NEON_soil_microbe_processing/vignettes/NEON/raw_sequence' as sequence subdirectory.</span></a>
+<a class="sourceLine" id="cb5-4" data-line-number="4"><span class="co">#&gt; Using '/Users/lstanish/Github/NEON_soil_microbe_processing/vignettes/NEON/sequence_metadata' as sequence metadata subdirectory.</span></a>
+<a class="sourceLine" id="cb5-5" data-line-number="5"><span class="co">#&gt; Using '/Users/lstanish/Github/NEON_soil_microbe_processing/vignettes/NEON/soil' as soil data subdirectory.</span></a></code></pre></div>
 </div>
 <div id="download-data" class="section level1">
 <h1>Download data</h1>
 <div id="download-metadata" class="section level2">
 <h2>Download metadata</h2>
 <p>We begin by downloading the metadata associated with the collection and analysis of NEON soil microbial samples, using the <code>downloadSequenceMetadata()</code> function.</p>
-<p>The <code>downloadSequenceMetadata()</code> function downloads NEON data product DP1.10108 (“Soil microbe marker gene sequences”) and assembles it using the <code>neonUtilities</code> package. This data product contains a number of tables related to accessing raw sequence data. A joined table containing information about the raw data URLs and the marker gene sequencing parameters is returned by this function.</p>
-<p>If time and space limitations are not issues for you, you can download the entire dataset over the course of a few hours. However, <code>downloadSequenceMetadata()</code> accepts arguments that can be used to specify the subset of the data you are interested in keeping for your analysis.</p>
-<p>In the following example, we run <code>downloadSequenceMetadata()</code> with a number of arguments to narrow the range of data to be downloaded.</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb7-1" data-line-number="1">meta &lt;-<span class="st"> </span><span class="kw">downloadSequenceMetadata</span>(<span class="dt">startYrMo =</span> <span class="st">&quot;2018-03&quot;</span>, <span class="dt">endYrMo =</span> <span class="st">&quot;2018-07&quot;</span>, </a>
-<a class="sourceLine" id="cb7-2" data-line-number="2">                                 <span class="dt">sites =</span> <span class="kw">c</span>(<span class="st">&quot;OSBS&quot;</span>, <span class="st">&quot;CPER&quot;</span>, <span class="st">&quot;CLBJ&quot;</span>), <span class="dt">targetGene =</span> <span class="st">&quot;ITS&quot;</span>)</a>
-<a class="sourceLine" id="cb7-3" data-line-number="3"><span class="co">#&gt; ------------------------------------------------------------------------------</span></a>
-<a class="sourceLine" id="cb7-4" data-line-number="4"><span class="co">#&gt; You have loaded plyr after dplyr - this is likely to cause problems.</span></a>
-<a class="sourceLine" id="cb7-5" data-line-number="5"><span class="co">#&gt; If you need functions from both plyr and dplyr, please load plyr first, then dplyr:</span></a>
-<a class="sourceLine" id="cb7-6" data-line-number="6"><span class="co">#&gt; library(plyr); library(dplyr)</span></a>
-<a class="sourceLine" id="cb7-7" data-line-number="7"><span class="co">#&gt; ------------------------------------------------------------------------------</span></a>
+<p>The <code>downloadSequenceMetadata()</code> function downloads NEON data product “Soil microbe marker gene sequences” (NEON.DP1.10108.001) using the <code>neonUtilities</code> package. This data product contains data tables related to the processing and generation of raw sequence data. The function returns a data.frame object with the data tables for the marker gene sequencing data product joined together, in the following order:</p>
+<pre><code>- mmg_soilRawDataFiles
+- mmg_soilMarkerGeneSequencing_[16S and/or ITS]
+- mmg_soilPcrAmplification [16S and/or ITS]</code></pre>
+<p>When ‘all’ is selected as the targetGene, both the 16S and ITS metadata are downloaded in the same R object/file. For downstream analysis, limit the metadata to just the 16S or ITS records by filtering to either ‘16S rRNA’ or ‘ITS’ in the data field ‘targetGene’.</p>
+<p>If time and space limitations are not issues for you, you can download the entire sequence dataset over the course of a few hours (depending on the user’s download speed). Alternatively, <code>downloadSequenceMetadata()</code> accepts arguments that can be used to specify the subset of the data you are interested in for your analysis.</p>
+<p>In the following example, we run <code>downloadSequenceMetadata()</code> with a number of arguments to narrow the range of data to be downloaded. Note that the output metadata file by default is placed in the metadata output directory defined in your params.R file.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb7-1" data-line-number="1">meta &lt;-<span class="st"> </span><span class="kw">downloadSequenceMetadata</span>(<span class="dt">startYrMo =</span> <span class="st">&quot;2018-02&quot;</span>, <span class="dt">endYrMo =</span> <span class="st">&quot;2018-03&quot;</span>, </a>
+<a class="sourceLine" id="cb7-2" data-line-number="2">                                 <span class="dt">sites =</span> <span class="kw">c</span>(<span class="st">&quot;CLBJ&quot;</span>),</a>
+<a class="sourceLine" id="cb7-3" data-line-number="3">                                 <span class="dt">targetGene =</span> <span class="st">&quot;all&quot;</span>)</a>
+<a class="sourceLine" id="cb7-4" data-line-number="4"><span class="co">#&gt; Warning: package 'dplyr' was built under R version 3.6.2</span></a>
+<a class="sourceLine" id="cb7-5" data-line-number="5"><span class="co">#&gt; </span></a>
+<a class="sourceLine" id="cb7-6" data-line-number="6"><span class="co">#&gt; Attaching package: 'dplyr'</span></a>
+<a class="sourceLine" id="cb7-7" data-line-number="7"><span class="co">#&gt; The following objects are masked from 'package:plyr':</span></a>
 <a class="sourceLine" id="cb7-8" data-line-number="8"><span class="co">#&gt; </span></a>
-<a class="sourceLine" id="cb7-9" data-line-number="9"><span class="co">#&gt; Attaching package: 'plyr'</span></a>
-<a class="sourceLine" id="cb7-10" data-line-number="10"><span class="co">#&gt; The following objects are masked from 'package:dplyr':</span></a>
-<a class="sourceLine" id="cb7-11" data-line-number="11"><span class="co">#&gt; </span></a>
-<a class="sourceLine" id="cb7-12" data-line-number="12"><span class="co">#&gt;     arrange, count, desc, failwith, id, mutate, rename, summarise,</span></a>
-<a class="sourceLine" id="cb7-13" data-line-number="13"><span class="co">#&gt;     summarize</span></a>
-<a class="sourceLine" id="cb7-14" data-line-number="14"><span class="co">#&gt; loading metadata...</span></a>
-<a class="sourceLine" id="cb7-15" data-line-number="15"><span class="co">#&gt; Finding available files</span></a>
-<a class="sourceLine" id="cb7-16" data-line-number="16"><span class="co">#&gt; </span></a>
-<a class="sourceLine" id="cb7-17" data-line-number="17">  <span class="op">|</span><span class="st">                                                                            </span></a>
-<a class="sourceLine" id="cb7-18" data-line-number="18"><span class="st">  </span><span class="er">|</span><span class="st">                                                                      </span><span class="er">|</span><span class="st">   </span><span class="dv">0</span>%</a>
-<a class="sourceLine" id="cb7-19" data-line-number="19">  <span class="op">|</span><span class="st">                                                                            </span></a>
-<a class="sourceLine" id="cb7-20" data-line-number="20"><span class="st">  </span><span class="er">|============</span><span class="st">                                                          </span><span class="er">|</span><span class="st">  </span><span class="dv">17</span>%</a>
-<a class="sourceLine" id="cb7-21" data-line-number="21">  <span class="op">|</span><span class="st">                                                                            </span></a>
-<a class="sourceLine" id="cb7-22" data-line-number="22"><span class="st">  </span><span class="er">|=======================</span><span class="st">                                               </span><span class="er">|</span><span class="st">  </span><span class="dv">33</span>%</a>
-<a class="sourceLine" id="cb7-23" data-line-number="23">  <span class="op">|</span><span class="st">                                                                            </span></a>
-<a class="sourceLine" id="cb7-24" data-line-number="24"><span class="st">  </span><span class="er">|===================================</span><span class="st">                                   </span><span class="er">|</span><span class="st">  </span><span class="dv">50</span>%</a>
-<a class="sourceLine" id="cb7-25" data-line-number="25">  <span class="op">|</span><span class="st">                                                                            </span></a>
-<a class="sourceLine" id="cb7-26" data-line-number="26"><span class="st">  </span><span class="er">|===============================================</span><span class="st">                       </span><span class="er">|</span><span class="st">  </span><span class="dv">67</span>%</a>
-<a class="sourceLine" id="cb7-27" data-line-number="27">  <span class="op">|</span><span class="st">                                                                            </span></a>
-<a class="sourceLine" id="cb7-28" data-line-number="28"><span class="st">  </span><span class="er">|==========================================================</span><span class="st">            </span><span class="er">|</span><span class="st">  </span><span class="dv">83</span>%</a>
-<a class="sourceLine" id="cb7-29" data-line-number="29">  <span class="op">|</span><span class="st">                                                                            </span></a>
-<a class="sourceLine" id="cb7-30" data-line-number="30"><span class="st">  </span><span class="er">|======================================================================|</span><span class="st"> </span><span class="dv">100</span>%</a>
-<a class="sourceLine" id="cb7-31" data-line-number="31"><span class="co">#&gt; </span></a>
-<a class="sourceLine" id="cb7-32" data-line-number="32"><span class="co">#&gt; Downloading files totaling approximately 225.5 KiB</span></a>
-<a class="sourceLine" id="cb7-33" data-line-number="33"><span class="co">#&gt; Downloading 6 files</span></a>
-<a class="sourceLine" id="cb7-34" data-line-number="34"><span class="co">#&gt; </span></a>
-<a class="sourceLine" id="cb7-35" data-line-number="35">  <span class="op">|</span><span class="st">                                                                            </span></a>
-<a class="sourceLine" id="cb7-36" data-line-number="36"><span class="st">  </span><span class="er">|</span><span class="st">                                                                      </span><span class="er">|</span><span class="st">   </span><span class="dv">0</span>%</a>
-<a class="sourceLine" id="cb7-37" data-line-number="37">  <span class="op">|</span><span class="st">                                                                            </span></a>
-<a class="sourceLine" id="cb7-38" data-line-number="38"><span class="st">  </span><span class="er">|==============</span><span class="st">                                                        </span><span class="er">|</span><span class="st">  </span><span class="dv">20</span>%</a>
-<a class="sourceLine" id="cb7-39" data-line-number="39">  <span class="op">|</span><span class="st">                                                                            </span></a>
-<a class="sourceLine" id="cb7-40" data-line-number="40"><span class="st">  </span><span class="er">|============================</span><span class="st">                                          </span><span class="er">|</span><span class="st">  </span><span class="dv">40</span>%</a>
-<a class="sourceLine" id="cb7-41" data-line-number="41">  <span class="op">|</span><span class="st">                                                                            </span></a>
-<a class="sourceLine" id="cb7-42" data-line-number="42"><span class="st">  </span><span class="er">|==========================================</span><span class="st">                            </span><span class="er">|</span><span class="st">  </span><span class="dv">60</span>%</a>
-<a class="sourceLine" id="cb7-43" data-line-number="43">  <span class="op">|</span><span class="st">                                                                            </span></a>
-<a class="sourceLine" id="cb7-44" data-line-number="44"><span class="st">  </span><span class="er">|========================================================</span><span class="st">              </span><span class="er">|</span><span class="st">  </span><span class="dv">80</span>%</a>
-<a class="sourceLine" id="cb7-45" data-line-number="45">  <span class="op">|</span><span class="st">                                                                            </span></a>
-<a class="sourceLine" id="cb7-46" data-line-number="46"><span class="st">  </span><span class="er">|======================================================================|</span><span class="st"> </span><span class="dv">100</span>%</a>
-<a class="sourceLine" id="cb7-47" data-line-number="47"><span class="co">#&gt; </span></a>
-<a class="sourceLine" id="cb7-48" data-line-number="48"><span class="co">#&gt; Unpacking zip files using 1 cores.</span></a>
-<a class="sourceLine" id="cb7-49" data-line-number="49"><span class="co">#&gt; Stacking operation across a single core.</span></a>
-<a class="sourceLine" id="cb7-50" data-line-number="50"><span class="co">#&gt; Stacking table mmg_soilDnaExtraction</span></a>
-<a class="sourceLine" id="cb7-51" data-line-number="51"><span class="co">#&gt; Stacking table mmg_soilMarkerGeneSequencing_16S</span></a>
-<a class="sourceLine" id="cb7-52" data-line-number="52"><span class="co">#&gt; Stacking table mmg_soilMarkerGeneSequencing_ITS</span></a>
-<a class="sourceLine" id="cb7-53" data-line-number="53"><span class="co">#&gt; Stacking table mmg_soilPcrAmplification_16S</span></a>
-<a class="sourceLine" id="cb7-54" data-line-number="54"><span class="co">#&gt; Stacking table mmg_soilPcrAmplification_ITS</span></a>
-<a class="sourceLine" id="cb7-55" data-line-number="55"><span class="co">#&gt; Stacking table mmg_soilRawDataFiles</span></a>
-<a class="sourceLine" id="cb7-56" data-line-number="56"><span class="co">#&gt; Copied the most recent publication of validation file to /stackedFiles</span></a>
-<a class="sourceLine" id="cb7-57" data-line-number="57"><span class="co">#&gt; Copied the most recent publication of variable definition file to /stackedFiles</span></a>
-<a class="sourceLine" id="cb7-58" data-line-number="58"><span class="co">#&gt; Finished: Stacked 6 data tables and 2 metadata tables!</span></a>
-<a class="sourceLine" id="cb7-59" data-line-number="59"><span class="co">#&gt; Stacking took 0.554781 secs</span></a>
-<a class="sourceLine" id="cb7-60" data-line-number="60"><span class="co">#&gt; All unzipped monthly data folders have been removed.</span></a>
-<a class="sourceLine" id="cb7-61" data-line-number="61"><span class="co">#&gt; filtering to ITS data</span></a></code></pre></div>
+<a class="sourceLine" id="cb7-9" data-line-number="9"><span class="co">#&gt;     arrange, count, desc, failwith, id, mutate, rename, summarise,</span></a>
+<a class="sourceLine" id="cb7-10" data-line-number="10"><span class="co">#&gt;     summarize</span></a>
+<a class="sourceLine" id="cb7-11" data-line-number="11"><span class="co">#&gt; The following objects are masked from 'package:stats':</span></a>
+<a class="sourceLine" id="cb7-12" data-line-number="12"><span class="co">#&gt; </span></a>
+<a class="sourceLine" id="cb7-13" data-line-number="13"><span class="co">#&gt;     filter, lag</span></a>
+<a class="sourceLine" id="cb7-14" data-line-number="14"><span class="co">#&gt; The following objects are masked from 'package:base':</span></a>
+<a class="sourceLine" id="cb7-15" data-line-number="15"><span class="co">#&gt; </span></a>
+<a class="sourceLine" id="cb7-16" data-line-number="16"><span class="co">#&gt;     intersect, setdiff, setequal, union</span></a>
+<a class="sourceLine" id="cb7-17" data-line-number="17"><span class="co">#&gt; loading metadata...</span></a>
+<a class="sourceLine" id="cb7-18" data-line-number="18"><span class="co">#&gt; Finding available files</span></a>
+<a class="sourceLine" id="cb7-19" data-line-number="19"><span class="co">#&gt; </span></a>
+<a class="sourceLine" id="cb7-20" data-line-number="20">  <span class="op">|</span><span class="st">                                                                       </span></a>
+<a class="sourceLine" id="cb7-21" data-line-number="21"><span class="st">  </span><span class="er">|</span><span class="st">                                                                 </span><span class="er">|</span><span class="st">   </span><span class="dv">0</span>%</a>
+<a class="sourceLine" id="cb7-22" data-line-number="22">  <span class="op">|</span><span class="st">                                                                       </span></a>
+<a class="sourceLine" id="cb7-23" data-line-number="23"><span class="st">  </span><span class="er">|=================================================================|</span><span class="st"> </span><span class="dv">100</span>%</a>
+<a class="sourceLine" id="cb7-24" data-line-number="24"><span class="co">#&gt; </span></a>
+<a class="sourceLine" id="cb7-25" data-line-number="25"><span class="co">#&gt; Downloading files totaling approximately 38.4 KiB</span></a>
+<a class="sourceLine" id="cb7-26" data-line-number="26"><span class="co">#&gt; Downloading 1 files</span></a>
+<a class="sourceLine" id="cb7-27" data-line-number="27"><span class="co">#&gt; </span></a>
+<a class="sourceLine" id="cb7-28" data-line-number="28">  <span class="op">|</span><span class="st">                                                                       </span></a>
+<a class="sourceLine" id="cb7-29" data-line-number="29"><span class="st">  </span><span class="er">|</span><span class="st">                                                                 </span><span class="er">|</span><span class="st">   </span><span class="dv">0</span>%</a>
+<a class="sourceLine" id="cb7-30" data-line-number="30">  <span class="op">|</span><span class="st">                                                                       </span></a>
+<a class="sourceLine" id="cb7-31" data-line-number="31"><span class="st">  </span><span class="er">|=================================================================|</span><span class="st"> </span><span class="dv">100</span>%</a>
+<a class="sourceLine" id="cb7-32" data-line-number="32"><span class="co">#&gt; </span></a>
+<a class="sourceLine" id="cb7-33" data-line-number="33"><span class="co">#&gt; Unpacking zip files using 1 cores.</span></a>
+<a class="sourceLine" id="cb7-34" data-line-number="34"><span class="co">#&gt; Stacking operation across a single core.</span></a>
+<a class="sourceLine" id="cb7-35" data-line-number="35"><span class="co">#&gt; Stacking table mmg_soilDnaExtraction</span></a>
+<a class="sourceLine" id="cb7-36" data-line-number="36"><span class="co">#&gt; Stacking table mmg_soilMarkerGeneSequencing_16S</span></a>
+<a class="sourceLine" id="cb7-37" data-line-number="37"><span class="co">#&gt; Stacking table mmg_soilMarkerGeneSequencing_ITS</span></a>
+<a class="sourceLine" id="cb7-38" data-line-number="38"><span class="co">#&gt; Stacking table mmg_soilPcrAmplification_16S</span></a>
+<a class="sourceLine" id="cb7-39" data-line-number="39"><span class="co">#&gt; Stacking table mmg_soilPcrAmplification_ITS</span></a>
+<a class="sourceLine" id="cb7-40" data-line-number="40"><span class="co">#&gt; Stacking table mmg_soilRawDataFiles</span></a>
+<a class="sourceLine" id="cb7-41" data-line-number="41"><span class="co">#&gt; Copied the most recent publication of validation file to /stackedFiles</span></a>
+<a class="sourceLine" id="cb7-42" data-line-number="42"><span class="co">#&gt; Copied the most recent publication of variable definition file to /stackedFiles</span></a>
+<a class="sourceLine" id="cb7-43" data-line-number="43"><span class="co">#&gt; Finished: Stacked 6 data tables and 2 metadata tables!</span></a>
+<a class="sourceLine" id="cb7-44" data-line-number="44"><span class="co">#&gt; Stacking took 0.235743 secs</span></a>
+<a class="sourceLine" id="cb7-45" data-line-number="45"><span class="co">#&gt; All unzipped monthly data folders have been removed.</span></a>
+<a class="sourceLine" id="cb7-46" data-line-number="46"><span class="co">#&gt; 60 16S records and 22 ITS records found.</span></a>
+<a class="sourceLine" id="cb7-47" data-line-number="47"><span class="co">#&gt; metadata downloaded to: /Users/lstanish/Github/NEON_soil_microbe_processing/vignettes/NEON/sequence_metadata</span></a>
+<a class="sourceLine" id="cb7-48" data-line-number="48"><span class="co">#&gt; variables file downloaded to: /Users/lstanish/Github/NEON_soil_microbe_processing/vignettes/NEON/sequence_metadata</span></a></code></pre></div>
 </div>
 <div id="download-raw-sequence-data" class="section level2">
 <h2>Download raw sequence data</h2>
 <p>Now that we have the metadata table loaded into memory, we retrieve a table of unique raw data files and their sequencing run IDs.</p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb8-1" data-line-number="1">download_success &lt;-<span class="st"> </span><span class="kw">downloadRawSequenceData</span>(meta)</a>
-<a class="sourceLine" id="cb8-2" data-line-number="2"><span class="co">#&gt; [1] &quot;There are 206 unique (zipped) raw sequence files to download.&quot;</span></a>
-<a class="sourceLine" id="cb8-3" data-line-number="3"><span class="co">#&gt; Finished downloading ~/Documents/UCSC/Projects/NEON_soil_microbe_processing/raw_data/Illumina/NEON/BMI_Plate82WellA12_ITS_C5DB5_R1.fastq.gz</span></a>
-<a class="sourceLine" id="cb8-4" data-line-number="4"><span class="co">#&gt; Finished downloading ~/Documents/UCSC/Projects/NEON_soil_microbe_processing/raw_data/Illumina/NEON/BMI_Plate82WellA12_ITS_C5DB5_R2.fastq.gz</span></a>
-<a class="sourceLine" id="cb8-5" data-line-number="5"><span class="co">#&gt; Finished downloading ~/Documents/UCSC/Projects/NEON_soil_microbe_processing/raw_data/Illumina/NEON/BMI_Plate82WellA11_ITS_C5DB5_R1.fastq.gz</span></a>
-<a class="sourceLine" id="cb8-6" data-line-number="6"><span class="co">#&gt; Finished downloading ~/Documents/UCSC/Projects/NEON_soil_microbe_processing/raw_data/Illumina/NEON/BMI_Plate82WellA11_ITS_C5DB5_R2.fastq.gz</span></a>
-<a class="sourceLine" id="cb8-7" data-line-number="7"><span class="co">#&gt; Finished downloading ~/Documents/UCSC/Projects/NEON_soil_microbe_processing/raw_data/Illumina/NEON/BMI_Plate82WellA4_ITS_C5DB5_R2.fastq.gz</span></a></code></pre></div>
+<a class="sourceLine" id="cb8-2" data-line-number="2"><span class="co">#&gt; [1] &quot;There are 82 unique raw sequence files to download.&quot;</span></a>
+<a class="sourceLine" id="cb8-3" data-line-number="3"><span class="co">#&gt; Finished downloading /Users/lstanish/Github/NEON_soil_microbe_processing/vignettes/NEON/raw_sequence/BMI_Plate77WellD8_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb8-4" data-line-number="4"><span class="co">#&gt; Finished downloading /Users/lstanish/Github/NEON_soil_microbe_processing/vignettes/NEON/raw_sequence/BMI_Plate77WellD8_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb8-5" data-line-number="5"><span class="co">#&gt; Finished downloading /Users/lstanish/Github/NEON_soil_microbe_processing/vignettes/NEON/raw_sequence/BMI_Plate77WellD11_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb8-6" data-line-number="6"><span class="co">#&gt; Finished downloading /Users/lstanish/Github/NEON_soil_microbe_processing/vignettes/NEON/raw_sequence/BMI_Plate77WellD11_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb8-7" data-line-number="7"><span class="co">#&gt; Finished downloading /Users/lstanish/Github/NEON_soil_microbe_processing/vignettes/NEON/raw_sequence/BMI_Plate77WellD12_16S_C5B2R_R1.fastq.gz</span></a></code></pre></div>
 </div>
 <div id="reorganize-and-rename-the-downloaded-files" class="section level2">
 <h2>Reorganize and rename the downloaded files</h2>
 <p>Get the names of all downloaded files.</p>
 <div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb9-1" data-line-number="1">outdir_sequence &lt;-<span class="st"> </span><span class="kw">file.path</span>(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE)</a>
-<a class="sourceLine" id="cb9-2" data-line-number="2">fn &lt;-<span class="st"> </span><span class="kw">list.files</span>(<span class="dt">path =</span> outdir_sequence, <span class="dt">pattern =</span> <span class="st">&quot;fastq&quot;</span>, <span class="dt">full.names =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
+<a class="sourceLine" id="cb9-2" data-line-number="2">fn0 &lt;-<span class="st"> </span><span class="kw">file.path</span>(outdir_sequence, meta<span class="op">$</span>rawDataFileName)</a>
+<a class="sourceLine" id="cb9-3" data-line-number="3">fn &lt;-<span class="st"> </span><span class="kw">unique</span>(fn0[<span class="kw">file.exists</span>(fn0)])</a></code></pre></div>
 <p>The following function untars each file (if necessary), appends the sequencer run ID to the beginning of each filename, and moves files to subfolders within your sequence directory according to their target gene. The terminal directory name for either target gene will be <code>0_raw</code>.</p>
 <div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb10-1" data-line-number="1">reorganized_files &lt;-<span class="st"> </span><span class="kw">organizeRawSequenceData</span>(fn, meta)</a>
-<a class="sourceLine" id="cb10-2" data-line-number="2"><span class="co">#&gt; Reorganized files can be found in ~/Documents/UCSC/Projects/NEON_soil_microbe_processing/raw_data/Illumina/NEON/ITS and ~/Documents/UCSC/Projects/NEON_soil_microbe_processing/raw_data/Illumina/NEON/16S.</span></a>
-<a class="sourceLine" id="cb10-3" data-line-number="3"><span class="kw">head</span>(reorganized_files)</a>
-<a class="sourceLine" id="cb10-4" data-line-number="4"><span class="co">#&gt; [1] &quot;BMI_Plate77WellA10_ITS_C5DB5_R1.fastq.gz&quot;</span></a>
-<a class="sourceLine" id="cb10-5" data-line-number="5"><span class="co">#&gt; [2] &quot;BMI_Plate77WellA10_ITS_C5DB5_R2.fastq.gz&quot;</span></a>
-<a class="sourceLine" id="cb10-6" data-line-number="6"><span class="co">#&gt; [3] &quot;BMI_Plate77WellA12_ITS_C5DB5_R1.fastq.gz&quot;</span></a>
-<a class="sourceLine" id="cb10-7" data-line-number="7"><span class="co">#&gt; [4] &quot;BMI_Plate77WellA12_ITS_C5DB5_R2.fastq.gz&quot;</span></a>
-<a class="sourceLine" id="cb10-8" data-line-number="8"><span class="co">#&gt; [5] &quot;BMI_Plate77WellA2_ITS_C5DB5_R1.fastq.gz&quot; </span></a>
-<a class="sourceLine" id="cb10-9" data-line-number="9"><span class="co">#&gt; [6] &quot;BMI_Plate77WellA2_ITS_C5DB5_R2.fastq.gz&quot;</span></a></code></pre></div>
+<a class="sourceLine" id="cb10-2" data-line-number="2"><span class="co">#&gt; Warning: package 'R.utils' was built under R version 3.6.2</span></a>
+<a class="sourceLine" id="cb10-3" data-line-number="3"><span class="co">#&gt; Loading required package: R.oo</span></a>
+<a class="sourceLine" id="cb10-4" data-line-number="4"><span class="co">#&gt; Warning: package 'R.oo' was built under R version 3.6.2</span></a>
+<a class="sourceLine" id="cb10-5" data-line-number="5"><span class="co">#&gt; Loading required package: R.methodsS3</span></a>
+<a class="sourceLine" id="cb10-6" data-line-number="6"><span class="co">#&gt; Warning: package 'R.methodsS3' was built under R version 3.6.2</span></a>
+<a class="sourceLine" id="cb10-7" data-line-number="7"><span class="co">#&gt; R.methodsS3 v1.8.1 (2020-08-26 16:20:06 UTC) successfully loaded. See ?R.methodsS3 for help.</span></a>
+<a class="sourceLine" id="cb10-8" data-line-number="8"><span class="co">#&gt; R.oo v1.24.0 (2020-08-26 16:11:58 UTC) successfully loaded. See ?R.oo for help.</span></a>
+<a class="sourceLine" id="cb10-9" data-line-number="9"><span class="co">#&gt; </span></a>
+<a class="sourceLine" id="cb10-10" data-line-number="10"><span class="co">#&gt; Attaching package: 'R.oo'</span></a>
+<a class="sourceLine" id="cb10-11" data-line-number="11"><span class="co">#&gt; The following object is masked from 'package:R.methodsS3':</span></a>
+<a class="sourceLine" id="cb10-12" data-line-number="12"><span class="co">#&gt; </span></a>
+<a class="sourceLine" id="cb10-13" data-line-number="13"><span class="co">#&gt;     throw</span></a>
+<a class="sourceLine" id="cb10-14" data-line-number="14"><span class="co">#&gt; The following object is masked from 'package:neonUtilities':</span></a>
+<a class="sourceLine" id="cb10-15" data-line-number="15"><span class="co">#&gt; </span></a>
+<a class="sourceLine" id="cb10-16" data-line-number="16"><span class="co">#&gt;     getPackage</span></a>
+<a class="sourceLine" id="cb10-17" data-line-number="17"><span class="co">#&gt; The following objects are masked from 'package:methods':</span></a>
+<a class="sourceLine" id="cb10-18" data-line-number="18"><span class="co">#&gt; </span></a>
+<a class="sourceLine" id="cb10-19" data-line-number="19"><span class="co">#&gt;     getClasses, getMethods</span></a>
+<a class="sourceLine" id="cb10-20" data-line-number="20"><span class="co">#&gt; The following objects are masked from 'package:base':</span></a>
+<a class="sourceLine" id="cb10-21" data-line-number="21"><span class="co">#&gt; </span></a>
+<a class="sourceLine" id="cb10-22" data-line-number="22"><span class="co">#&gt;     attach, detach, load, save</span></a>
+<a class="sourceLine" id="cb10-23" data-line-number="23"><span class="co">#&gt; R.utils v2.10.1 (2020-08-26 22:50:31 UTC) successfully loaded. See ?R.utils for help.</span></a>
+<a class="sourceLine" id="cb10-24" data-line-number="24"><span class="co">#&gt; </span></a>
+<a class="sourceLine" id="cb10-25" data-line-number="25"><span class="co">#&gt; Attaching package: 'R.utils'</span></a>
+<a class="sourceLine" id="cb10-26" data-line-number="26"><span class="co">#&gt; The following object is masked from 'package:utils':</span></a>
+<a class="sourceLine" id="cb10-27" data-line-number="27"><span class="co">#&gt; </span></a>
+<a class="sourceLine" id="cb10-28" data-line-number="28"><span class="co">#&gt;     timestamp</span></a>
+<a class="sourceLine" id="cb10-29" data-line-number="29"><span class="co">#&gt; The following objects are masked from 'package:base':</span></a>
+<a class="sourceLine" id="cb10-30" data-line-number="30"><span class="co">#&gt; </span></a>
+<a class="sourceLine" id="cb10-31" data-line-number="31"><span class="co">#&gt;     cat, commandArgs, getOption, inherits, isOpen, nullfile,</span></a>
+<a class="sourceLine" id="cb10-32" data-line-number="32"><span class="co">#&gt;     parse, warnings</span></a>
+<a class="sourceLine" id="cb10-33" data-line-number="33"><span class="co">#&gt; Reorganized BMI_Plate77WellD8_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-34" data-line-number="34"><span class="co">#&gt; Reorganized BMI_Plate77WellD8_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-35" data-line-number="35"><span class="co">#&gt; Reorganized BMI_Plate77WellD11_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-36" data-line-number="36"><span class="co">#&gt; Reorganized BMI_Plate77WellD11_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-37" data-line-number="37"><span class="co">#&gt; Reorganized BMI_Plate77WellD12_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-38" data-line-number="38"><span class="co">#&gt; Reorganized BMI_Plate77WellD12_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-39" data-line-number="39"><span class="co">#&gt; Reorganized BMI_Plate77WellD3_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-40" data-line-number="40"><span class="co">#&gt; Reorganized BMI_Plate77WellD3_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-41" data-line-number="41"><span class="co">#&gt; Reorganized BMI_Plate77WellD2_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-42" data-line-number="42"><span class="co">#&gt; Reorganized BMI_Plate77WellD2_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-43" data-line-number="43"><span class="co">#&gt; Reorganized BMI_Plate77WellD6_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-44" data-line-number="44"><span class="co">#&gt; Reorganized BMI_Plate77WellD6_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-45" data-line-number="45"><span class="co">#&gt; Reorganized BMI_Plate77WellE11_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-46" data-line-number="46"><span class="co">#&gt; Reorganized BMI_Plate77WellE11_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-47" data-line-number="47"><span class="co">#&gt; Reorganized BMI_Plate77WellE11_ITS_C5DB5_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-48" data-line-number="48"><span class="co">#&gt; Reorganized BMI_Plate77WellE11_ITS_C5DB5_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-49" data-line-number="49"><span class="co">#&gt; Reorganized BMI_Plate77WellE8_ITS_C5DB5_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-50" data-line-number="50"><span class="co">#&gt; Reorganized BMI_Plate77WellE8_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-51" data-line-number="51"><span class="co">#&gt; Reorganized BMI_Plate77WellE8_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-52" data-line-number="52"><span class="co">#&gt; Reorganized BMI_Plate77WellE8_ITS_C5DB5_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-53" data-line-number="53"><span class="co">#&gt; Reorganized BMI_Plate77WellE12_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-54" data-line-number="54"><span class="co">#&gt; Reorganized BMI_Plate77WellE12_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-55" data-line-number="55"><span class="co">#&gt; Reorganized BMI_Plate77WellE2_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-56" data-line-number="56"><span class="co">#&gt; Reorganized BMI_Plate77WellE2_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-57" data-line-number="57"><span class="co">#&gt; Reorganized BMI_Plate77WellE4_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-58" data-line-number="58"><span class="co">#&gt; Reorganized BMI_Plate77WellE4_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-59" data-line-number="59"><span class="co">#&gt; Reorganized BMI_Plate77WellE7_ITS_C5DB5_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-60" data-line-number="60"><span class="co">#&gt; Reorganized BMI_Plate77WellE7_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-61" data-line-number="61"><span class="co">#&gt; Reorganized BMI_Plate77WellE7_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-62" data-line-number="62"><span class="co">#&gt; Reorganized BMI_Plate77WellE7_ITS_C5DB5_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-63" data-line-number="63"><span class="co">#&gt; Reorganized BMI_Plate77WellA2_ITS_C5DB5_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-64" data-line-number="64"><span class="co">#&gt; Reorganized BMI_Plate77WellA2_ITS_C5DB5_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-65" data-line-number="65"><span class="co">#&gt; Reorganized BMI_Plate77WellA2_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-66" data-line-number="66"><span class="co">#&gt; Reorganized BMI_Plate77WellA2_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-67" data-line-number="67"><span class="co">#&gt; Reorganized BMI_Plate77WellA4_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-68" data-line-number="68"><span class="co">#&gt; Reorganized BMI_Plate77WellA4_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-69" data-line-number="69"><span class="co">#&gt; Reorganized BMI_Plate77WellA6_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-70" data-line-number="70"><span class="co">#&gt; Reorganized BMI_Plate77WellA6_ITS_C5DB5_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-71" data-line-number="71"><span class="co">#&gt; Reorganized BMI_Plate77WellA6_ITS_C5DB5_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-72" data-line-number="72"><span class="co">#&gt; Reorganized BMI_Plate77WellA6_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-73" data-line-number="73"><span class="co">#&gt; Reorganized BMI_Plate77WellB11_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-74" data-line-number="74"><span class="co">#&gt; Reorganized BMI_Plate77WellB11_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-75" data-line-number="75"><span class="co">#&gt; Reorganized BMI_Plate77WellB8_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-76" data-line-number="76"><span class="co">#&gt; Reorganized BMI_Plate77WellB8_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-77" data-line-number="77"><span class="co">#&gt; Reorganized BMI_Plate77WellB12_ITS_C5DB5_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-78" data-line-number="78"><span class="co">#&gt; Reorganized BMI_Plate77WellB12_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-79" data-line-number="79"><span class="co">#&gt; Reorganized BMI_Plate77WellB12_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-80" data-line-number="80"><span class="co">#&gt; Reorganized BMI_Plate77WellB12_ITS_C5DB5_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-81" data-line-number="81"><span class="co">#&gt; Reorganized BMI_Plate77WellC11_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-82" data-line-number="82"><span class="co">#&gt; Reorganized BMI_Plate77WellC11_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-83" data-line-number="83"><span class="co">#&gt; Reorganized BMI_Plate77WellC9_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-84" data-line-number="84"><span class="co">#&gt; Reorganized BMI_Plate77WellC9_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-85" data-line-number="85"><span class="co">#&gt; Reorganized BMI_Plate77WellC10_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-86" data-line-number="86"><span class="co">#&gt; Reorganized BMI_Plate77WellC10_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-87" data-line-number="87"><span class="co">#&gt; Reorganized BMI_Plate77WellB1_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-88" data-line-number="88"><span class="co">#&gt; Reorganized BMI_Plate77WellB1_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-89" data-line-number="89"><span class="co">#&gt; Reorganized BMI_Plate77WellA9_ITS_C5DB5_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-90" data-line-number="90"><span class="co">#&gt; Reorganized BMI_Plate77WellA9_ITS_C5DB5_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-91" data-line-number="91"><span class="co">#&gt; Reorganized BMI_Plate77WellA9_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-92" data-line-number="92"><span class="co">#&gt; Reorganized BMI_Plate77WellA9_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-93" data-line-number="93"><span class="co">#&gt; Reorganized BMI_Plate77WellA10_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-94" data-line-number="94"><span class="co">#&gt; Reorganized BMI_Plate77WellA10_ITS_C5DB5_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-95" data-line-number="95"><span class="co">#&gt; Reorganized BMI_Plate77WellA10_ITS_C5DB5_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-96" data-line-number="96"><span class="co">#&gt; Reorganized BMI_Plate77WellA10_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-97" data-line-number="97"><span class="co">#&gt; Reorganized BMI_Plate77WellB5_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-98" data-line-number="98"><span class="co">#&gt; Reorganized BMI_Plate77WellB5_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-99" data-line-number="99"><span class="co">#&gt; Reorganized BMI_Plate77WellB3_ITS_C5DB5_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-100" data-line-number="100"><span class="co">#&gt; Reorganized BMI_Plate77WellB3_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-101" data-line-number="101"><span class="co">#&gt; Reorganized BMI_Plate77WellB3_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-102" data-line-number="102"><span class="co">#&gt; Reorganized BMI_Plate77WellB3_ITS_C5DB5_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-103" data-line-number="103"><span class="co">#&gt; Reorganized BMI_Plate77WellB2_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-104" data-line-number="104"><span class="co">#&gt; Reorganized BMI_Plate77WellB2_ITS_C5DB5_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-105" data-line-number="105"><span class="co">#&gt; Reorganized BMI_Plate77WellB2_ITS_C5DB5_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-106" data-line-number="106"><span class="co">#&gt; Reorganized BMI_Plate77WellB2_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-107" data-line-number="107"><span class="co">#&gt; Reorganized BMI_Plate77WellC5_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-108" data-line-number="108"><span class="co">#&gt; Reorganized BMI_Plate77WellC5_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-109" data-line-number="109"><span class="co">#&gt; Reorganized BMI_Plate77WellC7_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-110" data-line-number="110"><span class="co">#&gt; Reorganized BMI_Plate77WellC7_ITS_C5DB5_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-111" data-line-number="111"><span class="co">#&gt; Reorganized BMI_Plate77WellC7_ITS_C5DB5_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-112" data-line-number="112"><span class="co">#&gt; Reorganized BMI_Plate77WellC7_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-113" data-line-number="113"><span class="co">#&gt; Reorganized BMI_Plate77WellC4_16S_C5B2R_R1.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-114" data-line-number="114"><span class="co">#&gt; Reorganized BMI_Plate77WellC4_16S_C5B2R_R2.fastq.gz</span></a>
+<a class="sourceLine" id="cb10-115" data-line-number="115"><span class="co">#&gt; 82 out of 82 files in sequencer run C5B2R were successfully reorganized.</span></a>
+<a class="sourceLine" id="cb10-116" data-line-number="116"><span class="co">#&gt; Reorganized files can be found in /Users/lstanish/Github/NEON_soil_microbe_processing/vignettes/NEON/raw_sequence/ITS/0_raw and /Users/lstanish/Github/NEON_soil_microbe_processing/vignettes/NEON/raw_sequence/16S/0_raw.</span></a>
+<a class="sourceLine" id="cb10-117" data-line-number="117"><span class="kw">head</span>(reorganized_files)</a>
+<a class="sourceLine" id="cb10-118" data-line-number="118"><span class="co">#&gt; [1] &quot;/Users/lstanish/Github/NEON_soil_microbe_processing/vignettes/NEON/raw_sequence/16S/0_raw/runC5B2R_BMI_Plate77WellD8_16S_C5B2R_R1.fastq.gz&quot; </span></a>
+<a class="sourceLine" id="cb10-119" data-line-number="119"><span class="co">#&gt; [2] &quot;/Users/lstanish/Github/NEON_soil_microbe_processing/vignettes/NEON/raw_sequence/16S/0_raw/runC5B2R_BMI_Plate77WellD8_16S_C5B2R_R2.fastq.gz&quot; </span></a>
+<a class="sourceLine" id="cb10-120" data-line-number="120"><span class="co">#&gt; [3] &quot;/Users/lstanish/Github/NEON_soil_microbe_processing/vignettes/NEON/raw_sequence/16S/0_raw/runC5B2R_BMI_Plate77WellD11_16S_C5B2R_R1.fastq.gz&quot;</span></a>
+<a class="sourceLine" id="cb10-121" data-line-number="121"><span class="co">#&gt; [4] &quot;/Users/lstanish/Github/NEON_soil_microbe_processing/vignettes/NEON/raw_sequence/16S/0_raw/runC5B2R_BMI_Plate77WellD11_16S_C5B2R_R2.fastq.gz&quot;</span></a>
+<a class="sourceLine" id="cb10-122" data-line-number="122"><span class="co">#&gt; [5] &quot;/Users/lstanish/Github/NEON_soil_microbe_processing/vignettes/NEON/raw_sequence/16S/0_raw/runC5B2R_BMI_Plate77WellD12_16S_C5B2R_R1.fastq.gz&quot;</span></a>
+<a class="sourceLine" id="cb10-123" data-line-number="123"><span class="co">#&gt; [6] &quot;/Users/lstanish/Github/NEON_soil_microbe_processing/vignettes/NEON/raw_sequence/16S/0_raw/runC5B2R_BMI_Plate77WellD12_16S_C5B2R_R2.fastq.gz&quot;</span></a></code></pre></div>
 </div>
 </div>
 

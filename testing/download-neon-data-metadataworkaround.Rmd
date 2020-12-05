@@ -12,9 +12,20 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
-knitr::opts_knit$set(
-  root.dir = rprojroot::find_rstudio_root_file() # Update as necessary. Should refer to the absolute filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
-)
+
+if(dir.exists("~/zhulab/")) {
+  knitr::opts_knit$set(
+  root.dir = "~/zhulab/neonSoilMicrobeProcessing/" # Update as necessary. Should refer to the absolute filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
+  )
+}
+if(dir.exists("/Users/lstanish/Github/")) {
+  knitr::opts_knit$set(
+  root.dir = "/Users/lstanish/Github/NEON_soil_microbe_processing/") # LFS directory file path. 
+}
+
+#knitr::opts_knit$set(
+#  root.dir = rprojroot::find_rstudio_root_file() # Update as necessary. Should refer to the absolute #filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
+#)
 ```
 
 
@@ -32,12 +43,14 @@ To begin, ensure that you have installed all dependencies.
 
 From CRAN:
 ```{r, eval=FALSE}
+install.packages("plyr")
 install.packages("dplyr")
 install.packages("neonUtilities")
 install.packages("R.utils")
 ```
 
 ```{r, message=FALSE}
+library(plyr)
 library(dplyr)
 library(neonUtilities)
 library(R.utils)
@@ -89,7 +102,8 @@ meta_ITS <- read.csv("./rawFilesGood_ITS.csv") # For ITS data
 Optionally, subset the metadata to select specific sites, dates, or sequencing runs.
 
 ```{r}
-run_subset_ITS <- c("B69PP", "B69RF", "B69RN", "B9994", "BDR3T", "BF8M2", "BF8W6", "BFDG8", "BMCBD", "BMCC4", "BNBWL")
+run_subset_ITS <- c("CBRDC")
+#run_subset_ITS <- c("B69PP", "B69RF", "B69RN", "B9994", "BDR3T", "BF8M2", "BF8W6", "BFDG8", "BMCBD", #"BMCC4", "BNBWL")
 meta <- meta_ITS[meta_ITS$sequencerRunID %in% run_subset_ITS,]
 
 # Other options for subsetting by sequencing runs:

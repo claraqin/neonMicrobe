@@ -12,9 +12,16 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
-knitr::opts_knit$set(
+if(dir.exists("~/zhulab/")) {
+  knitr::opts_knit$set(
   root.dir = "~/zhulab/neonSoilMicrobeProcessing/" # Update as necessary. Should refer to the absolute filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
-)
+  )
+}
+if(dir.exists("/Users/lstanish/Github/")) {
+  root.dir = "/Users/lstanish/Github/NEON_soil_microbe_processing/" # LFS directory file path. 
+}
+
+
 ```
 
 This vignette demonstrates how to use the functions and parameters in this package to download the specific scope NEON soil microbe marker gene sequence data and associated data relevant to your analysis. 
@@ -26,23 +33,33 @@ This vignette demonstrates how to use the functions and parameters in this packa
 To begin, ensure that you have installed all dependencies.
 
 From CRAN:
-```{r, eval=FALSE}
-install.packages("dplyr")
-install.packages("neonUtilities")
-install.packages("R.utils")
+```{r, eval=FALSE, message=FALSE}
+## First specify the packages of interest
+packages = c("plyr", "dplyr",
+             "neonUtilities", "R.utils")
+
+## Now load or install&load all
+package.check <- lapply(
+  packages,
+  FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+      install.packages(x, dependencies = TRUE)
+      library(x, character.only = TRUE)
+    }
+  }
+)
 ```
 
-```{r, message=FALSE}
-library(dplyr)
-library(neonUtilities)
-library(R.utils)
-```
 
 In addition, source files associated with this package:
 
 ```{r}
-source("./R/utils.R")
-source("./code/params.R")
+#source("./R/utils.R")
+#source("./code/params.R")
+
+source(paste0(root.dir, "R/utils.R") )
+source(paste0(root.dir, "code/params.R") )
+
 ```
 
 # Set up directories
@@ -74,16 +91,22 @@ makeOutputDirectories()
 
 We begin by downloading the metadata associated with the collection and analysis of NEON soil microbial samples, using the `downloadSequenceMetadata()` function.
 
-The `downloadSequenceMetadata()` function downloads NEON data product NEON.DP1.10108.001 ("Soil microbe marker gene sequences") and assembles it using the `neonUtilities` package. This data product contains a number of tables related to accessing raw sequence data. A joined table containing information about the raw data URLs and the marker gene sequencing parameters is returned by this function. 
+The `downloadSequenceMetadata()` function downloads NEON data product "Soil microbe marker gene sequences" (NEON.DP1.10108.001) using the `neonUtilities` package. This data product contains data tables related to the processing and generation of raw sequence data. The function returns a data.frame object with the data tables for the marker gene sequencing data product joined together, in the following order:
 
-If time and space limitations are not issues for you, you can download the entire dataset over the course of a few hours. However, `downloadSequenceMetadata()` accepts arguments that can be used to specify the subset of the data you are interested in keeping for your analysis.
+    - mmg_soilRawDataFiles
+    - mmg_soilMarkerGeneSequencing_[16S and/or ITS]
+    - mmg_soilPcrAmplification [16S and/or ITS]
 
-In the following example, we run `downloadSequenceMetadata()` with a number of arguments to narrow the range of data to be downloaded.
+When 'all' is selected as the targetGene, both the 16S and ITS metadata are downloaded in the same R object/file. For downstream analysis, limit the metadata to just the 16S or ITS records by filtering to either '16S rRNA' or 'ITS' in the data field 'targetGene'.
+
+If time and space limitations are not issues for you, you can download the entire sequence dataset over the course of a few hours (depending on the user's download speed). Alternatively, `downloadSequenceMetadata()` accepts arguments that can be used to specify the subset of the data you are interested in for your analysis.
+
+In the following example, we run `downloadSequenceMetadata()` with a number of arguments to narrow the range of data to be downloaded. Note that the output metadata file by default is placed in the metadata output directory defined in your params.R file.
 
 ```{r}
-meta <- downloadSequenceMetadata(startYrMo = "2018-03", endYrMo = "2018-07", 
-                                 sites = c("CLBJ", "CPER", "OSBS"),
-                                 targetGene = "ITS")
+meta <- downloadSequenceMetadata(startYrMo = "2018-02", endYrMo = "2018-03", 
+                                 sites = c("CLBJ"),
+                                 targetGene = "all")
 ```
 
 ## Download raw sequence data

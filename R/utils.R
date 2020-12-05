@@ -392,7 +392,7 @@ downloadRawSoilData <- function(sites='all', startYrMo, endYrMo,
 #' meta <- downloadSequenceMetadataRev('all', '2015-01', '2016-01', '16S', dir='./data/') # metadata is saved to local directory
 #' }
 downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targetGene= "all",
-                                     sequencingRuns = "", dpID = "DP1.10108.001", outDir="") {
+                                     sequencingRuns = "", dpID = "DP1.10108.001", outDir=PRESET_OUTDIR_SEQMETA) {
   # author: Lee Stanish
   # date: 2020-08-13
   # function loads soil marker gene sequencing metadata for target gene, site(s) and date(s)
@@ -402,7 +402,7 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
   # startYrMo: start date, format YYYY-MM
   # endYrMo: end date, format YYYY-MM
   # dpID: NEON data product of interest. Default is soil marker gene sequences, and currently code only works for this dpID
-  # outDir (optional): If a local copy of the filtered metadata is desired, provide path to output dir
+  # outDir: directory for outputs. Defaults to output directory in parameters file
 
   library(neonUtilities)
   library(plyr)
@@ -437,6 +437,16 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
     sites <- sites
   }
 
+  # validate output directory
+  if(outDir==PRESET_OUTDIR_SEQMETA) {
+    outDir <- paste(PRESET_OUTDIR, PRESET_OUTDIR_SEQMETA, sep="/")
+  }
+  if(!dir.exists(outDir) ) {
+    message("Output directory does not exist")
+    return(NULL)
+  }
+  
+  
   message("loading metadata...")
   mmgL1 <- loadByProduct(dpID, sites, package = 'expanded', check.size = F, startdate = startYrMo, enddate = endYrMo) # output is a list of each metadata file
 
@@ -444,13 +454,16 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
   # for target data product and targetGene: extract lists into data.frames
   if(grepl("10108", dpID)) {
     seq16S <- mmgL1$mmg_soilMarkerGeneSequencing_16S
+    seq16S$targetGene <-"16S rRNA"
     seqITS <- mmgL1$mmg_soilMarkerGeneSequencing_ITS
+    seqITS$targetGene <- "ITS"
     pcr16S <- mmgL1$mmg_soilPcrAmplification_16S
     pcrITS <- mmgL1$mmg_soilPcrAmplification_ITS
     raw <- mmgL1$mmg_soilRawDataFiles
     dna <- mmgL1$mmg_soilDnaExtraction
     seq <- rbind(seq16S, seqITS)
     pcr <- rbind(pcr16S, pcrITS)
+    varfile <- mmgL1$variables_10108
 
     if(targetGene=="16S") {
       message("filtering to 16S data")
@@ -466,13 +479,16 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
 
   if(grepl("20280", dpID)) {
     seq16S <- mmgL1$mmg_benthicMarkerGeneSequencing_16S
+    seq16S$targetGene <-"16S rRNA"
     seqITS <- mmgL1$mmg_benthicMarkerGeneSequencing_ITS
+    seqITS$targetGene <- "ITS"
     pcr16S <- mmgL1$mmg_benthicPcrAmplification_16S
     pcrITS <- mmgL1$mmg_benthicPcrAmplification_ITS
     raw <- mmgL1$mmg_benthicRawDataFiles
     dna <- mmgL1$mmg_benthicDnaExtraction
     seq <- rbind(seq16S, seqITS)
     pcr <- rbind(pcr16S, pcrITS)
+    varfile <- mmgL1$variables_20280
 
     if(targetGene=="16S") {
       message("filtering to 16S data")
@@ -488,13 +504,16 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
 
   if(grepl("20282", dpID)) {
     seq16S <- mmgL1$mmg_swMarkerGeneSequencing_16S
+    seq16S$targetGene <-"16S rRNA"
     seqITS <- mmgL1$mmg_swMarkerGeneSequencing_ITS
+    seqITS$targetGene <- "ITS"
     pcr16S <- mmgL1$mmg_swPcrAmplification_16S
     pcrITS <- mmgL1$mmg_swPcrAmplification_ITS
     raw <- mmgL1$mmg_swRawDataFiles
     dna <- mmgL1$mmg_swDnaExtraction
     seq <- rbind(seq16S, seqITS)
     pcr <- rbind(pcr16S, pcrITS)
+    varfile <- mmgL1$variables_20282
 
     if(targetGene=="16S") {
       message("filtering to 16S data")
@@ -554,7 +573,7 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
   if(targetGene=="all") {
     joinedTarget <- left_join(raw, seq, by=c('dnaSampleID', 'sequencerRunID', 'internalLabID'))
     out <- joinedTarget[!is.na(joinedTarget$uid.y), ]
-    message(paste0(length(grep("16S", joinedTarget$rawDataFileName)), " 16S records and ", length(grep("ITS", joinedTarget$rawDataFileName)), " ITS records found."))
+    message(paste0(length(grep("16S", out$rawDataFileName)), " 16S records and ", length(grep("ITS", out$rawDataFileName)), " ITS records found."))
   }
 
   # clean up redundant column names
@@ -575,7 +594,7 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
   names(outDNA)[names(outDNA)=="dnaProcessedBy"] <- 'processedBy.dna'
 
   # join with PCR amplification metadata
-  outPCR <- left_join(outDNA, pcr, by=c('plotID', 'dnaSampleID', 'internalLabID'))
+  outPCR <- left_join(outDNA, pcr, by=c('plotID', 'dnaSampleID', 'internalLabID', 'targetGene'))
   names(outPCR)[names(outPCR)=="uid"] <- "uid.pcr"
   names(outPCR)[names(outPCR)=="processedDate"] <- "processedDate.pcr"
   names(outPCR)[names(outPCR)=="testProtocolVersion"] <- "testProtocolVersion.pcr"
@@ -585,15 +604,24 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
   names(outPCR)[names(outPCR)=="dataQF"] <- "dataQF.pcr"
   names(outPCR)[names(outPCR)=="publicationDate"] <- "publicationDate.pcr"
 
-  # download local copy if user provided output dir path
-  if(outDir != "") {
-    if(!dir.exists(outDir)) {
-      dir.create(outDir)
-    }
-    write.csv(outPCR, file.path(outDir, paste0("mmg_soilMetadata_", targetGene, "_", Sys.Date(), ".csv")),
+  # download local copy to output dir path
+  if(targetGene != "all") {
+    write.csv(outPCR, paste0(outDir, "/mmg_soilMetadata_", targetGene, "_", gsub(" |:", "", Sys.time()), ".csv"),
               row.names=FALSE)
-    message(paste0("metadata downloaded to: ", outDir, "/mmg_soilMetadata_", targetGene, "_", Sys.Date(), ".csv") )
+  } else {
+    out16S <- outPCR[grep("16S", outPCR$targetGene), ]
+    outITS <- outPCR[grep("ITS", outPCR$targetGene), ]
+    write.csv(out16S, paste0(outDir, "/mmg_soilMetadata_16S_", gsub(" |:", "", Sys.time()), ".csv"),
+              row.names=FALSE)
+    write.csv(outITS, paste0(outDir, "/mmg_soilMetadata_ITS_", gsub(" |:", "", Sys.time()), ".csv"),
+              row.names=FALSE)
   }
+  message(paste0("metadata downloaded to: ", outDir) )
+  
+  # download variables file (required for zipsByUri)
+  write.csv(varfile, paste0(outDir, "/mmg_variables.csv") )
+  message(paste0("variables file downloaded to: ", outDir) )
+  
   return(outPCR)
 }
 
