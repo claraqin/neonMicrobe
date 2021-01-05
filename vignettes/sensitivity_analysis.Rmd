@@ -311,7 +311,10 @@ First, we convert the sequence tables into phyloseq objects.
 ```{r}
 physeqs <- list() # Create a list of physeq objects
 for(i in 1:length(param_sets)) {
-  physeqs[[i]] <- phyloseq(otu_table(seqtabs_joinrun[[i]], taxa_are_rows=FALSE))
+  # Sample data (parameters)
+  sampledata <- parseParamsFromRownames(seqtabs_joinrun[[i]], PARAM1, PARAM2, keep_rownames=TRUE, keep_original_cols = FALSE)
+  physeqs[[i]] <- phyloseq(otu_table(seqtabs_joinrun[[i]], taxa_are_rows=FALSE),
+                           sample_data(sampledata))
 }
 ```
 
@@ -321,37 +324,52 @@ We make use of `phyloseq`'s `estimate_richness()` function.
 obsrich_list <- shannon_list <- list()
 for(i in 1:length(physeqs)) {
   div <- suppressWarnings(
-    estimate_richness(physeqs[[i]], measures=c("Observed","Shannon"), split=FALSE)
+    estimate_richness(physeqs[[i]], measures=c("Observed","Shannon"), split=TRUE)
   )
-  obsrich_list[[i]] <- div[1,1]
-  shannon_list[[i]] <- div[1,2]
+  obsrich_list[[i]] <- div[,1]
+  shannon_list[[i]] <- div[,2]
 }
 
-names(obsrich_list) <- names(shannon_list) <- param_sets
-as.data.frame(cbind(obsrich_list, shannon_list)) %>%
-  dplyr::rename(`Observed richness` = "obsrich_list",
-                `Shannon index` = "shannon_list") %>%
-  parseParamsFromRownames(PARAM1, PARAM2) %>%
-  tidyr::gather(key="index", value="value", `Observed richness`:`Shannon index`) %>%
-  mutate(value = unlist(value)) ->
-  diversity_df
+diversity_list <- lapply(seq_along(physeqs), function(i) { 
+  parseParamsFromRownames(
+    cbind(
+      sample_data(physeqs[[i]]), 
+      obsrich = obsrich_list[[i]], 
+      shannon = shannon_list[[i]]
+    ),
+    PARAM1, PARAM2
+  )
+})
+
+diversity_df <- do.call(rbind, diversity_list)
 ```
 
 Plot!
 
 ```{r, fig.width=5, fig.height=5}
 theme_set(theme_bw())
-ggplot(diversity_df, aes(y=value, col=as.factor(maxEE.R), x=as.factor(truncLen.R))) +
+ggplot(diversity_df, aes(y=obsrich, col=as.factor(maxEE.R), x=as.factor(truncLen.R))) +
   geom_boxplot() +
-  facet_grid(index~., scales="free_y") +
-  labs(col="maxEE.R", x="truncLen.R")
-ggsave(file.path(PATH_TEST, "results", "alpha_diversity_plot.png"), width=5, height=5, units="in")
+  facet_grid(runID~., scales="free_y") +
+  labs(col="maxEE.R", x="truncLen.R") +
+  ylab("Observed richness")
+ggsave(file.path(PATH_TEST, "results", "diversity_plot_obsrich.png"), width=5, height=5, units="in")
+```
+
+```{r, fig.width=5, fig.height=5}
+theme_set(theme_bw())
+ggplot(diversity_df, aes(y=shannon, col=as.factor(maxEE.R), x=as.factor(truncLen.R))) +
+  geom_boxplot() +
+  facet_grid(runID~., scales="free_y") +
+  labs(col="maxEE.R", x="truncLen.R") +
+  ylab("Shannon index")
+ggsave(file.path(PATH_TEST, "results", "diversity_plot_shannon.png"), width=5, height=5, units="in")
 ```
 
 Test statistical significance using ANOVA
 
 ```{r}
-# TODO
+
 ```
 
 
@@ -399,28 +417,61 @@ Optionally, discard taxa with 10 or fewer reads:
 physeq_joined_nonzero <- prune_taxa(taxa_sums(physeq_joined) > 10, physeq_joined)
 ```
 
-Ordinate:
+Ordinate. Choose one of the sequencing runs to ordinate upon. (Samples from different sequencing runs may be highly dissimilar, producing difficult-to-interpret ordination plots.)
 
 ```{r}
-ordination <- ordinate(physeq_joined_nonzero, "NMDS", "bray", k=2)
-saveRDS(ordination, file.path(PATH_TEST, "results", "sensitivity_ordination.Rds"))
+physeq_joined_nonzero_runC5B2R <- subset_samples(physeq_joined_nonzero, runID=="runC5B2R")
+set.seed(1010101)
+ordination_runC52BR <- ordinate(physeq_joined_nonzero_runC5B2R, "NMDS", "bray", k=2)
+saveRDS(ordination_runC52BR, file.path(PATH_TEST, "results", "sensitivity_ordination_runC5B2R.Rds"))
+
+# physeq_joined_nonzero_runCBTWG <- subset_samples(physeq_joined_nonzero, runID=="runCBTWG")
+# set.seed(1010101)
+# ordination_runCBTWG <- ordinate(physeq_joined_nonzero_runCBTWG, "NMDS", "bray", k=2)
+# saveRDS(ordination_runCBTWG, file.path(PATH_TEST, "results", "sensitivity_ordination_runCBTWG.Rds"))
 ```
 
 Plot the ordination!
 
 ```{r, fig.width=5, fig.height=3.5}
+# theme_set(theme_bw())
+# sample_data(physeq_joined_nonzero)[,"maxEE.R.factor"] <- as.factor(get_variable(physeq_joined_nonzero, "maxEE.R"))
+# plot_ordination(physeq_joined_nonzero, ordination, type="samples",
+#                 col="runID", shape="maxEE.R.factor") +
+#   stat_ellipse(aes(x=NMDS1, y=NMDS2, col=runID), data=)
+#   # coord_cartesian(xlim=c(-0.096, -0.09), ylim=c(-0.002, 0.001)) +
+#   NULL
+# ggsave(file.path(PATH_TEST, "results", "sensitivity_ordination.png"), width=5, height=3.5, units="in")
+
+# Single-run version
 theme_set(theme_bw())
-sample_data(physeq_joined_nonzero)[,"maxEE.R.factor"] <- as.factor(get_variable(physeq_joined_nonzero, "maxEE.R"))
-plot_ordination(physeq_joined_nonzero, ordination, type="samples",
-                col="truncLen.R", shape="maxEE.R.factor") +
+sample_data(physeq_joined_nonzero_runC5B2R)[,"maxEE.R.factor"] <- as.factor(get_variable(physeq_joined_nonzero_runC5B2R, "maxEE.R"))
+sample_data(physeq_joined_nonzero_runC5B2R)[,"truncLen.R.factor"] <- as.factor(get_variable(physeq_joined_nonzero_runC5B2R, "truncLen.R"))
+plot_ordination(physeq_joined_nonzero_runC5B2R, ordination, type="samples",
+                col="truncLen.R.factor", shape="maxEE.R.factor") +
+  stat_ellipse(aes(group=sampleID), lwd=0.1, col="grey20")
   # coord_cartesian(xlim=c(-0.096, -0.09), ylim=c(-0.002, 0.001)) +
   NULL
-ggsave(file.path(PATH_TEST, "results", "sensitivity_ordination.png"), width=5, height=3.5, units="in")
+ggsave(file.path(PATH_TEST, "results", "sensitivity_ordination_runC52BR.png"), width=5, height=3.5, units="in")
+```
+
+```{r}
+# Failed
+
+theme_set(theme_bw())
+sample_data(physeq_joined_nonzero_runCBTWG)[,"maxEE.R.factor"] <- as.factor(get_variable(physeq_joined_nonzero_runCBTWG, "maxEE.R"))
+plot_ordination(physeq_joined_nonzero_runCBTWG, ordination, type="samples",
+                col="truncLen.R", shape="maxEE.R.factor") +
+  # stat_ellipse(aes(group=sampleID), lwd=0.1, col="grey20")
+  # coord_cartesian(xlim=c(-0.096, -0.09), ylim=c(-0.002, 0.001)) +
+  NULL
+ggsave(file.path(PATH_TEST, "results", "sensitivity_ordination_runCBTWG.png"), width=5, height=3.5, units="in")
 ```
 
 
 ```{r}
 ordination_scores <- scores(ordination)
+
 ```
 
 Test statistical significance using permANOVA. 
