@@ -114,7 +114,7 @@ fn_base <- basename(c(rawFs, rawRs))
 PATH_PARAMSETS <- file.path(PATH_TEST, param_sets)
 
 t1 <- Sys.time()
-# Trim reads based on the primer lengths supplied in params.r
+# Trim reads based on the primer sequences supplied in params.r
 trim_trackReads <- trimPrimers16S(fn_base, PATH_RAW, PATH_TRIMMED, "CCTACGGGNBGCASCAG", "GACTACNVGGGTATCTAATCC")
 
 # Run quality filter on 16S sequences
@@ -187,6 +187,8 @@ for(i in 1:length(param_sets)) {
 saveRDS(seqtabs_joinrun, file.path(PATH_TEST, "results", "sensitivity_seqtabs_joinrun_list.Rds"))
 write.csv(track, file.path(PATH_TEST, "results", "sensitivity_trackReads.csv"), row.names=TRUE)
 
+# seqtabs_joinrun <- readRDS(file.path(PATH_TEST, "results", "sensitivity_seqtabs_joinrun_list.Rds"))
+
 ####
 # Plot read counts at each step
 
@@ -233,6 +235,7 @@ t6 <- Sys.time()
 
 # Save the data thus far
 saveRDS(taxas, file.path(PATH_TEST, "results", "sensitivity_taxas_list.Rds"))
+# taxas <- readRDS(file.path(PATH_TEST, "results", "sensitivity_taxas_list.Rds"))
 
 
 ###################
@@ -273,7 +276,8 @@ n_reads_assigned_rank_df <- as.data.frame(do.call(cbind, lapply(n_reads_assigned
 # p_reads_assigned_rank_df <- as.data.frame(do.call(cbind, lapply(n_reads_assigned_rank, unlist)) / unlist(n_reads))
 rownames(n_reads_assigned_rank_df) <- param_sets
 colnames(n_reads_assigned_rank_df) <- tax_ranks
-n_reads_assigned_rank_df <- parseParamsFromRownames(n_reads_assigned_rank_df, PARAM1, PARAM2)
+n_reads_assigned_rank_df <- parseParamsFromRownames(n_reads_assigned_rank_df, PARAM1, PARAM2) %>%
+  dplyr::select(maxEE.R, truncLen.R, Kingdom:Species)
 n_reads_assigned_rank_df
 
 # Reshape assigned reads table, and calculate proportion
@@ -391,25 +395,23 @@ saveRDS(ordination, file.path(PATH_TEST, "results", "sensitivity_ordination.Rds"
 
 t11 <- Sys.time()
 
-
-
-############################## PAUSE HERE ON 11/09/2020
-
 ordination <- readRDS(file.path(PATH_TEST, "results", "sensitivity_ordination.Rds"))
+
+theme_set(theme_bw())
+sample_data(physeq_joined_nonzero)[,"maxEE.R.factor"] <- as.factor(get_variable(physeq_joined_nonzero, "maxEE.R"))
 plot_ordination(physeq_joined_nonzero, ordination, type="samples",
-                col="runID") +
+                col="truncLen.R", shape="maxEE.R.factor") +
   # coord_cartesian(xlim=c(-0.096, -0.09), ylim=c(-0.002, 0.001)) +
   NULL
+ggsave(file.path(PATH_TEST, "results", "sensitivity_ordination.png"), width=5, height=3.5, units="in")
 
 ordination_scores <- scores(ordination)
-cor(ordination_scores[,1], as.matrix(sample_data(physeq_joined_nonzero)[,1:3]))
-cor(ordination_scores[,2], as.matrix(sample_data(physeq_joined_nonzero)[,1:3]))
-# No strong correlation with filtering parameters
 
-which(ordination_scores[,1] > 15 & ordination_scores[,2] < 0)
-which(ordination_scores[,1] > 15 & ordination_scores[,2] > 0)
-# The outliers come from two samples: runB69PP_BMI_Plate4WellH3_ITS and runB69PP_BMI_Plate4WellH1_ITS
-outliers <- c("runB69PP_BMI_Plate4WellH3_ITS","runB69PP_BMI_Plate4WellH1_ITS")
+
+
+
+####### PAUSED HERE ON 12/14/2020
+
 
 # Distances between samples within the same parameter set
 hist(vegdist(seqtabs[[1]]))

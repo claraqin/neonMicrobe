@@ -1,0 +1,451 @@
+
+---
+title: "Sensitivity Analysis for Quality Filtering Parameters"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{sensitivity-analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+knitr::opts_knit$set(
+  root.dir = "~/zhulab/neonSoilMicrobeProcessing/" # Update as necessary. Should refer to the absolute filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
+)
+```
+
+## Note for editors: Need to switch around the eval=FALSE chunks before publishing
+
+The purpose of this vignette is to demonstrate how a researcher can test the effects of various DADA2 quality filtering parameter combinations on the outputs of the DADA2 pipeline, and ultimately, on the ecological inference. Specifically, this vignette asks the following from a subset of NEON 16S marker gene sequences:
+
+* What are the effects of quality filtering parameters on the number of remaining reads?
+* What are the effects of quality filtering parameters on merging success rate?
+* What are the effects of quality filtering parameters on taxonomic assignment?
+* What are the effects of quality filtering parameters on alpha and beta diversity metrics?
+
+The parameters that we vary to observe their downstream effects include the following:
+
+* `trunLen.R`: Reverse reads that do not meet or exceed `truncLen.R` in length will be discarded. Reverse reads that exceed `truncLen.R` will be truncated to `truncLen.R`.
+* `maxEE.R`: After truncation, reads with higher than `maxEE` expected errors will be discarded. Expected errors are calculated from the nominal definition of the quality score: EE = sum(10^(-Q/10)).
+
+Because we are interested in variation in these benchmark metrics across different parameter sets, we refer to this analysis as a **sensitivity analysis**. This vignette is intended to provide a boilerplate for users of this R package to construct their own sensitivity analyses.
+
+**Note:** If you are using this vignette as a reference, rather than running it as an RMarkdown script, be aware that you will need to manually set the working directory to the project root directory, e.g. `setwd(".../neonSoilMicrobeProcessing")`.
+
+# Dependencies
+
+To begin, ensure that you have installed all dependencies.
+
+Load libraries:
+
+```{r message=FALSE}
+library(dada2)
+library(ShortRead)
+library(Biostrings)
+library(tibble)
+library(dplyr)
+library(vegan)
+library(phyloseq)
+library(ggplot2)
+library(tidyr)
+```
+
+In addition, source files associated with this package:
+
+```{r}
+source("./R/utils.R")
+source("./code/params.R")
+```
+
+## Constants used for this sensitivity analysis:
+
+Quality filter parameters that we do not vary in this sensitivity analysis
+
+```{r}
+MAX_EE_FWD <- 8
+TRUNC_LEN_FWD <- 240
+MIN_LEN <- 50
+```
+
+Parameters specific to this sensitivity analysis
+
+```{r}
+N_SAMPLES <- 40
+DIRNAME_TEST <- "qf_test_12-30-2020"
+runIDs <- c("C5B2R", "CBTWG")
+```
+
+Parameter value grid. The following allows testing of two quality filtering parameters at a time.
+
+```{r}
+PARAM1 <- "maxEE.R"
+PARAM2 <- "truncLen.R"
+grid <- expand.grid(c(4, 8, 16), c(160, 220, 250))
+params <- matrix(
+  c(grid[,1],     # PARAM1
+    grid[,2]),    # PARAM2
+  byrow=FALSE, ncol=2,
+  dimnames = list(NULL, c(PARAM1, PARAM2))
+)
+param_sets <- apply(params, 1, function(x) paste(c(rbind(c(PARAM1, PARAM2), x)), collapse="_"))
+```
+
+# Assign filepath variables
+
+```{r}
+if(is.null(PRESET_OUTDIR_SEQUENCE) | PRESET_OUTDIR_SEQUENCE == "") {
+  PATH_16S <- file.path(PRESET_OUTDIR, "raw_sequence", "16S")
+} else {
+  PATH_16S <- file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE, "16S")
+}
+PATH_RAW <- file.path(PATH_16S, "0_raw")
+PATH_TRIMMED <- file.path(PATH_16S, "1_trimmed")
+PATH_TEST <- file.path(PATH_16S, DIRNAME_TEST)
+dir.create(file.path(PATH_TEST, "results"))
+```
+
+## Get fastq files for this analysis
+
+Retrieve files that match the sequence run IDs specified earlier. In this example, these are "C5B2R" and "CBTWG."
+
+```{r}
+rawFs <- sort(list.files(PATH_RAW, pattern = paste0("(",paste0("(", runIDs, ")", collapse="|"),")", ".*_R1\\.fastq"), full.names = TRUE))
+rawRs <- sort(list.files(PATH_RAW, pattern = paste0("(",paste0("(", runIDs, ")", collapse="|"),")", ".*_R2\\.fastq"), full.names = TRUE))
+```
+
+
+Remove any files that only have forward or reverse reads
+
+```{r}
+matched_fn <- remove_unmatched_files(rawFs, rawRs)
+rawFs <- matched_fn[[1]]
+rawRs <- matched_fn[[2]]
+```
+
+To cut down on computation time, select up to N_SAMPLES samples from the runs, up to N_SAMPLES/length(runIDs) from each run.
+
+```{r}
+if(length(rawFs) > N_SAMPLES) {
+  rawFs_subset <- c()
+  rawRs_subset <- c()
+  for(i in 1:length(runIDs)) {
+    rawFs_runID <- rawFs[grep(runIDs[i], rawFs)]
+    rawRs_runID <- rawRs[grep(runIDs[i], rawRs)]
+    if(length(rawFs_runID) > 5) {
+      rawFs_subset <- c(rawFs_subset, rawFs_runID[round(quantile(1:length(rawFs_runID), probs=seq(0,1,length.out=N_SAMPLES/length(runIDs))))])
+      rawRs_subset <- c(rawRs_subset, rawRs_runID[round(quantile(1:length(rawRs_runID), probs=seq(0,1,length.out=N_SAMPLES/length(runIDs))))])
+    } else {
+      rawFs_subset <- c(rawFs_subset, rawFs_runID)
+      rawRs_subset <- c(rawRs_subset, rawRs_runID)
+    }
+  }
+  rawFs <- rawFs_subset
+  rawRs <- rawRs_subset
+}
+```
+
+Plot quality profiles
+
+```{r, eval=FALSE}
+gridExtra::grid.arrange(plotQualityProfile(rawFs, aggregate=TRUE),
+                        plotQualityProfile(rawRs, aggregate=TRUE))
+```
+
+Split complete filenames into "basenames" and directory names
+
+```{r}
+fn_base <- basename(c(rawFs, rawRs))
+PATH_PARAMSETS <- file.path(PATH_TEST, param_sets)
+```
+
+
+## Trim primers from sequences
+
+Trim reads based on the primer sequences supplied in `params.R`.
+
+```{r}
+trim_trackReads <- trimPrimers16S(fn_base, PATH_RAW, PATH_TRIMMED, "CCTACGGGNBGCASCAG", "GACTACNVGGGTATCTAATCC")
+```
+
+## Run quality filter on sequences
+
+To store the results arising from each set of parameter choices, we construct a list object where each element corresponds to the output given a different parameter set. For this step, the list object is `filter_trackReads`.
+
+```{r}
+filter_trackReads <- list()
+for(i in 1:length(param_sets)) {
+  filter_trackReads[[i]] <- qualityFilter16S(
+    fn_base,
+    PATH_TRIMMED,
+    PATH_PARAMSETS[[i]],
+    maxEE=c(MAX_EE_FWD, params[i,1]), # Vary maxEE.R
+    truncLen=c(TRUNC_LEN_FWD, params[i,2]), # Vary truncLen.R
+    minLen=MIN_LEN,
+    multithread=MULTITHREAD)
+  rownames(filter_trackReads[[i]]) <- paste0(param_sets[i], "|", rownames(filter_trackReads[[i]]))
+}
+filter_trackReads_mat <- do.call(rbind, filter_trackReads)
+```
+
+## Run the rest of the processing pipeline
+
+Although the quality filtering step is the only part of the processing pipeline where we vary the parameters, we must follow through with the rest of the pipeline to observe the downstream effects on remaining reads, merging rate, taxonomic resolution, and alpha- and beta-diversity estimates.
+
+This requires us to redefine the list structure so that it becomes nested: in the first level, each element corresponds to a parameter set; in the second level, each element corresponds to a sequencing run ID. This is necessary because the dada sequence inference algorithm is sensitive to error rate estimates, and error rates may differ considerably between sequencing runs. Here we initialize the nested list structure for two types of outputs simultaneously.
+
+```{r}
+seqtabs <- dada_trackReads <- lapply(1:length(param_sets), function(x) lapply(1:length(runIDs), function(y) list()))
+```
+
+Now we continue with the processing pipeline to produce different versions of the resulting sequence tables.
+
+```{r}
+for(i in 1:length(param_sets)) {
+  for(j in 1:length(runIDs)) {
+    message("Sensitivity analysis: parameter set ", param_sets[i], ", sequencing run ",  runIDs[j])
+
+    # Retrieve only those files associated with the appropriate parameter set and runID
+    fn_base.star <- grep(runIDs[j], fn_base, value=TRUE)
+
+    seqtab.list <- runDada16S(fn_base.star, PATH_PARAMSETS[i], MULTITHREAD, VERBOSE, seed=11001100)
+    seqtabs[[i]][[j]] <- seqtab.list$seqtab.nochim
+    dada_trackReads[[i]][[j]] <- seqtab.list$track
+
+    rownames(seqtabs[[i]][[j]]) <- paste0(param_sets[i], "|", rownames(seqtabs[[i]][[j]]))
+    rownames(dada_trackReads[[i]][[j]]) <- paste0(param_sets[i], "|", rownames(dada_trackReads[[i]][[j]]))
+  }
+}
+
+dada_trackReads_mat <- do.call(rbind, lapply(dada_trackReads, function(x) do.call(rbind, x)))
+```
+
+Combine all read-tracking tables:
+
+```{r}
+trim_trackReads_mat <- do.call(rbind, lapply(1:length(param_sets), function(i) {
+  rownames(trim_trackReads) <- paste0(param_sets[i], "|", rownames(trim_trackReads))
+  trim_trackReads
+}))
+
+track <- Reduce(
+  function(x, y, ...) transform(merge(x, y, by=0, all = TRUE, ...), row.names=Row.names, Row.names=NULL),
+  list(trim_trackReads_mat[,1],
+       filter_trackReads_mat,
+       dada_trackReads_mat)
+)
+names(track) <- c("input", "trimmed", "filtered", colnames(dada_trackReads_mat))
+track[is.na(track)] <- 0
+
+```
+
+Now that sequence inference is complete, we can join the sequencing runs back together in each parameter set:
+
+```{r}
+seqtabs_joinrun <- lapply(1:length(param_sets), function(x) list())
+for(i in 1:length(param_sets)) {
+  seqtabs_joinrun[[i]] <- mergeSequenceTables(tables = seqtabs[[i]])
+}
+```
+
+Save the data so far:
+
+```{r}
+saveRDS(seqtabs_joinrun, file.path(PATH_TEST, "results", "sensitivity_seqtabs_joinrun_list.Rds"))
+write.csv(track, file.path(PATH_TEST, "results", "sensitivity_trackReads.csv"), row.names=TRUE)
+```
+
+You can reload RDS objects into R to pick up where you left off:
+
+```{r, eval=FALSE}
+seqtabs_joinrun <- readRDS(file.path(PATH_TEST, "results", "sensitivity_seqtabs_joinrun_list.Rds"))
+track <- read.csv(file.path(PATH_TEST, "results", "sensitivity_trackReads.csv"), row.names=1)
+```
+
+
+## Sensitivity of read counts
+
+We can now plot the number of reads remaining after each step in the processing pipeline.
+
+First, add parameter information to the read tracking table. This custom function simply parses the parameter sets from the rownames of the tracking table.
+
+```{r}
+track <- parseParamsFromRownames(track, PARAM1, PARAM2)
+```
+
+Next, perform a few more operations to make the tracking table ready for plotting:
+
+```{r}
+# Reshape read tracking table
+track_long <- tidyr::gather(track, key = "step", value = "reads", input:nonchim)
+# Exclude metrics associated only with forward reads
+track_long <- track_long[!grepl("F$", track_long$step),]
+# Aggregate read counts by run ID
+track_long[["step"]] <- factor(track_long[["step"]], levels=colnames(track)[1:9])
+track_aggRun <- group_by(track_long, maxEE.R, truncLen.R, runID, step) %>%
+  dplyr::summarise(reads = sum(reads))
+```
+
+Plot!
+
+```{r, fig.width=9, fig.height=3.5}
+theme_set(theme_bw())
+ggplot(track_aggRun, aes(x=step, y=reads, col=as.factor(maxEE.R))) +
+  geom_line(aes(linetype=as.factor(truncLen.R), group=interaction(maxEE.R, truncLen.R))) +
+  facet_wrap(~runID, scales="free_y") +
+  labs(linetype="truncLen.R", color="maxEE.R") +
+  scale_linetype_manual(values=c("dotted", "dashed", "solid")) +
+  theme(axis.text.x = element_text(angle=45, hjust=1)) +
+  scale_y_continuous(trans="log10")
+ggsave(file.path(PATH_TEST, "results", "track_reads_plot.png"), width=9, height=3.5, units="in")
+```
+
+
+## Sensitivity of alpha diversity
+
+First, we convert the sequence tables into phyloseq objects.
+
+```{r}
+physeqs <- list() # Create a list of physeq objects
+for(i in 1:length(param_sets)) {
+  physeqs[[i]] <- phyloseq(otu_table(seqtabs_joinrun[[i]], taxa_are_rows=FALSE))
+}
+```
+
+We make use of `phyloseq`'s `estimate_richness()` function. 
+
+```{r}
+obsrich_list <- shannon_list <- list()
+for(i in 1:length(physeqs)) {
+  div <- suppressWarnings(
+    estimate_richness(physeqs[[i]], measures=c("Observed","Shannon"), split=FALSE)
+  )
+  obsrich_list[[i]] <- div[1,1]
+  shannon_list[[i]] <- div[1,2]
+}
+
+names(obsrich_list) <- names(shannon_list) <- param_sets
+as.data.frame(cbind(obsrich_list, shannon_list)) %>%
+  dplyr::rename(`Observed richness` = "obsrich_list",
+                `Shannon index` = "shannon_list") %>%
+  parseParamsFromRownames(PARAM1, PARAM2) %>%
+  tidyr::gather(key="index", value="value", `Observed richness`:`Shannon index`) %>%
+  mutate(value = unlist(value)) ->
+  diversity_df
+```
+
+Plot!
+
+```{r, fig.width=5, fig.height=5}
+theme_set(theme_bw())
+ggplot(diversity_df, aes(y=value, col=as.factor(maxEE.R), x=as.factor(truncLen.R))) +
+  geom_boxplot() +
+  facet_grid(index~., scales="free_y") +
+  labs(col="maxEE.R", x="truncLen.R")
+ggsave(file.path(PATH_TEST, "results", "alpha_diversity_plot.png"), width=5, height=5, units="in")
+```
+
+Test statistical significance using ANOVA
+
+```{r}
+# TODO
+```
+
+
+## Sensitivity of beta diversity
+
+First, combine all sequence tables into ONE large sequence table. A sample data table will distinguish samples processed using different parameters.
+
+```{r}
+seqtab_joined <- mergeSequenceTables(tables=seqtabs_joinrun)
+
+# Sample data (parameters)
+sampledata <- parseParamsFromRownames(seqtab_joined, PARAM1, PARAM2, keep_rownames=TRUE, keep_original_cols = FALSE)
+```
+
+Next, assign taxonomy. Warning: this can take up to several hours.
+
+```{r}
+taxa_joined <- assignTaxonomy(seqtab_joined, UNITE_REF_PATH, multithread = MULTITHREAD, tryRC = TRUE)
+saveRDS(taxa_joined, file.path(PATH_TEST, "results", "sensitivity_taxa_joined.Rds"))
+```
+
+If you've already done the previous step, you can reload the object here.
+
+```{r, eval=FALSE}
+taxa_joined <- readRDS(file.path(PATH_TEST, "results", "sensitivity_taxa_joined.Rds"))
+```
+
+Combine all three tables (sequence table, sample data table, and taxonomy table) into a phyloseq object:
+
+```{r}
+physeq_joined <- phyloseq(otu_table(seqtab_joined,taxa_are_rows=FALSE),
+                          sample_data(sampledata),
+                          tax_table(taxa_joined))
+```
+
+Remove samples with zero total counts
+
+```{r}
+physeq_joined_nonzero <- prune_samples(sample_sums(physeq_joined) > 0, physeq_joined)
+```
+
+Optionally, discard taxa with 10 or fewer reads:
+
+```{r}
+physeq_joined_nonzero <- prune_taxa(taxa_sums(physeq_joined) > 10, physeq_joined)
+```
+
+Ordinate:
+
+```{r}
+ordination <- ordinate(physeq_joined_nonzero, "NMDS", "bray", k=2)
+saveRDS(ordination, file.path(PATH_TEST, "results", "sensitivity_ordination.Rds"))
+```
+
+Plot the ordination!
+
+```{r, fig.width=5, fig.height=3.5}
+theme_set(theme_bw())
+sample_data(physeq_joined_nonzero)[,"maxEE.R.factor"] <- as.factor(get_variable(physeq_joined_nonzero, "maxEE.R"))
+plot_ordination(physeq_joined_nonzero, ordination, type="samples",
+                col="truncLen.R", shape="maxEE.R.factor") +
+  # coord_cartesian(xlim=c(-0.096, -0.09), ylim=c(-0.002, 0.001)) +
+  NULL
+ggsave(file.path(PATH_TEST, "results", "sensitivity_ordination.png"), width=5, height=3.5, units="in")
+```
+
+
+```{r}
+ordination_scores <- scores(ordination)
+```
+
+Test statistical significance using permANOVA. 
+
+```{r}
+ps_joined_dist <- vegdist(otu_table(physeq_joined_nonzero))
+```
+
+```{r}
+adonis(ps_joined_dist ~ maxEE.R + truncLen.R,
+       data = as(sample_data(physeq_joined_nonzero), "data.frame"),
+       strata = get_variable(physeq_joined_nonzero, "sampleID"),
+       permutations=999)
+```
+
+Also, use betadisper to ensure homogeneity of within-group variances (dispersion). Heterogeneity of within-group variances may be confounded with distances between groups in the permANOVA test.
+
+```{r}
+beta_disper <- vegan::betadisper(ps_joined_dist, get_variable(physeq_joined_nonzero, "truncLen.R"))
+anova(beta_disper)
+```
+
+```{r}
+mod.HSD <- TukeyHSD(beta_disper)
+plot(mod.HSD)
+```
+
+

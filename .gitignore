@@ -1,3 +1,4 @@
 /raw_data/*
 .Rproj.user
 inst/doc
+/NEON/*

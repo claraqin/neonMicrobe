@@ -445,8 +445,8 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
     message("Output directory does not exist")
     return(NULL)
   }
-  
-  
+
+
   message("loading metadata...")
   mmgL1 <- loadByProduct(dpID, sites, package = 'expanded', check.size = F, startdate = startYrMo, enddate = endYrMo) # output is a list of each metadata file
 
@@ -617,11 +617,11 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
               row.names=FALSE)
   }
   message(paste0("metadata downloaded to: ", outDir) )
-  
+
   # download variables file (required for zipsByUri)
   write.csv(varfile, paste0(outDir, "/mmg_variables.csv") )
   message(paste0("variables file downloaded to: ", outDir) )
-  
+
   return(outPCR)
 }
 
@@ -784,14 +784,13 @@ remove_unmatched_files <- function(fnFs, fnRs, post_samplename_pattern = "_R(1|2
 #' @param fn Names of input fastq files, excluding directory path which is specified by dir_in. Files that do not exist will be ignored; however, if all files do not exist, this function will throw an error.
 #' @param dir_in Directory containing input fastq files.
 #' @param dir_out Path to output directory where filtered fastq files will be written.
-#' @param truncLen_manual Default NULL. Single integer: truncation length to use across all files. Two-integer vector: truncation length to use for the forward-read and reverse-read files, respectively. If NULL (default), determines truncation length(s) based on \code{\link{getTruncationLength}} with a quality score threshold of trunc_qscore.
 #' @param trunc_qscore Default 23. Quality score at which point to truncate each read, if truncLen is NULL.
 #' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
 #' @param post_samplename_pattern1,post_samplename_pattern2 (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).*\\.fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
 #' @param ... Other arguments to be passed to \code{\link[dada2]{filterAndTrim}}, such as maxEE. See documentation for more details.
 #'
 #' @return Two-column matrix displaying the number of reads in input vs. output for each file.
-qualityFilter16S <- function(fn, dir_in, dir_out, truncLen_manual=NULL, trunc_qscore = 23, multithread = MULTITHREAD, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq", ...){
+qualityFilter16S <- function(fn, dir_in, dir_out, trunc_qscore = 23, multithread = MULTITHREAD, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq", ...){
   fn_fullname <- file.path(dir_in, fn)
 
   fnFs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern1, fn_fullname)]
@@ -802,7 +801,10 @@ qualityFilter16S <- function(fn, dir_in, dir_out, truncLen_manual=NULL, trunc_qs
   filtFs <- file.path(dir_out, basename(fnFs)) # create filtered filenames
   filtRs <- file.path(dir_out, basename(fnRs)) # create filtered filenames
 
-  if (is.null(truncLen_manual)){
+  dots <- list(...)
+
+  # If truncLen is NOT in user-provided arguments
+  if (!("truncLen" %in% names(dots))) {
     # GETTING TRUNCATION LENGTH USING A SUBSET OF QUALITY SCORES
     n_files <- min(length(unique(sample.names)), 30)
 
@@ -834,11 +836,12 @@ qualityFilter16S <- function(fn, dir_in, dir_out, truncLen_manual=NULL, trunc_qs
     if (fwd.trunc.length < 245) fwd.trunc.length <- 245
     cat(paste0("Fwd truncation length: ", fwd.trunc.length, "\nRev truncation length: ", rev.trunc.length, "\n"))
     truncLen <- c(fwd.trunc.length, rev.trunc.length)
-  }
 
-  dots <- list(...)
-  if ("truncLen" %in% names(dots)) dots$truncLen <- NULL
-  arguments <- c(list(fnFs, filtFs, fnRs, filtRs, compress=TRUE, truncLen=truncLen, multithread=multithread), dots)
+  # Else, if truncLen is in user-provided arguments
+  } else {
+    message("Using truncLen ", paste(dots$truncLen, collapse=" "))
+    arguments <- c(list(fnFs, filtFs, fnRs, filtRs, compress=TRUE, multithread=multithread), dots)
+  }
 
   out <- do.call(filterAndTrim, arguments)
 
@@ -846,6 +849,7 @@ qualityFilter16S <- function(fn, dir_in, dir_out, truncLen_manual=NULL, trunc_qs
 
   return(out)
 }
+# Removed this: #' @param truncLen_manual Default NULL. Single integer: truncation length to use across all files. Two-integer vector: truncation length to use for the forward-read and reverse-read files, respectively. If NULL (default), determines truncation length(s) based on \code{\link{getTruncationLength}} with a quality score threshold of trunc_qscore.
 
 
 #' Filter ITS Sequences
@@ -979,20 +983,12 @@ runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
   names(filtFs) <- sample.names
   names(filtRs) <- sample.names
   # Learn forward and reverse error rates
-  errF <- learnErrors(filtFs, nbases=1e7, randomize=TRUE, multithread=multithread)
-  errR <- learnErrors(filtRs, nbases=1e7, randomize=TRUE, multithread=multithread)
+  errF <- learnErrors(filtFs, nbases=1e7, randomize=TRUE, multithread=multithread, verbose=verbose)
+  errR <- learnErrors(filtRs, nbases=1e7, randomize=TRUE, multithread=multithread, verbose=verbose)
 
   # Create output vectors
-  derepF <- vector("list", length(sample.names))
-  derepR <- vector("list", length(sample.names))
-  ddF <- vector("list", length(sample.names))
-  ddR <- vector("list", length(sample.names))
-  mergers <- vector("list", length(sample.names))
-  names(derepF) <- sample.names
-  names(derepR) <- sample.names
-  names(ddF) <- sample.names
-  names(ddR) <- sample.names
-  names(mergers) <- sample.names
+  derepF <- derepR <- ddF <- ddR <- mergers <- vector("list", length(sample.names))
+  names(derepF) <- names(derepR) <- names(ddF) <- names(ddR) <- names(mergers) <- sample.names
 
   # Sample inference and merger of paired-end reads
   for(i in 1:length(sample.names)) {
@@ -1002,10 +998,9 @@ runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
     derepF[[i]] <- derepFastq(filtFs[[i]])
     derepR[[i]] <- derepFastq(filtRs[[i]])
 
-    ddF[[i]] <- dada(derepF[[i]], err=errF, multithread=TRUE)
-    ddR[[i]] <- dada(derepR[[i]], err=errR, multithread=TRUE)
-    merger <- mergePairs(ddF[[i]], derepF[[i]], ddR[[i]], derepR[[i]], maxMismatch=1, minOverlap = 6)
-    mergers[[i]] <- merger
+    ddF[[i]] <- dada(derepF[[i]], err=errF, multithread=TRUE, verbose=verbose)
+    ddR[[i]] <- dada(derepR[[i]], err=errR, multithread=TRUE, verbose=verbose)
+    mergers[[i]] <- mergePairs(ddF[[i]], derepF[[i]], ddR[[i]], derepR[[i]], maxMismatch=1, minOverlap = 6, verbose=verbose)
     cat(paste("Exact sequence variants inferred for sample:", sam,". \n"))
   }
 
@@ -1076,13 +1071,11 @@ runDadaITS <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
   names(filtFs) <- sample.names
 
   # Learn error rates
-  errF <- learnErrors(filtFs, nbases=1e7, randomize=TRUE, multithread=multithread)
+  errF <- learnErrors(filtFs, nbases=1e7, randomize=TRUE, multithread=multithread, verbose=verbose)
 
-  # Create output vector
-  derepF <- vector("list", length(sample.names))
-  ddF <- vector("list", length(sample.names))
-  names(derepF) <- sample.names
-  names(ddF) <- sample.names
+  # Create output vectors
+  derepF <- ddF <- vector("list", length(sample.names))
+  names(derepF) <- names(ddF) <- sample.names
 
   # Sample inference and merger of paired-end reads
   for(i in 1:length(sample.names)) {
