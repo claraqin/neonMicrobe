@@ -775,6 +775,57 @@ remove_unmatched_files <- function(fnFs, fnRs, post_samplename_pattern = "_R(1|2
   return(list(R1=fnFs, R2=fnRs))
 }
 
+matchFastqFiles <- function(fn, meta, verbose=FALSE) {
+  # Remove runID if appended to beginning of filename
+  key <- sub("^run[A-Za-z0-9]*_", "", basename(fn))
+  meta_ext <- cbind(key, meta[match(key, as.character(meta$rawDataFileName)),], stringsAsFactors = FALSE)
+  meta_ext$orientation <- if_else(grepl("R1", meta_ext$rawDataFileDescription), "R1",
+                                  if_else(grepl("R2", meta_ext$rawDataFileDescription), "R2",
+                                          NA_character_))
+  meta_ext %>%
+    dplyr::filter(!is.na(uid.rawFiles)) %>%
+    # dplyr::mutate(key = as.character(key)) %>%
+    dplyr::group_by(dnaSampleID) %>%
+    dplyr::summarise(n_orientations = n_distinct(orientation, na.rm=TRUE)) ->
+    meta_summ
+  if(!any(meta_summ$n_orientations == 2)) {
+    message("There were no matches. Check your inputs and try again.")
+  } else {
+    matched_ids <- meta_summ$dnaSampleID[meta_summ$n_orientations==2]
+    return(list(
+      meta_ext$key[meta_ext$orientation=="R1" & meta_ext$dnaSampleID %in% matched_ids],
+      meta_ext$key[meta_ext$orientation=="R2" & meta_ext$dnaSampleID %in% matched_ids]
+    ))
+  }
+}
+
+removeUnmatchedFastqFiles <- function(fnFs, fnRs, meta) {
+  # Remove runID if appended to beginning of filename
+  key_Fs <- sub("^run[A-Za-z0-9]*_", "", basename(fnFs))
+  key_Rs <- sub("^run[A-Za-z0-9]*_", "", basename(fnRs))
+
+  # Match with metadata rawDataFileName
+  # nomatch <- which(is.na(match(key_Rs, as.character(meta$rawDataFileName))))
+  # key_Rs[nomatch]
+  meta_ext <- rbind(
+    cbind(key = key_Fs, orientation = "R1", meta[match(key_Fs, as.character(meta$rawDataFileName)),], stringsAsFactors=FALSE),
+    cbind(key = key_Rs, orientation = "R2", meta[match(key_Rs, as.character(meta$rawDataFileName)),], stringsAsFactors=FALSE)
+  )
+  meta_ext %>%
+    dplyr::filter(!is.na(uid.rawFiles)) %>%
+    # dplyr::mutate(key = as.character(key)) %>%
+    dplyr::group_by(dnaSampleID) %>%
+    dplyr::summarise(n_orientations = n_distinct(orientation, na.rm=TRUE)) -> meta_summ
+  if(!any(meta_summ$n_orientations == 2)) {
+    message("There were no matches. Check your inputs and try again.")
+  } else {
+    matched_ids <- meta_summ$dnaSampleID[meta_summ$n_orientations==2]
+    return(list(
+      meta_ext$key[meta_ext$orientation=="R1" & meta_ext$dnaSampleID %in% matched_ids],
+      meta_ext$key[meta_ext$orientation=="R2" & meta_ext$dnaSampleID %in% matched_ids]
+    ))
+  }
+}
 
 #' Filter 16S Sequences
 #'
