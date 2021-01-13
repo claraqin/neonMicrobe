@@ -1022,6 +1022,7 @@ getTruncationLength <-function (fl, qscore = 30, n = 5e+05, verbose = TRUE){
 #' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading.
 #' @param VERBOSE Default FALSE. Whether to print messages regarding the dimensions of the resulting sequence table and the distribution of sequence lengths.
 #' @param seed (Optional) Integer to use as random seed for reproducibility.
+#' @param nbases (Optional) Number of bases to use for learning errors. Default 1e7.
 #'
 #' @return A list of three elements. \strong{seqtab} is the sequence table before removing chimeras, \strong{seqtab.nochim} is the sequence table after removing chimeras, and \strong{track} is a data frame displaying the number of reads remaining for each sample at various points throughout the processing pipeline.
 #'
@@ -1029,7 +1030,7 @@ getTruncationLength <-function (fl, qscore = 30, n = 5e+05, verbose = TRUE){
 #' \dontrun{
 #' seqtab.list <- runDada16S(c("sample1_R1.fastq", "sample1_R2.fastq", "sample2_R1.fastq", "sample2_R2.fastq"), seed=1010100)
 #' }
-runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, seed = NULL, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq"){
+runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, seed = NULL, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq", nbases=1e7){
   if (!is.null(seed)) set.seed(seed)
 
   fn_fullname <- file.path(dir_in, fn)
@@ -1053,8 +1054,8 @@ runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
   names(filtFs) <- sample.names
   names(filtRs) <- sample.names
   # Learn forward and reverse error rates
-  errF <- learnErrors(filtFs, nbases=1e7, randomize=TRUE, multithread=multithread, verbose=verbose)
-  errR <- learnErrors(filtRs, nbases=1e7, randomize=TRUE, multithread=multithread, verbose=verbose)
+  errF <- learnErrors(filtFs, nbases=nbases, randomize=TRUE, multithread=multithread, verbose=verbose)
+  errR <- learnErrors(filtRs, nbases=nbases, randomize=TRUE, multithread=multithread, verbose=verbose)
 
   # Create output vectors
   derepF <- derepR <- ddF <- ddR <- mergers <- vector("list", length(sample.names))
@@ -1121,6 +1122,7 @@ runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
 #' @param verbose Default FALSE. Whether to print messages regarding the dereplication step, the denoising step, and the dimensions of the resulting sequence table and the distribution of sequence lengths.
 #' @param seed (Optional) Integer to use as random seed for reproducibility.
 #' @param post_samplename_pattern1,post_samplename_pattern2 (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).*\\.fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
+#' @param nbases (Optional) Number of bases to use for learning errors. Default 1e7.
 #'
 #' @return A list of three elements. \strong{seqtab} is the sequence table before removing chimeras, \strong{seqtab.nochim} is the sequence table after removing chimeras, and \strong{track} is a data frame displaying the number of reads remaining for each sample at various points throughout the processing pipeline.
 #'
@@ -1128,7 +1130,7 @@ runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
 #' \dontrun{
 #' seqtab.list <- runDadaITS(c("sample1_R1.fastq", "sample1_R2.fastq", "sample2_R1.fastq", "sample2_R2.fastq"), './seq/filtered/', seed=1010100)
 #' }
-runDadaITS <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, seed = NULL, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq"){
+runDadaITS <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, seed = NULL, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq", nbases = 1e7){
   if (!is.null(seed)) set.seed(seed)
 
   fn_fullname <- file.path(dir_in, fn)
@@ -1141,7 +1143,7 @@ runDadaITS <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
   names(filtFs) <- sample.names
 
   # Learn error rates
-  errF <- learnErrors(filtFs, nbases=1e7, randomize=TRUE, multithread=multithread, verbose=verbose)
+  errF <- learnErrors(filtFs, nbases=nbases, randomize=TRUE, multithread=multithread, verbose=verbose)
 
   # Create output vectors
   derepF <- ddF <- vector("list", length(sample.names))
