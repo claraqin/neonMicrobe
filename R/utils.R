@@ -135,9 +135,9 @@ downloadRawSequenceData <- function(metadata, outdir = file.path(PRESET_OUTDIR, 
       })
     })
     if(dir.exists(outdir)) {
-      message("Finished downloading ", paste(outdir, fileNms[i], sep="/"))
+      if(verbose) message("Finished downloading ", paste(outdir, fileNms[i], sep="/"))
     } else {
-      message("Finished downloading ", paste(getwd(), fileNms[i], sep="/" ))
+      if(verbose) message("Finished downloading ", paste(getwd(), fileNms[i], sep="/" ))
     }
   }
 
@@ -153,9 +153,10 @@ downloadRawSequenceData <- function(metadata, outdir = file.path(PRESET_OUTDIR, 
 #' @param fn Character vector of full names (including path) of raw sequence files. Can include tarballs.
 #' @param metadata The output of downloadSequenceMetadata(). Must be provided as either the data.frame returned by downloadSequenceMetadata() or as a filepath to the csv file produced by downloadSequenceMetadata() when outdir is provided.
 #' @param outdir_sequence Default file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE). Directory where raw sequence files can be found before reorganizing.
+#' @param verbose If TRUE, prints message each time a file is reorganized.
 #'
 #' @return Character vector of the files (including files within tarballs) that were successfully reorganized. If no files were successfully reorganized, returns no value.
-organizeRawSequenceData <- function(fn, metadata, outdir_sequence = file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE)) {
+organizeRawSequenceData <- function(fn, metadata, outdir_sequence = file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE, verbose = TRUE)) {
   library(R.utils)
 
   metadata_load_err <- FALSE
@@ -240,7 +241,7 @@ organizeRawSequenceData <- function(fn, metadata, outdir_sequence = file.path(PR
       } else {
         files_organized <- c(files_organized, rename_to)
       }
-      message("Reorganized ", basename(fn[i]))
+      if(verbose) message("Reorganized ", basename(fn[i]))
     }
   }
 
@@ -801,16 +802,24 @@ matchFastqFiles <- function(fn, meta, verbose=FALSE) {
 
 removeUnmatchedFastqFiles <- function(fnFs, fnRs, meta) {
   # Remove runID if appended to beginning of filename
-  key_Fs <- sub("^run[A-Za-z0-9]*_", "", basename(fnFs))
-  key_Rs <- sub("^run[A-Za-z0-9]*_", "", basename(fnRs))
+  keyFs <- sub("^run[A-Za-z0-9]*_", "", basename(fnFs))
+  keyRs <- sub("^run[A-Za-z0-9]*_", "", basename(fnRs))
+
+  # Append ".gz" to end of filename if missing
+  keyFs[!grepl(".gz$", keyFs)] <- paste0(keyFs[!grepl(".gz$", keyFs)], ".gz")
+  keyRs[!grepl(".gz$", keyRs)] <- paste0(keyRs[!grepl(".gz$", keyRs)], ".gz")
 
   # Match with metadata rawDataFileName
-  # nomatch <- which(is.na(match(key_Rs, as.character(meta$rawDataFileName))))
-  # key_Rs[nomatch]
   meta_ext <- rbind(
-    cbind(key = key_Fs, orientation = "R1", meta[match(key_Fs, as.character(meta$rawDataFileName)),], stringsAsFactors=FALSE),
-    cbind(key = key_Rs, orientation = "R2", meta[match(key_Rs, as.character(meta$rawDataFileName)),], stringsAsFactors=FALSE)
+    cbind(file = fnFs, key = keyFs, orientation = "R1", meta[match(keyFs, as.character(meta$rawDataFileName)),], stringsAsFactors=FALSE),
+    cbind(file = fnRs, key = keyRs, orientation = "R2", meta[match(keyRs, as.character(meta$rawDataFileName)),], stringsAsFactors=FALSE)
   )
+
+  ##
+  meta %>%
+    group_by(sequencerRunID) %>%
+    dplyr::summarise(n_files = n_distinct(rawDataFileName))
+
   meta_ext %>%
     dplyr::filter(!is.na(uid.rawFiles)) %>%
     # dplyr::mutate(key = as.character(key)) %>%
@@ -821,11 +830,21 @@ removeUnmatchedFastqFiles <- function(fnFs, fnRs, meta) {
   } else {
     matched_ids <- meta_summ$dnaSampleID[meta_summ$n_orientations==2]
     return(list(
-      meta_ext$key[meta_ext$orientation=="R1" & meta_ext$dnaSampleID %in% matched_ids],
-      meta_ext$key[meta_ext$orientation=="R2" & meta_ext$dnaSampleID %in% matched_ids]
+      meta_ext$file[meta_ext$orientation=="R1" & meta_ext$dnaSampleID %in% matched_ids],
+      meta_ext$file[meta_ext$orientation=="R2" & meta_ext$dnaSampleID %in% matched_ids]
     ))
   }
 }
+#
+# # Test the above function on this:
+# fnFs <- as.character(read.csv("rawFs.csv", row.names=1)[,1])
+# fnRs <- as.character(read.csv("rawRs.csv", row.names=1)[,1])
+# c(length(fnFs), length(fnRs))
+# meta <- read.csv("NEON/sequence_metadata/mmg_soilMetadata_16S_2021-01-12135435.csv")
+# dim(meta)
+# matched_fn <- removeUnmatchedFastqFiles(fnFs, fnRs, meta)
+# c(length(matched_fn[[1]]), length(matched_fn[[2]]))
+
 
 #' Filter 16S Sequences
 #'
