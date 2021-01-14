@@ -18,13 +18,11 @@ knitr::opts_knit$set(
 )
 ```
 
-## Note for editors: Need to switch around the eval=FALSE chunks before publishing
+## Note for editors: Need to update section on beta-diversity by adding an environmental gradient to compare against parameter effects
 
 The purpose of this vignette is to demonstrate how a researcher can test the effects of various DADA2 quality filtering parameter combinations on the outputs of the DADA2 pipeline, and ultimately, on the ecological inference. Specifically, this vignette asks the following from a subset of NEON 16S marker gene sequences:
 
 * What are the effects of quality filtering parameters on the number of remaining reads?
-* What are the effects of quality filtering parameters on merging success rate?
-* What are the effects of quality filtering parameters on taxonomic assignment?
 * What are the effects of quality filtering parameters on alpha and beta diversity metrics?
 
 The parameters that we vary to observe their downstream effects include the following:
@@ -74,9 +72,11 @@ MIN_LEN <- 50
 Parameters specific to this sensitivity analysis
 
 ```{r}
-N_SAMPLES <- 40
-DIRNAME_TEST <- "qf_test_12-30-2020"
-runIDs <- c("C5B2R", "CBTWG")
+# N_SAMPLES <- 210
+N_SAMPLES <- 30
+DIRNAME_TEST <- "qf_test_1-12-2021"
+# runIDs <-  c("runB69PP", "runB69RN", "runB9994", "runBDNB6", "runBF462", "runBFDG8", "runBNMJ5", "runBNMWB", "runBRPH4", "runBTP49", "runC24VW", "runC25T6", "runC5B2R", "runC7WK3", "runC8VMV", "runC977L", "runC983L", "runCBJYB", "runCBTWG", "runCDHG2", "runCDJ5J")
+runIDs <- c("runC5B2R", "runCBTWG", "runBFDG8")
 ```
 
 Parameter value grid. The following allows testing of two quality filtering parameters at a time.
@@ -84,7 +84,7 @@ Parameter value grid. The following allows testing of two quality filtering para
 ```{r}
 PARAM1 <- "maxEE.R"
 PARAM2 <- "truncLen.R"
-grid <- expand.grid(c(4, 8, 16), c(160, 220, 250))
+grid <- expand.grid(c(4, 8, 16), c(170, 220, 250))
 params <- matrix(
   c(grid[,1],     # PARAM1
     grid[,2]),    # PARAM2
@@ -105,12 +105,12 @@ if(is.null(PRESET_OUTDIR_SEQUENCE) | PRESET_OUTDIR_SEQUENCE == "") {
 PATH_RAW <- file.path(PATH_16S, "0_raw")
 PATH_TRIMMED <- file.path(PATH_16S, "1_trimmed")
 PATH_TEST <- file.path(PATH_16S, DIRNAME_TEST)
-dir.create(file.path(PATH_TEST, "results"))
+dir.create(file.path(PATH_TEST, "results"), recursive=TRUE)
 ```
 
 ## Get fastq files for this analysis
 
-Retrieve files that match the sequence run IDs specified earlier. In this example, these are "C5B2R" and "CBTWG."
+Retrieve files that match the sequence run IDs specified earlier.
 
 ```{r}
 rawFs <- sort(list.files(PATH_RAW, pattern = paste0("(",paste0("(", runIDs, ")", collapse="|"),")", ".*_R1\\.fastq"), full.names = TRUE))
@@ -118,10 +118,22 @@ rawRs <- sort(list.files(PATH_RAW, pattern = paste0("(",paste0("(", runIDs, ")",
 ```
 
 
-Remove any files that only have forward or reverse reads
+Retrieve metadata. If you saved your metadata to file, you can load it here:
 
 ```{r}
-matched_fn <- remove_unmatched_files(rawFs, rawRs)
+meta <- read.csv("./NEON/sequence_metadata/mmg_soilMetadata_16S_2021-01-12135435.csv")
+```
+
+If you did not save your metadata to file, you can re-download it using `downloadSequenceMetadata()`:
+
+```{r eval=FALSE}
+meta <- downloadSequenceMetadata(targetGene = "16S")
+```
+
+Remove any samples that only have forward reads or only have reverse reads.
+
+```{r}
+matched_fn <- removeUnmatchedFastqFiles(rawFs, rawRs, meta)
 rawFs <- matched_fn[[1]]
 rawRs <- matched_fn[[2]]
 ```
@@ -150,10 +162,22 @@ if(length(rawFs) > N_SAMPLES) {
 
 Plot quality profiles
 
-```{r, eval=FALSE}
-gridExtra::grid.arrange(plotQualityProfile(rawFs, aggregate=TRUE),
-                        plotQualityProfile(rawRs, aggregate=TRUE))
+```{r fig.show="hold", out.width="25%"}
+profiles_list <- list()
+for(i in 1:length(runIDs)) {
+  # Retrieve only those files associated with the appropriate runID
+  profiles_list[[i]] <- gridExtra::grid.arrange(
+    plotQualityProfile(grep(runIDs[i], rawFs, value=TRUE), aggregate=TRUE),
+    plotQualityProfile(grep(runIDs[i], rawRs, value=TRUE), aggregate=TRUE),
+    ncol=2,
+    top=runIDs[i]
+  )
+}
+for(i in 1:length(profiles_list)) {
+  plot(profiles_list[[i]])
+}
 ```
+
 
 Split complete filenames into "basenames" and directory names
 
@@ -167,7 +191,7 @@ PATH_PARAMSETS <- file.path(PATH_TEST, param_sets)
 
 Trim reads based on the primer sequences supplied in `params.R`.
 
-```{r}
+```{r, eval=FALSE}
 trim_trackReads <- trimPrimers16S(fn_base, PATH_RAW, PATH_TRIMMED, "CCTACGGGNBGCASCAG", "GACTACNVGGGTATCTAATCC")
 ```
 
@@ -175,7 +199,7 @@ trim_trackReads <- trimPrimers16S(fn_base, PATH_RAW, PATH_TRIMMED, "CCTACGGGNBGC
 
 To store the results arising from each set of parameter choices, we construct a list object where each element corresponds to the output given a different parameter set. For this step, the list object is `filter_trackReads`.
 
-```{r}
+```{r, eval=FALSE}
 filter_trackReads <- list()
 for(i in 1:length(param_sets)) {
   filter_trackReads[[i]] <- qualityFilter16S(
@@ -261,8 +285,8 @@ write.csv(track, file.path(PATH_TEST, "results", "sensitivity_trackReads.csv"), 
 You can reload RDS objects into R to pick up where you left off:
 
 ```{r, eval=FALSE}
-seqtabs_joinrun <- readRDS(file.path(PATH_TEST, "results", "sensitivity_seqtabs_joinrun_list.Rds"))
-track <- read.csv(file.path(PATH_TEST, "results", "sensitivity_trackReads.csv"), row.names=1)
+seqtabs_joinrun <- readRDS(file.path(PATH_16S, "qf_test_12-30-2020", "results", "sensitivity_seqtabs_joinrun_list.Rds"))
+track <- read.csv(file.path(PATH_16S, "qf_test_12-30-2020", "results", "sensitivity_trackReads.csv"), row.names=1)
 ```
 
 
@@ -350,7 +374,7 @@ Plot!
 theme_set(theme_bw())
 ggplot(diversity_df, aes(y=obsrich, col=as.factor(maxEE.R), x=as.factor(truncLen.R))) +
   geom_boxplot() +
-  facet_grid(runID~., scales="free_y") +
+  facet_wrap(~runID, scales="free_y") +
   labs(col="maxEE.R", x="truncLen.R") +
   ylab("Observed richness")
 ggsave(file.path(PATH_TEST, "results", "diversity_plot_obsrich.png"), width=5, height=5, units="in")
@@ -360,7 +384,7 @@ ggsave(file.path(PATH_TEST, "results", "diversity_plot_obsrich.png"), width=5, h
 theme_set(theme_bw())
 ggplot(diversity_df, aes(y=shannon, col=as.factor(maxEE.R), x=as.factor(truncLen.R))) +
   geom_boxplot() +
-  facet_grid(runID~., scales="free_y") +
+  facet_wrap(~runID, scales="free_y") +
   labs(col="maxEE.R", x="truncLen.R") +
   ylab("Shannon index")
 ggsave(file.path(PATH_TEST, "results", "diversity_plot_shannon.png"), width=5, height=5, units="in")
@@ -368,9 +392,26 @@ ggsave(file.path(PATH_TEST, "results", "diversity_plot_shannon.png"), width=5, h
 
 Test statistical significance using ANOVA
 
-```{r}
-
+```{r, fig.show="hold", out.width="25%"}
+obsrich_aov <- aov(log(obsrich) ~ truncLen.R + maxEE.R + runID + truncLen.R:runID + maxEE.R:runID, data=diversity_df)
+plot(obsrich_aov)
 ```
+
+```{r}
+summary(obsrich_aov)
+```
+
+
+```{r, fig.show="hold", out.width="25%"}
+shannon_aov <- aov(shannon ~ truncLen.R + maxEE.R + runID + truncLen.R:runID + maxEE.R:runID, data=diversity_df)
+plot(shannon_aov)
+```
+
+```{r}
+summary(shannon_aov)
+```
+
+**In conclusion,** `truncLen.R` affects alpha-diversity inference, whereas `maxEE.R` does not (within the range of `maxEE.R` values that we tested). `truncLen.R` affects alpha-diversity inference to a different degree depending on the sequence run. 
 
 
 ## Sensitivity of beta diversity
@@ -384,25 +425,11 @@ seqtab_joined <- mergeSequenceTables(tables=seqtabs_joinrun)
 sampledata <- parseParamsFromRownames(seqtab_joined, PARAM1, PARAM2, keep_rownames=TRUE, keep_original_cols = FALSE)
 ```
 
-Next, assign taxonomy. Warning: this can take up to several hours.
-
-```{r}
-taxa_joined <- assignTaxonomy(seqtab_joined, UNITE_REF_PATH, multithread = MULTITHREAD, tryRC = TRUE)
-saveRDS(taxa_joined, file.path(PATH_TEST, "results", "sensitivity_taxa_joined.Rds"))
-```
-
-If you've already done the previous step, you can reload the object here.
-
-```{r, eval=FALSE}
-taxa_joined <- readRDS(file.path(PATH_TEST, "results", "sensitivity_taxa_joined.Rds"))
-```
-
-Combine all three tables (sequence table, sample data table, and taxonomy table) into a phyloseq object:
+Combine sequence table and sample data table into a phyloseq object:
 
 ```{r}
 physeq_joined <- phyloseq(otu_table(seqtab_joined,taxa_are_rows=FALSE),
-                          sample_data(sampledata),
-                          tax_table(taxa_joined))
+                          sample_data(sampledata))
 ```
 
 Remove samples with zero total counts
@@ -417,42 +444,53 @@ Optionally, discard taxa with 10 or fewer reads:
 physeq_joined_nonzero <- prune_taxa(taxa_sums(physeq_joined) > 10, physeq_joined)
 ```
 
-Ordinate. Choose one of the sequencing runs to ordinate upon. (Samples from different sequencing runs may be highly dissimilar, producing difficult-to-interpret ordination plots.)
+Ordinate, one sequencing run at a time. (Samples from different sequencing runs may be highly dissimilar, producing difficult-to-interpret ordination plots.)
 
 ```{r}
-physeq_joined_nonzero_runC5B2R <- subset_samples(physeq_joined_nonzero, runID=="runC5B2R")
-set.seed(1010101)
-ordination_runC52BR <- ordinate(physeq_joined_nonzero_runC5B2R, "NMDS", "bray", k=2)
-saveRDS(ordination_runC52BR, file.path(PATH_TEST, "results", "sensitivity_ordination_runC5B2R.Rds"))
+ord_list <- list()
 
-# physeq_joined_nonzero_runCBTWG <- subset_samples(physeq_joined_nonzero, runID=="runCBTWG")
-# set.seed(1010101)
-# ordination_runCBTWG <- ordinate(physeq_joined_nonzero_runCBTWG, "NMDS", "bray", k=2)
-# saveRDS(ordination_runCBTWG, file.path(PATH_TEST, "results", "sensitivity_ordination_runCBTWG.Rds"))
+for (i in 1:length(runIDs)) {
+  physeq_joined_nonzero_star <- subset_samples(physeq_joined_nonzero, runID==runIDs[i])
+  set.seed(1010101)
+  ord_list[[i]] <- ordinate(physeq_joined_nonzero_star, "NMDS", "bray", k=2)
+  saveRDS(ord_list[[i]], file.path(PATH_TEST, "results", paste0("sensitivity_ordination_", runIDs[i], ".Rds")))
+}
 ```
 
-Plot the ordination!
+Plot the ordinations!
 
 ```{r, fig.width=5, fig.height=3.5}
-# theme_set(theme_bw())
-# sample_data(physeq_joined_nonzero)[,"maxEE.R.factor"] <- as.factor(get_variable(physeq_joined_nonzero, "maxEE.R"))
-# plot_ordination(physeq_joined_nonzero, ordination, type="samples",
-#                 col="runID", shape="maxEE.R.factor") +
-#   stat_ellipse(aes(x=NMDS1, y=NMDS2, col=runID), data=)
-#   # coord_cartesian(xlim=c(-0.096, -0.09), ylim=c(-0.002, 0.001)) +
-#   NULL
-# ggsave(file.path(PATH_TEST, "results", "sensitivity_ordination.png"), width=5, height=3.5, units="in")
-
 # Single-run version
 theme_set(theme_bw())
+ordplot_list <- list()
+for(i in 1:length(ord_list)) {
+  sample_data(subset_samples(physeq_joined_nonzero, runID==runIDs[i]))
+}
 sample_data(physeq_joined_nonzero_runC5B2R)[,"maxEE.R.factor"] <- as.factor(get_variable(physeq_joined_nonzero_runC5B2R, "maxEE.R"))
 sample_data(physeq_joined_nonzero_runC5B2R)[,"truncLen.R.factor"] <- as.factor(get_variable(physeq_joined_nonzero_runC5B2R, "truncLen.R"))
 plot_ordination(physeq_joined_nonzero_runC5B2R, ordination, type="samples",
                 col="truncLen.R.factor", shape="maxEE.R.factor") +
-  stat_ellipse(aes(group=sampleID), lwd=0.1, col="grey20")
+  stat_ellipse(aes(group=sampleID), lwd=0.1, col="grey20") +
+  scale_shape_manual(values=c(21, 22, 24)) +
   # coord_cartesian(xlim=c(-0.096, -0.09), ylim=c(-0.002, 0.001)) +
   NULL
-ggsave(file.path(PATH_TEST, "results", "sensitivity_ordination_runC52BR.png"), width=5, height=3.5, units="in")
+ggsave(file.path(PATH_TEST, "results", "sensitivity_ordination_runC5B2R.png"), width=5, height=3.5, units="in")
+```
+
+What if we removed samples with `truncLen.R` = 160?
+
+```{r, fig.width=5, fig.height=3.5}
+physeq_joined_nonzero_runC5B2R_hitrunc <- subset_samples(physeq_joined_nonzero_runC5B2R, truncLen.R!=160)
+set.seed(1010101)
+ordination_runC52BR_hitrunc <- ordinate(physeq_joined_nonzero_runC5B2R_hitrunc, "NMDS", "bray", k=2)
+
+plot_ordination(physeq_joined_nonzero_runC5B2R_hitrunc, ordination_runC52BR_hitrunc, type="samples",
+                col="truncLen.R.factor", shape="maxEE.R.factor") +
+  stat_ellipse(aes(group=sampleID), lwd=0.1, col="grey20") +
+  scale_shape_manual(values=c(21, 22, 24)) +
+  # coord_cartesian(xlim=c(-0.096, -0.09), ylim=c(-0.002, 0.001)) +
+  NULL
+ggsave(file.path(PATH_TEST, "results", "sensitivity_ordination_runC5B2R_hitrunc.png"), width=5, height=3.5, units="in")
 ```
 
 ```{r}
@@ -476,21 +514,23 @@ ordination_scores <- scores(ordination)
 
 Test statistical significance using permANOVA. 
 
+First run permANOVA using all three levels of `truncLen.R`.
+
 ```{r}
-ps_joined_dist <- vegdist(otu_table(physeq_joined_nonzero))
+ps_joined_dist <- vegdist(otu_table(physeq_joined_nonzero_runC5B2R))
 ```
 
 ```{r}
 adonis(ps_joined_dist ~ maxEE.R + truncLen.R,
-       data = as(sample_data(physeq_joined_nonzero), "data.frame"),
-       strata = get_variable(physeq_joined_nonzero, "sampleID"),
+       data = as(sample_data(physeq_joined_nonzero_runC5B2R), "data.frame"),
+       strata = get_variable(physeq_joined_nonzero_runC5B2R, "sampleID"),
        permutations=999)
 ```
 
 Also, use betadisper to ensure homogeneity of within-group variances (dispersion). Heterogeneity of within-group variances may be confounded with distances between groups in the permANOVA test.
 
 ```{r}
-beta_disper <- vegan::betadisper(ps_joined_dist, get_variable(physeq_joined_nonzero, "truncLen.R"))
+beta_disper <- vegan::betadisper(ps_joined_dist, get_variable(physeq_joined_nonzero_runC5B2R, "truncLen.R"))
 anova(beta_disper)
 ```
 
@@ -499,4 +539,29 @@ mod.HSD <- TukeyHSD(beta_disper)
 plot(mod.HSD)
 ```
 
+Next re-run permANOVA using only top two levels of `truncLen.R`.
 
+```{r}
+ps_joined_dist_hitrunc <- vegdist(otu_table(physeq_joined_nonzero_runC5B2R_hitrunc))
+```
+
+```{r}
+adonis(ps_joined_dist_hitrunc ~ maxEE.R + truncLen.R,
+       data = as(sample_data(physeq_joined_nonzero_runC5B2R_hitrunc), "data.frame"),
+       strata = get_variable(physeq_joined_nonzero_runC5B2R_hitrunc, "sampleID"),
+       permutations=999)
+```
+
+Also, use betadisper to ensure homogeneity of within-group variances (dispersion). Heterogeneity of within-group variances may be confounded with distances between groups in the permANOVA test.
+
+```{r}
+beta_disper_hitrunc <- vegan::betadisper(ps_joined_dist_hitrunc, get_variable(physeq_joined_nonzero_runC5B2R_hitrunc, "truncLen.R"))
+anova(beta_disper_hitrunc)
+```
+
+```{r}
+mod.HSD_hitrunc <- TukeyHSD(beta_disper_hitrunc)
+plot(mod.HSD_hitrunc)
+```
+
+**In conclusion,** both `truncLen.R` and `maxEE.R` affect beta-diversity inference, though to different extents. `truncLen.R` affects mean community composition and within-group variance (dispersion) in a non-linear fashion, with drastically different results for the lowest level of `truncLen.R` tested (`truncLen.R == 160`); This is probably due to the large drop-off in read volume at the merging step due to insufficient read overlap. When ANOVA is constrained to only the higher two levels of `truncLen.R`, both `truncLen.R` and `maxEE.R` are found to be significant in determining mean community composition, but with very small effect sizes.

@@ -135,9 +135,9 @@ downloadRawSequenceData <- function(metadata, outdir = file.path(PRESET_OUTDIR, 
       })
     })
     if(dir.exists(outdir)) {
-      message("Finished downloading ", paste(outdir, fileNms[i], sep="/"))
+      if(verbose) message("Finished downloading ", paste(outdir, fileNms[i], sep="/"))
     } else {
-      message("Finished downloading ", paste(getwd(), fileNms[i], sep="/" ))
+      if(verbose) message("Finished downloading ", paste(getwd(), fileNms[i], sep="/" ))
     }
   }
 
@@ -153,9 +153,10 @@ downloadRawSequenceData <- function(metadata, outdir = file.path(PRESET_OUTDIR, 
 #' @param fn Character vector of full names (including path) of raw sequence files. Can include tarballs.
 #' @param metadata The output of downloadSequenceMetadata(). Must be provided as either the data.frame returned by downloadSequenceMetadata() or as a filepath to the csv file produced by downloadSequenceMetadata() when outdir is provided.
 #' @param outdir_sequence Default file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE). Directory where raw sequence files can be found before reorganizing.
+#' @param verbose If TRUE, prints message each time a file is reorganized.
 #'
 #' @return Character vector of the files (including files within tarballs) that were successfully reorganized. If no files were successfully reorganized, returns no value.
-organizeRawSequenceData <- function(fn, metadata, outdir_sequence = file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE)) {
+organizeRawSequenceData <- function(fn, metadata, outdir_sequence = file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE, verbose = TRUE)) {
   library(R.utils)
 
   metadata_load_err <- FALSE
@@ -240,7 +241,7 @@ organizeRawSequenceData <- function(fn, metadata, outdir_sequence = file.path(PR
       } else {
         files_organized <- c(files_organized, rename_to)
       }
-      message("Reorganized ", basename(fn[i]))
+      if(verbose) message("Reorganized ", basename(fn[i]))
     }
   }
 
@@ -801,16 +802,24 @@ matchFastqFiles <- function(fn, meta, verbose=FALSE) {
 
 removeUnmatchedFastqFiles <- function(fnFs, fnRs, meta) {
   # Remove runID if appended to beginning of filename
-  key_Fs <- sub("^run[A-Za-z0-9]*_", "", basename(fnFs))
-  key_Rs <- sub("^run[A-Za-z0-9]*_", "", basename(fnRs))
+  keyFs <- sub("^run[A-Za-z0-9]*_", "", basename(fnFs))
+  keyRs <- sub("^run[A-Za-z0-9]*_", "", basename(fnRs))
+
+  # Append ".gz" to end of filename if missing
+  keyFs[!grepl(".gz$", keyFs)] <- paste0(keyFs[!grepl(".gz$", keyFs)], ".gz")
+  keyRs[!grepl(".gz$", keyRs)] <- paste0(keyRs[!grepl(".gz$", keyRs)], ".gz")
 
   # Match with metadata rawDataFileName
-  # nomatch <- which(is.na(match(key_Rs, as.character(meta$rawDataFileName))))
-  # key_Rs[nomatch]
   meta_ext <- rbind(
-    cbind(key = key_Fs, orientation = "R1", meta[match(key_Fs, as.character(meta$rawDataFileName)),], stringsAsFactors=FALSE),
-    cbind(key = key_Rs, orientation = "R2", meta[match(key_Rs, as.character(meta$rawDataFileName)),], stringsAsFactors=FALSE)
+    cbind(file = fnFs, key = keyFs, orientation = "R1", meta[match(keyFs, as.character(meta$rawDataFileName)),], stringsAsFactors=FALSE),
+    cbind(file = fnRs, key = keyRs, orientation = "R2", meta[match(keyRs, as.character(meta$rawDataFileName)),], stringsAsFactors=FALSE)
   )
+
+  ##
+  meta %>%
+    group_by(sequencerRunID) %>%
+    dplyr::summarise(n_files = n_distinct(rawDataFileName))
+
   meta_ext %>%
     dplyr::filter(!is.na(uid.rawFiles)) %>%
     # dplyr::mutate(key = as.character(key)) %>%
@@ -821,11 +830,21 @@ removeUnmatchedFastqFiles <- function(fnFs, fnRs, meta) {
   } else {
     matched_ids <- meta_summ$dnaSampleID[meta_summ$n_orientations==2]
     return(list(
-      meta_ext$key[meta_ext$orientation=="R1" & meta_ext$dnaSampleID %in% matched_ids],
-      meta_ext$key[meta_ext$orientation=="R2" & meta_ext$dnaSampleID %in% matched_ids]
+      meta_ext$file[meta_ext$orientation=="R1" & meta_ext$dnaSampleID %in% matched_ids],
+      meta_ext$file[meta_ext$orientation=="R2" & meta_ext$dnaSampleID %in% matched_ids]
     ))
   }
 }
+#
+# # Test the above function on this:
+# fnFs <- as.character(read.csv("rawFs.csv", row.names=1)[,1])
+# fnRs <- as.character(read.csv("rawRs.csv", row.names=1)[,1])
+# c(length(fnFs), length(fnRs))
+# meta <- read.csv("NEON/sequence_metadata/mmg_soilMetadata_16S_2021-01-12135435.csv")
+# dim(meta)
+# matched_fn <- removeUnmatchedFastqFiles(fnFs, fnRs, meta)
+# c(length(matched_fn[[1]]), length(matched_fn[[2]]))
+
 
 #' Filter 16S Sequences
 #'
@@ -1003,6 +1022,7 @@ getTruncationLength <-function (fl, qscore = 30, n = 5e+05, verbose = TRUE){
 #' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading.
 #' @param VERBOSE Default FALSE. Whether to print messages regarding the dimensions of the resulting sequence table and the distribution of sequence lengths.
 #' @param seed (Optional) Integer to use as random seed for reproducibility.
+#' @param nbases (Optional) Number of bases to use for learning errors. Default 1e7.
 #'
 #' @return A list of three elements. \strong{seqtab} is the sequence table before removing chimeras, \strong{seqtab.nochim} is the sequence table after removing chimeras, and \strong{track} is a data frame displaying the number of reads remaining for each sample at various points throughout the processing pipeline.
 #'
@@ -1010,7 +1030,7 @@ getTruncationLength <-function (fl, qscore = 30, n = 5e+05, verbose = TRUE){
 #' \dontrun{
 #' seqtab.list <- runDada16S(c("sample1_R1.fastq", "sample1_R2.fastq", "sample2_R1.fastq", "sample2_R2.fastq"), seed=1010100)
 #' }
-runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, seed = NULL, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq"){
+runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, seed = NULL, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq", nbases=1e7){
   if (!is.null(seed)) set.seed(seed)
 
   fn_fullname <- file.path(dir_in, fn)
@@ -1034,8 +1054,8 @@ runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
   names(filtFs) <- sample.names
   names(filtRs) <- sample.names
   # Learn forward and reverse error rates
-  errF <- learnErrors(filtFs, nbases=1e7, randomize=TRUE, multithread=multithread, verbose=verbose)
-  errR <- learnErrors(filtRs, nbases=1e7, randomize=TRUE, multithread=multithread, verbose=verbose)
+  errF <- learnErrors(filtFs, nbases=nbases, randomize=TRUE, multithread=multithread, verbose=verbose)
+  errR <- learnErrors(filtRs, nbases=nbases, randomize=TRUE, multithread=multithread, verbose=verbose)
 
   # Create output vectors
   derepF <- derepR <- ddF <- ddR <- mergers <- vector("list", length(sample.names))
@@ -1102,6 +1122,7 @@ runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
 #' @param verbose Default FALSE. Whether to print messages regarding the dereplication step, the denoising step, and the dimensions of the resulting sequence table and the distribution of sequence lengths.
 #' @param seed (Optional) Integer to use as random seed for reproducibility.
 #' @param post_samplename_pattern1,post_samplename_pattern2 (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).*\\.fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
+#' @param nbases (Optional) Number of bases to use for learning errors. Default 1e7.
 #'
 #' @return A list of three elements. \strong{seqtab} is the sequence table before removing chimeras, \strong{seqtab.nochim} is the sequence table after removing chimeras, and \strong{track} is a data frame displaying the number of reads remaining for each sample at various points throughout the processing pipeline.
 #'
@@ -1109,7 +1130,7 @@ runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
 #' \dontrun{
 #' seqtab.list <- runDadaITS(c("sample1_R1.fastq", "sample1_R2.fastq", "sample2_R1.fastq", "sample2_R2.fastq"), './seq/filtered/', seed=1010100)
 #' }
-runDadaITS <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, seed = NULL, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq"){
+runDadaITS <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, seed = NULL, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq", nbases = 1e7){
   if (!is.null(seed)) set.seed(seed)
 
   fn_fullname <- file.path(dir_in, fn)
@@ -1122,7 +1143,7 @@ runDadaITS <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
   names(filtFs) <- sample.names
 
   # Learn error rates
-  errF <- learnErrors(filtFs, nbases=1e7, randomize=TRUE, multithread=multithread, verbose=verbose)
+  errF <- learnErrors(filtFs, nbases=nbases, randomize=TRUE, multithread=multithread, verbose=verbose)
 
   # Create output vectors
   derepF <- ddF <- vector("list", length(sample.names))
