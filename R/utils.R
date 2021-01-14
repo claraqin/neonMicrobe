@@ -439,7 +439,7 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
   }
 
   # validate output directory
-  if(outDir==PRESET_OUTDIR_SEQMETA) {
+  if(exists("PRESET_OUTDIR_SEQMETA")) {
     outDir <- paste(PRESET_OUTDIR, PRESET_OUTDIR_SEQMETA, sep="/")
   }
   if(!dir.exists(outDir) ) {
@@ -539,7 +539,7 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
   j <- sapply(raw, is.factor)
   raw[j] <- lapply(raw[j], as.character)
   j <- sapply(dna, is.factor)
-  raw[j] <- lapply(dna[j], as.character)
+  dna[j] <- lapply(dna[j], as.character)
 
 
   # If specified, filter by sequencing run ID
@@ -559,7 +559,7 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
     } else {
       rawCleaned <- raw
     }
-    joinedTarget <- left_join(rawCleaned, seq, by=c('dnaSampleID', 'sequencerRunID', 'internalLabID'))
+    joinedTarget <- left_join(rawCleaned, seq, by=c('dnaSampleID', 'sequencerRunID'))
     out <- joinedTarget[!is.na(joinedTarget$uid.y), ]
   }
   if(targetGene=="ITS") {
@@ -568,11 +568,11 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
     } else {
       rawCleaned <- raw
     }
-    joinedTarget <- left_join(rawCleaned, seq, by=c('dnaSampleID', 'sequencerRunID', 'internalLabID'))
+    joinedTarget <- left_join(rawCleaned, seq, by=c('dnaSampleID', 'sequencerRunID'))
     out <- joinedTarget[!is.na(joinedTarget$uid.y), ]
   }
   if(targetGene=="all") {
-    joinedTarget <- left_join(raw, seq, by=c('dnaSampleID', 'sequencerRunID', 'internalLabID'))
+    joinedTarget <- left_join(raw, seq, by=c('dnaSampleID', 'sequencerRunID'))
     out <- joinedTarget[!is.na(joinedTarget$uid.y), ]
     message(paste0(length(grep("16S", out$rawDataFileName)), " 16S records and ", length(grep("ITS", out$rawDataFileName)), " ITS records found."))
   }
@@ -582,7 +582,7 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
   names(out) <- gsub("\\.y", ".seq", names(out))
 
   # join with DNA extraction metadata
-  outDNA <- left_join(out, dna, by=c('plotID', 'dnaSampleID', 'internalLabID'))
+  outDNA <- left_join(out, dna, by=c('plotID', 'dnaSampleID'))
   # clean up redundant column names
   names(outDNA) <- gsub("\\.x", ".seq", names(outDNA))
   names(outDNA) <- gsub("\\.y", ".dna", names(outDNA))
@@ -595,7 +595,7 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
   names(outDNA)[names(outDNA)=="dnaProcessedBy"] <- 'processedBy.dna'
 
   # join with PCR amplification metadata
-  outPCR <- left_join(outDNA, pcr, by=c('plotID', 'dnaSampleID', 'internalLabID', 'targetGene'))
+  outPCR <- left_join(outDNA, pcr, by=c('plotID', 'dnaSampleID', 'targetGene'))
   names(outPCR)[names(outPCR)=="uid"] <- "uid.pcr"
   names(outPCR)[names(outPCR)=="processedDate"] <- "processedDate.pcr"
   names(outPCR)[names(outPCR)=="testProtocolVersion"] <- "testProtocolVersion.pcr"
@@ -604,6 +604,7 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
   names(outPCR)[names(outPCR)=="remarks"] <- "remarks.pcr"
   names(outPCR)[names(outPCR)=="dataQF"] <- "dataQF.pcr"
   names(outPCR)[names(outPCR)=="publicationDate"] <- "publicationDate.pcr"
+  names(outPCR)[names(outPCR)=="internalLabID.y"] <- "internalLabID.pcr"
 
   # download local copy to output dir path
   if(targetGene != "all") {
