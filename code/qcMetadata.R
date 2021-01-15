@@ -8,7 +8,7 @@
 #' @param keepR2 "Y" (default) or "N". Should the reverse reads for a sample be retained? If "Y", then only samples that have both the forward (R1) and reverse (R2) reads will be retained.
 #' @param rmDupes TRUE (default) or FALSE. Should duplicate samples be removed? If TRUE, then only the first records encountered for a particular sample identifier will be retained.
 #'
-#' @return Character vector of the files (including files within tarballs) that were successfully reorganized. If no files were successfully reorganized, returns no value.
+#' @return QC'd dataframe is returned as an object and saved as csv file.
 qcMetadata <- function(metadata, outDir=getwd(), keepR2="Y", rmDupes=TRUE) {
   library(plyr)
   options(stringsAsFactors = FALSE)
@@ -128,7 +128,8 @@ qcMetadata <- function(metadata, outDir=getwd(), keepR2="Y", rmDupes=TRUE) {
   out <- plyr::join(metaNotFlagged, metaFlagged)
   
   write.csv(out, paste0(qcDir, "mcc_metadata_", targetGene, "_QCed_", Sys.Date(), '.csv'), row.names = FALSE)
-  return(print(paste("Output QCed file contains", nrow(out), "rows. File saved to the following directory:", qcDir)))
+  cat(paste("Output QCed file contains", nrow(out), "rows. File saved to the following directory:", qcDir))
+  return(out)
 }
   
   
