@@ -12,21 +12,44 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
-knitr::opts_knit$set(
-  root.dir = "/projectnb/dietzelab/zrwerbin/NEON_soil_microbe_processing"
-)
+if(dir.exists("~/zhulab/")) {
+  knitr::opts_knit$set(
+  root.dir = "~/zhulab/neonSoilMicrobeProcessing/" # Update as necessary. Should refer to the absolute filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
+  )
+}
+if(dir.exists("/Users/lstanish/Github/")) {
+  knitr::opts_knit$set(
+  root.dir = "/Users/lstanish/Github/NEON_soil_microbe_processing/" # LFS directory file path. 
+  )
+}
+if(dir.exists("/projectnb/dietzelab/zrwerbin/")) {
+  knitr::opts_knit$set(
+  root.dir = "/projectnb/dietzelab/zrwerbin/NEON_soil_microbe_processing/" # ZW directory file path.
+  )
+}
 ```
 
 The goal of this vignette is to merge various NEON data products to link the outputs of the DADA2 pipeline (e.g. non-chimeric sequence table, taxonomic table) to environmental/sample data. We assume that you have already run the entire pipeline and have a sequence table and taxonomic table prepared.
 
 First, load necessary packages, and parameters file.
 ```{r}
-library(phyloseq)
-library(dplyr)
+packages = c("dplyr", "tibble",
+             "phyloseq")
 
-# Load parameters and utilities and create soil database if necessary
+## Now load or install&load all
+package.check <- lapply(
+  packages,
+  FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+      install.packages(x, dependencies = TRUE)
+      library(x, character.only = TRUE)
+    }
+  }
+)
+
+# Load parameters and utilities
 source("./R/utils.R")
-source("./code/params_zoey.R")
+source("./code/params.R")
 ```
 
 Next, we load in the outputs from dada2.
@@ -34,35 +57,46 @@ Next, we load in the outputs from dada2.
 # Load combined sequence table and taxonomic table
 seqtab_orig <- readRDS("./data/NEON_16S_seqtab_nochim.rds")
 taxa_orig <- readRDS("./data/NEON_16S_tax.rds")
+
+# seqtab_orig <- readRDS("./data/NEON_16S_seqtab_nochim_SMALLSUBSET.Rds")
+# taxa_orig <- readRDS("./data/NEON_16S_tax_SMALLSUBSET.Rds")
 ```
 
 Now, we add sequence metadata. This is necessary for correcting the sample names.
 ```{r}
-#sampledata_full <- downloadSequenceMetadata(outDir="./data", startYrMo="2013-06",endYrMo="2020-11")
-sampledata_full <- read.csv("/projectnb/dietzelab/zrwerbin/NEON_soil_microbe_processing/data/mmg_soilMetadata_all_2020-11-05.csv")
-sampledata <- sampledata_full %>% filter(targetGene == "16S") %>% 
-	distinct(internalLabID, processedSeqFileName, dnaSampleID, .keep_all =T) 
-sampledata <- sampledata %>% 
-	select(sequencerRunID, dnaSampleID, internalLabID, dataQF.rawFiles, 
+# Find newest metadata file
+df <- file.info(list.files(file.path(PRESET_OUTDIR,PRESET_OUTDIR_SEQMETA), full.names = T)) %>% 
+    rownames_to_column('filename') %>%
+	filter(grepl("soilMetadata_16S", filename))
+newest_metadata <- df[which.max(df$mtime),]$filename
+sampledata_full <- read.csv(newest_metadata)
+
+# Subset to columns of interest
+sampledata <- sampledata_full %>% distinct(dnaSampleID, .keep_all = T) %>% 
+	select(sequencerRunID, dnaSampleID, dataQF.rawFiles, internalLabID.seq,
 				 siteID, collectDate, plotID, deprecatedVialID, geneticSampleID)
 # Fix date column
 sampledata$date_ymd <- as.Date(format(as.Date(sampledata$collectDate, format="%Y-%m-%dT%H:%MZ"), "%Y-%m-%d"))
 ```
 
-If you want associated data - such as temperature, moisture, pH, and other chemistry (when possible) - run this section as well. *TODO: edit according to however we decide to combine* 
+This section downloads data associated with soil samples, such as temperature, moisture, and pH.
 ```{r}
-#soils <- downloadRawSoilData(startYrMo="2013-06",endYrMo="2020-11",outdir="./data")
-soils_orig <- read.csv("./data/sls_soilData_2020-11-05.csv")
-soils <- soils_orig %>% select(domainID, siteID, plotID, plotType, nlcdClass, collectDate, sampleTiming, standingWaterDepth, sampleID, 
-													horizon, soilTemp, litterDepth, sampleTopDepth, sampleBottomDepth, geneticSampleID, soilInCaClpH)
+soils_full <- downloadRawSoilData(startYrMo = "2018-02", endYrMo = "2018-03",
+														 outDir=file.path(PRESET_OUTDIR,PRESET_OUTDIR_SOIL), 
+														 sites = c("CLBJ"))
+soils <- soils_full %>% select(domainID, siteID, plotID, plotType, nlcdClass, collectDate, 
+															 sampleTiming, standingWaterDepth, sampleID, 
+													horizon, soilTemp, litterDepth, sampleTopDepth, sampleBottomDepth, 
+													geneticSampleID, soilInCaClpH)
 sampledata <- merge(sampledata, soils, all.x=T)
-# Add rownames to sample data table
-rownames(sampledata) <- make.unique(as.character(sampledata$dnaSampleID))
+
+# Add rownames to sample data table 
+rownames(sampledata) <- sampledata$dnaSampleID
 ```
 
-
+Large phyloseq objects can use a lot of storage. Here, we remove samples and taxa that didn't sequence well, to reduce the size of the output object.
 ```{r}
-# Remove low-abundance taxa (optional - this step is now in dada2 vignette)
+# Remove low-abundance taxa (optional)
 keep <- which(colSums(seqtab_orig) > 20)
 seqtab <- seqtab_orig[,keep]
 print(dim(seqtab))
@@ -78,20 +112,20 @@ The `phyloseq` R package uses row names to match up data. Let's get the row name
 # Fix rownames on sequence table
 seq.internalLabID <- gsub("^run....._|_16S|_.....$", "", rownames(seqtab)) 
 seq.internalLabID <- gsub("-","_",seq.internalLabID)
-seq.sampleID <- sampledata[match(seq.internalLabID, sampledata$internalLabID),]$dnaSampleID
+seq.sampleID <- sampledata[match(seq.internalLabID, sampledata$internalLabID.seq),]$dnaSampleID
 rownames(seqtab) <- make.unique(as.character(seq.sampleID))
 
 # Subset to samples present in both dataframes
-common_samples <- intersect(rownames(sampledata), rownames(seqtab))
+common_samples <- intersect(rownames(sampledata_merged), rownames(seqtab))
 sampledata <- sampledata[common_samples,]
 seqtab <- seqtab[common_samples,]
-```
 
-Now we put it all together!
-```{r}
 # Check rowname agreement for phyloseq
 #identical(rownames(seqtab), rownames(sampledata))
+```
 
+Now we put it all together into a phyloseq object!
+```{r}
 # Combine into phyloseq object
 ps <- phyloseq(otu_table(seqtab, taxa_are_rows=FALSE),
                sample_data(sampledata),
@@ -108,16 +142,18 @@ taxa_names(ps) <- paste0("ASV", seq(ntaxa(ps)))
 ps 
 ```
 
-Don't forget to save! If the saved object takes up too much memory, consider removing or consolidating taxa, using glom functions. The `speedyseq` package is also useful for manipulating large phyloseq datasets.
+Don't forget to save! 
 ```{r}
 saveRDS(ps, "./data/NEON_16S_phyloseq_full.rds")
+```
 
+
+If the saved object still takes up too much memory, consider removing or consolidating additional taxa, using glom functions. The `speedyseq` package is also useful for manipulating large phyloseq datasets.
+```{r}
 # Create a smaller subset
 # Remove taxa not seen more than 3 times in at least 10 of the samples. 
 # This protects against an OTU with small mean & trivially large C.V. 
 # (from phyloseq tutorial)
 ps_subset = filter_taxa(ps, function(x) sum(x > 3) > 10, TRUE)
 saveRDS(ps_subset, "./data/NEON_16S_phyloseq_subset.rds")
-
-
 ```
