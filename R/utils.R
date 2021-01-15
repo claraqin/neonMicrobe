@@ -156,7 +156,7 @@ downloadRawSequenceData <- function(metadata, outdir = file.path(PRESET_OUTDIR, 
 #' @param verbose If TRUE, prints message each time a file is reorganized.
 #'
 #' @return Character vector of the files (including files within tarballs) that were successfully reorganized. If no files were successfully reorganized, returns no value.
-organizeRawSequenceData <- function(fn, metadata, outdir_sequence = file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE, verbose = TRUE)) {
+organizeRawSequenceData <- function(fn, metadata, outdir_sequence = file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE), verbose = TRUE) {
   library(R.utils)
 
   metadata_load_err <- FALSE
