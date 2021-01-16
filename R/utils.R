@@ -634,7 +634,7 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
 #' by truncating the beginning of each read by the length of its primer
 #' sequence.
 #'
-#' @param fn Names of input fastq files, excluding directory path which is specified by dir_in. Files that do not exist will be ignored; however, if all files do not exist, this function will throw an error.
+#' @param fn Names of input fastq files, excluding directory path which is specified by dir_in. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning.
 #' @param dir_in Directory containing input fastq files.
 #' @param dir_out Output directory. If it does not exist, it will be created.
 #' @param primer_16S_fwd,primer_16S_rev DNA sequences of 16S forward and reverse primer, respectively
@@ -679,7 +679,7 @@ trimPrimers16S <- function(fn, dir_in, dir_out, primer_16S_fwd, primer_16S_rev, 
 #'
 #' Trims primers from ITS sequences using cutadapt. Cutadapt must be installed in order for this to work. Currently only supports R1 (forward-read) files.
 #'
-#' @param fn Names of input fastq files, excluding directory path which is specified by dir_in. Files that do not exist will be ignored; however, if all files do not exist, this function will throw an error. It is assumed that these are R1 (forward-read) files only.
+#' @param fn Names of input fastq files, excluding directory path which is specified by dir_in. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning. It is assumed that these are R1 (forward-read) files only.
 #' @param dir_in Directory containing input fastq files.
 #' @param dir_out Output directory. If it does not exist, it will be created.
 #' @param primer_ITS_fwd,primer_ITS_rev DNA sequence of the ITS forward and reverse primer, respectively.
@@ -738,7 +738,9 @@ trimPrimersITS <- function(fn, dir_in, dir_out, primer_ITS_fwd, primer_ITS_rev, 
 
 
 
-#' Remove Unmatched Fastq Files
+#' Remove Unmatched Fastq Files (DEPRECATED)
+#'
+#' NOTE: This function is now deprecated in favor of \code{\link{getPairedFastqFiles}} and \code{\link{removeUnpairedFastqFiles}}.
 #'
 #' Removes any forward-read files that do not have reverse-read counterparts, and vise versa.
 #' This function is necessary because dada2::filterAndTrim() will throw an error
@@ -756,6 +758,7 @@ trimPrimersITS <- function(fn, dir_in, dir_out, primer_ITS_fwd, primer_ITS_rev, 
 #' fnFs <- matched_fn[[1]]
 #' fnRs <- matched_fn[[2]]
 remove_unmatched_files <- function(fnFs, fnRs, post_samplename_pattern = "_R(1|2).*\\.fastq", verbose=FALSE){
+  message("remove_unmatched_files() is deprecated. Please use getPairedFastqFiles() or removeUnpairedFastqFiles() instead.")
   basefilenames_Fs <- sapply(strsplit(fnFs, post_samplename_pattern), `[`, 1)
   basefilenames_Rs <- sapply(strsplit(fnRs, post_samplename_pattern), `[`, 1)
   rm_from_fnFs <- which(!(basefilenames_Fs %in% basefilenames_Rs))
@@ -776,74 +779,157 @@ remove_unmatched_files <- function(fnFs, fnRs, post_samplename_pattern = "_R(1|2
   return(list(R1=fnFs, R2=fnRs))
 }
 
-matchFastqFiles <- function(fn, meta, verbose=FALSE) {
-  # Remove runID if appended to beginning of filename
-  key <- sub("^run[A-Za-z0-9]*_", "", basename(fn))
-  meta_ext <- cbind(key, meta[match(key, as.character(meta$rawDataFileName)),], stringsAsFactors = FALSE)
+
+#' Get Paired Fastq Files
+#'
+#' Given a vector of fastq file names and corresponding metadata, outputs
+#' a list containing matching R1 and R2 files in the same order.
+#' Useful for providing files to functions that utilize
+#' \code{\link[dada2]{filterAndTrim}}, such as \code{\link{trimPrimer16S}}
+#' and \code{\link{runDadaITS}}.
+#'
+#' See related function: \code{\link{removeUnpairedFastqFiles}}.
+#'
+#' @param fn Full name(s) of fastq file(s). Tolerant to filenames with appended run ID prefix (e.g. "runB69RN_...") and agnostic to .gz compression.
+#' @param meta Metadata downloaded using \code{\link{downloadSequenceMetadata}} that corresponds to the fastq files.
+#' @param value (Optional) Default TRUE; returns file names. If FALSE, returns indices.
+#' @param verbose (Optional) Default TRUE. Whether to print warning messages when metadata does not contain records corresponding to all provided fastq files.
+#'
+#' @return List of length 2; first element contains matched R1 (forward) file names, and second element contains corresponding R2 (reverse) file names.
+#'
+#' @examples
+#' \dontrun{
+#' #' matched_fn <- getPairedFastqFiles(c("sample1_R1.fastq", "sample3_R1.fastq", "sample1_R2.fastq", "sample2_R2.fastq", "sample3_R2.fastq"), meta)
+#' fnFs <- matched_fn[[1]] # "sample1_R1.fastq" "sample3_R1.fastq"
+#' fnRs <- matched_fn[[2]] # "sample1_R2.fastq" "sample3_R2.fastq"
+#' }
+getPairedFastqFiles <- function(fn, meta, value=TRUE, verbose=TRUE) {
+  meta_ext <- matchFastqToMetadata(fn, meta, verbose=verbose)
   meta_ext$orientation <- if_else(grepl("R1", meta_ext$rawDataFileDescription), "R1",
                                   if_else(grepl("R2", meta_ext$rawDataFileDescription), "R2",
                                           NA_character_))
+
   meta_ext %>%
     dplyr::filter(!is.na(uid.rawFiles)) %>%
-    # dplyr::mutate(key = as.character(key)) %>%
-    dplyr::group_by(dnaSampleID) %>%
-    dplyr::summarise(n_orientations = n_distinct(orientation, na.rm=TRUE)) ->
+    dplyr::group_by(sequencerRunID, dnaSampleID) %>%
+    dplyr::summarise(n_orientations = n_distinct(orientation, na.rm=TRUE), .groups="drop") ->
     meta_summ
   if(!any(meta_summ$n_orientations == 2)) {
     message("There were no matches. Check your inputs and try again.")
+    return(NULL)
   } else {
     matched_ids <- meta_summ$dnaSampleID[meta_summ$n_orientations==2]
-    return(list(
-      meta_ext$key[meta_ext$orientation=="R1" & meta_ext$dnaSampleID %in% matched_ids],
-      meta_ext$key[meta_ext$orientation=="R2" & meta_ext$dnaSampleID %in% matched_ids]
-    ))
   }
-}
 
-removeUnmatchedFastqFiles <- function(fnFs, fnRs, meta) {
-  # Remove runID if appended to beginning of filename
-  keyFs <- sub("^run[A-Za-z0-9]*_", "", basename(fnFs))
-  keyRs <- sub("^run[A-Za-z0-9]*_", "", basename(fnRs))
-
-  # Append ".gz" to end of filename if missing
-  keyFs[!grepl(".gz$", keyFs)] <- paste0(keyFs[!grepl(".gz$", keyFs)], ".gz")
-  keyRs[!grepl(".gz$", keyRs)] <- paste0(keyRs[!grepl(".gz$", keyRs)], ".gz")
-
-  # Match with metadata rawDataFileName
-  meta_ext <- rbind(
-    cbind(file = fnFs, key = keyFs, orientation = "R1", meta[match(keyFs, as.character(meta$rawDataFileName)),], stringsAsFactors=FALSE),
-    cbind(file = fnRs, key = keyRs, orientation = "R2", meta[match(keyRs, as.character(meta$rawDataFileName)),], stringsAsFactors=FALSE)
-  )
-
-  ##
-  meta %>%
-    group_by(sequencerRunID) %>%
-    dplyr::summarise(n_files = n_distinct(rawDataFileName))
-
-  meta_ext %>%
-    dplyr::filter(!is.na(uid.rawFiles)) %>%
-    # dplyr::mutate(key = as.character(key)) %>%
-    dplyr::group_by(dnaSampleID) %>%
-    dplyr::summarise(n_orientations = n_distinct(orientation, na.rm=TRUE)) -> meta_summ
-  if(!any(meta_summ$n_orientations == 2)) {
-    message("There were no matches. Check your inputs and try again.")
-  } else {
-    matched_ids <- meta_summ$dnaSampleID[meta_summ$n_orientations==2]
+  if(value==TRUE) {
     return(list(
       meta_ext$file[meta_ext$orientation=="R1" & meta_ext$dnaSampleID %in% matched_ids],
       meta_ext$file[meta_ext$orientation=="R2" & meta_ext$dnaSampleID %in% matched_ids]
     ))
+  } else {
+    return(list(
+      which(meta_ext$orientation=="R1" & meta_ext$dnaSampleID %in% matched_ids),
+      which(meta_ext$orientation=="R2" & meta_ext$dnaSampleID %in% matched_ids)
+    ))
+  }
+}
+
+
+#' Remove Unpaired Fastq Files
+#'
+#' Given a vector of fastq file names and corresponding metadata, outputs
+#' a list containing matching R1 and R2 files in the same order.
+#' Useful for providing files to functions that utilize
+#' \code{\link[dada2]{filterAndTrim}}, such as \code{\link{trimPrimer16S}}
+#' and \code{\link{runDadaITS}}.
+#'
+#' See related function: \code{\link{getPairedFastqFiles}}.
+#'
+#' @param fnFs,fnRs Full name(s) of fastq file(s) corresponding to R1 (forward) reads and R2 (reverse) reads, respectively. Tolerant to filenames with appended run ID prefix (e.g. "runB69RN_...") and agnostic to .gz compression.
+#' @param meta Metadata downloaded using \code{\link{downloadSequenceMetadata}} that corresponds to the fastq files.
+#' @param value (Optional) Default TRUE; returns file names. If FALSE, returns indices.
+#' @param verbose (Optional) Default TRUE. Whether to print warning messages when metadata does not contain records corresponding to all provided fastq files.
+#'
+#' @return List of length 2; first element contains matched R1 (forward) file names, and second element contains corresponding R2 (reverse) file names.
+#'
+#' @examples
+#' \dontrun{
+#' #' matched_fn <- removeUnpairedFastqFiles(c("sample1_R1.fastq", "sample3_R1.fastq"), c("sample1_R2.fastq", "sample2_R2.fastq", "sample3_R2.fastq"), meta)
+#' fnFs <- matched_fn[[1]] # "sample1_R1.fastq" "sample3_R1.fastq"
+#' fnRs <- matched_fn[[2]] # "sample1_R2.fastq" "sample3_R2.fastq"
+#' }
+removeUnpairedFastqFiles <- function(fnFs, fnRs, meta, value=TRUE, verbose=TRUE) {
+  meta_ext <- matchFastqToMetadata(c(fnFs, fnRs), meta, verbose=verbose)
+  meta_ext$orientation <- c(rep("R1", length(fnFs)), rep("R2", length(fnRs)))
+
+  meta_ext %>%
+    dplyr::filter(!is.na(uid.rawFiles)) %>%
+    dplyr::group_by(sequencerRunID, dnaSampleID) %>%
+    dplyr::summarise(n_orientations = n_distinct(orientation, na.rm=TRUE), .groups="drop") -> meta_summ
+  if(!any(meta_summ$n_orientations == 2)) {
+    message("There were no matches. Check your inputs and try again.")
+    return(NULL)
+  } else {
+    matched_ids <- meta_summ$dnaSampleID[meta_summ$n_orientations==2]
+  }
+
+  if(value==TRUE) {
+    return(list(
+      meta_ext$file[meta_ext$orientation=="R1" & meta_ext$dnaSampleID %in% matched_ids],
+      meta_ext$file[meta_ext$orientation=="R2" & meta_ext$dnaSampleID %in% matched_ids]
+    ))
+  } else {
+    return(list(
+      which(meta_ext$orientation=="R1" & meta_ext$dnaSampleID %in% matched_ids),
+      which(meta_ext$orientation=="R2" & meta_ext$dnaSampleID %in% matched_ids)
+    ))
   }
 }
 #
-# # Test the above function on this:
+# Test the above function on this:
 # fnFs <- as.character(read.csv("rawFs.csv", row.names=1)[,1])
 # fnRs <- as.character(read.csv("rawRs.csv", row.names=1)[,1])
 # c(length(fnFs), length(fnRs))
 # meta <- read.csv("NEON/sequence_metadata/mmg_soilMetadata_16S_2021-01-12135435.csv")
 # dim(meta)
-# matched_fn <- removeUnmatchedFastqFiles(fnFs, fnRs, meta)
+# matched_fn <- removeUnpairedFastqFiles(fnFs, fnRs, meta, value=FALSE)
 # c(length(matched_fn[[1]]), length(matched_fn[[2]]))
+
+#' Match Fastq Files to Metadata
+#'
+#' Helper function to match fastq file names to sequence metadata via
+#' the sequence metadata table's "rawDataFileName" column. Tolerant to
+#' filenames with appended run ID prefix (e.g. "runB69RN_...") and
+#' agnostic to .gz compression.
+#'
+#' Used in \code{\link{getPairedFastqFiles}} and \code{\link{removeUnpairedFastqFiles}}.
+#'
+#' @param fn Full name(s) of fastq file(s).
+#' @param meta Metadata downloaded using \code{\link{downloadSequenceMetadata}} that corresponds to the fastq files.
+#' @param verbose (Optional) Default TRUE. Whether to print warning messages when metadata does not contain records corresponding to all provided fastq files.
+#'
+#' @return Data frame, in which the first column contains the fastq file names, and the remaining columns contain corresponding metadata records.
+#'
+#' @examples
+#' \dontrun{
+#' meta_ext <- matchFastqToMetadata(c("sample1_R1.fastq", "sample1_R2.fastq"), )
+#' }
+matchFastqToMetadata <- function(fn, meta, verbose=TRUE) {
+  # Remove runID if appended to beginning of filename
+  key <- sub("^run[A-Za-z0-9]*_", "", basename(fn))
+
+  # Append ".gz" to end of filename if missing
+  key[!grepl(".gz$", key)] <- paste0(key[!grepl(".gz$", key)], ".gz")
+
+  key_match <- match(key, as.character(meta$rawDataFileName))
+  if(any(is.na(key_match))) {
+    if(verbose) {
+      message("Matching file names to metadata: ", sum(is.na(key_match)), " files did not have matching records in the provided metadata. ",
+              "Double-check to ensure that the provided metadata is of the appropriate scope.")
+    }
+  }
+  return(cbind(file = fn, meta[key_match,], stringsAsFactors=FALSE))
+}
 
 
 #' Filter 16S Sequences
@@ -851,7 +937,7 @@ removeUnmatchedFastqFiles <- function(fnFs, fnRs, meta) {
 #' Applies a quality filter to 16S sequence fastq files via the \code{\link[dada2]{filterAndTrim}} function.
 #' It is assumed that both forward- and reverse-read files are included.
 #'
-#' @param fn Names of input fastq files, excluding directory path which is specified by dir_in. Files that do not exist will be ignored; however, if all files do not exist, this function will throw an error.
+#' @param fn Names of input fastq files, excluding directory path which is specified by dir_in. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning.
 #' @param dir_in Directory containing input fastq files.
 #' @param dir_out Path to output directory where filtered fastq files will be written.
 #' @param trunc_qscore Default 23. Quality score at which point to truncate each read, if truncLen is NULL.
@@ -922,12 +1008,130 @@ qualityFilter16S <- function(fn, dir_in, dir_out, trunc_qscore = 23, multithread
 # Removed this: #' @param truncLen_manual Default NULL. Single integer: truncation length to use across all files. Two-integer vector: truncation length to use for the forward-read and reverse-read files, respectively. If NULL (default), determines truncation length(s) based on \code{\link{getTruncationLength}} with a quality score threshold of trunc_qscore.
 
 
+#' Filter 16S Sequences (with metadata)
+#'
+#' Applies a quality filter to 16S sequence fastq files via the \code{\link[dada2]{filterAndTrim}} function.
+#' It is assumed that both forward- and reverse-read files are included.
+#'
+#' @param fn Names of input fastq files, excluding directory path which is specified by dir_in. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning.
+#' @param dir_in Directory containing input fastq files.
+#' @param dir_out Path to output directory where filtered fastq files will be written.
+#' @param meta Metadata downloaded using \code{\link{downloadSequenceMetadata}} that corresponds to the fastq files.
+#' @param trunc_qscore Default 23. Quality score at which point to truncate each read, if truncLen is NULL.
+#' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
+#' @param ... Other arguments to be passed to \code{\link[dada2]{filterAndTrim}}, such as maxEE and truncLen. See documentation for more details.
+#'
+#' @return Two-column matrix displaying the number of reads in input vs. output for each file.
+qualityFilter16S2 <- function(fn, fn_out, meta, trunc_qscore = 23, multithread = MULTITHREAD, ...){
+  if(length(fn) != length(fn_out)) stop("fn and fn_out must be the same length")
+
+  keep_fn <- file.exists(fn) & !duplicated(fn)
+  fn <- fn[keep_fn]
+  if(length(fn) == 0) warning(paste0("qualityFilter16S: No files found at specified location(s). Check file paths, or input metadata."))
+
+  # Reference metadata to retrieve R1 and R2 files
+  # meta_ext <- matchFastqToMetadata(fn, meta)
+  # fnFs <- fn[grep("R1", meta_ext$rawDataFileDescription)]
+  # fnRs <- fn[grep("R2", meta_ext$rawDataFileDescription)]
+  fn_pairs <- getPairedFastqFiles(fn, meta, value=FALSE)
+  fnFs <- fn[fn_pairs[[1]]]
+  fnRs <- fn[fn_pairs[[2]]]
+
+  # Confirm target gene
+  if(any(!grepl("16S", meta_ext$targetGene))) warning("You are using qualityFilter16S() on some non-16S files. Did you mean to use qualityFilterITS()?")
+
+  # Attempt to get DNA sample IDs to use as row names
+  dnaSampleIDs <- meta_ext$dnaSampleID
+  fn_as_rownames <- any(is.na(dnaSampleIDs))
+  if(fn_as_rownames) {
+    warning(sum(is.na(dnaSampleIDs)),
+            " files do not have associated dnaSampleIDs in the input metadata. ",
+            "Therefore, input R1 file names, instead of dnaSampleIDs, will be used as the rownames for the read tracking table.")
+  }
+
+  # Confirm output filenames
+  filtFs <- fn_out[keep_fn][fn_pairs[[1]]]
+  filtRs <- fn_out[keep_fn][fn_pairs[[2]]]
+
+  # Read in dots args
+  dots <- list(...)
+
+  # If truncLen is NOT in user-provided arguments
+  if (!("truncLen" %in% names(dots))) {
+    # GETTING TRUNCATION LENGTH USING A SUBSET OF QUALITY SCORES
+    n_files <- min(length(fnFs), 30)
+
+    fwd.trunc.lengths <- list()
+    rev.trunc.lengths <- list()
+    fwd.trunc.lengths[1:n_files] <- getTruncationLength(fnFs[1:n_files], verbose = VERBOSE,
+                                                        qscore = trunc_qscore)
+    rev.trunc.lengths[1:n_files] <- getTruncationLength(fnRs[1:n_files], verbose = VERBOSE,
+                                                        qscore = trunc_qscore)
+
+    # remove any samples that have low-quality reads early on, to avoid spoiling the whole run
+    # idk how to loop this command
+    to_remove <- which(unlist(fwd.trunc.lengths) < 100 | unlist(rev.trunc.lengths) < 100)
+    if (length(to_remove) > 0){
+      fwd.trunc.lengths <- fwd.trunc.lengths[-to_remove]
+      rev.trunc.lengths <- rev.trunc.lengths[-to_remove]
+    }
+
+    # if (mean == T){
+    #   fwd.trunc.length <- round(mean(unlist(fwd.trunc.lengths))) # tested this with mean vs minimum quality-score threshold;
+    #   rev.trunc.length <- round(mean(unlist(rev.trunc.lengths))) # minimum retained more reads after filtering.
+    # } else {
+    fwd.trunc.length <- round(min(unlist(fwd.trunc.lengths))) # tested this with mean vs minimum quality-score threshold;
+    rev.trunc.length <- round(min(unlist(rev.trunc.lengths))) # minimum retained more reads after filtering.
+    # }
+
+    # Set the minimum lengths for fwd/reverse reads (if they're too short, they cannot be merged).
+    if (rev.trunc.length < 200) rev.trunc.length <- 200
+    if (fwd.trunc.length < 245) fwd.trunc.length <- 245
+    message("Using auto-selected truncLen:")
+    cat(paste0("Fwd truncation length: ", fwd.trunc.length, "\nRev truncation length: ", rev.trunc.length, "\n"))
+    dots$truncLen <- c(fwd.trunc.length, rev.trunc.length)
+
+    # Else, if truncLen is in user-provided arguments
+  } else {
+    message("Using user-provided truncLen: ", paste(dots$truncLen, collapse=" "))
+  }
+
+  # Run dada::filterAndTrim
+  arguments <- c(list(fnFs, filtFs, fnRs, filtRs, compress=TRUE, multithread=multithread), dots)
+  out <- do.call(filterAndTrim, arguments)
+
+  if(fn_as_rownames) {
+    rownames(out) <- fnFs
+  } else {
+    rownames(out) <- dnaSampleIDs
+  }
+
+  return(out)
+}
+# # Test on the following data:
+# fn <- c(list.files("./NEON/raw_sequence/16S/0_raw/", pattern="R1", full.names=TRUE)[1:10], list.files("./NEON/raw_sequence/16S/0_raw/", pattern="R2", full.names=TRUE)[1:10], "sillyfile.txt", "sillyfile_R1.fastq", "sillyfile_R2.fastq")
+# fn_out <- file.path("./NEON/raw_sequence/16S/test_1-14-2021", basename(fn))
+# c(length(fn), length(fn_out))
+# meta <- read.csv("NEON/sequence_metadata/mmg_soilMetadata_16S_2021-01-12135435.csv")
+#
+# readDots <- function(...) {
+#   dots <- list(...)
+#   dots$z <- "new_arg"
+#   print(names(dots))
+#   print(paste0(unlist(dots)))
+#   print(dots$x)
+#   print(dots$y)
+#   print(dots$z)
+# }
+
+readDots(x=c(1,2,3), y=c("a","b","c"))
+
 #' Filter ITS Sequences
 #'
 #' Applies a quality filter to ITS sequence fastq files via the \code{\link[dada2]{filterAndTrim}} function.
 #' Currently only supports filtering forward-read sequences.
 #'
-#' @param fn Names of input fastq files, excluding directory path which is specified by dir_in. Files that do not exist will be ignored; however, if all files do not exist, this function will throw an error. It is assumed that these are R1 (forward-read) files only.
+#' @param fn Names of input fastq files, excluding directory path which is specified by dir_in. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning. It is assumed that these are R1 (forward-read) files only.
 #' @param dir_in Directory containing input fastq files.
 #' @param dir_out Path to output directory where filtered fastq files will be written.
 #' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
@@ -962,6 +1166,60 @@ qualityFilterITS <- function(fn, dir_in, dir_out, multithread = MULTITHREAD, pos
 
   return(out)
 }
+
+#' Filter ITS Sequences (with metadata)
+#'
+#' Applies a quality filter to ITS sequence fastq files via the \code{\link[dada2]{filterAndTrim}} function.
+#' Currently only supports filtering forward-read sequences.
+#'
+#' @param fn Full names of input fastq files, including directory. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning. It is assumed that these are R1 (forward-read) files only.
+#' @param fn_out Full names of output locations, where filtered fastq files will be written.
+#' @param meta Metadata downloaded using \code{\link{downloadSequenceMetadata}} that corresponds to the fastq files.
+#' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
+#' @param ... Other arguments to be passed to \code{\link[dada2]{filterAndTrim}}, such as maxEE. See documentation for more details.
+#'
+#' @return Two-column matrix displaying the number of reads in input vs. output for each file.
+qualityFilterITS2 <- function(fn, fn_out, meta, multithread = MULTITHREAD, ...){
+  if(length(fn) != length(fn_out)) stop("fn and fn_out must be the same length")
+
+  keep_fn <- file.exists(fn) & !duplicated(fn)
+  fn <- fn[keep_fn]
+  if(length(fn) == 0) warning(paste0("qualityFilterITS: No files found at specified location(s). Check file paths, or input metadata."))
+
+  # Reference metadata to retrieve R1 files
+  meta_ext <- matchFastqToMetadata(fn, meta)
+  fnFs <- fn[grep("R1", meta_ext$rawDataFileDescription)]
+
+  # Confirm target gene
+  if(any(!grepl("ITS", meta_ext$targetGene))) warning("You are using qualityFilterITS() on some non-ITS files. Did you mean to use qualityFilter16S()?")
+
+  # Attempt to get DNA sample IDs to use as row names
+  dnaSampleIDs <- meta_ext$dnaSampleID
+  fn_as_rownames <- any(is.na(dnaSampleIDs))
+  if(fn_as_rownames) {
+    warning(sum(is.na(dnaSampleIDs)),
+            " files do not have associated dnaSampleIDs in the input metadata. ",
+            "Therefore, input R1 file names, instead of dnaSampleID, will be used as the rownames for the read tracking table.")
+  }
+
+  # Confirm output filenames
+  filtFs <- fn_out[keep_fn][grep("R1", meta_ext$rawDataFileDescription)]
+
+  # Run quality filter
+  out <- filterAndTrim(fnFs, filtFs,
+                       compress = TRUE,
+                       multithread = multithread,
+                       ...)
+
+  if(fn_as_rownames) {
+    rownames(out) <- fnFs
+  } else {
+    rownames(out) <- dnaSampleIDs
+  }
+  return(out)
+}
+
+
 
 #' Get Truncation Length
 #'
@@ -1017,7 +1275,7 @@ getTruncationLength <-function (fl, qscore = 30, n = 5e+05, verbose = TRUE){
 #'
 #' Runs the Dada algorithm to infer sample composition from paired-end 16S fastq files.
 #' This implementation is based on Ben Callahan's vignette at \url{https://benjjneb.github.io/dada2/bigdata_paired.html}.
-#' @param fn Names of input fastq files, excluding directory path which is specified by dir_in. Files that do not exist will be ignored; however, if all files do not exist, this function will throw an error.
+#' @param fn Names of input fastq files, excluding directory path which is specified by dir_in. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning.
 #' @param dir_in Directory containing input fastq files.
 #' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading.
 #' @param VERBOSE Default FALSE. Whether to print messages regarding the dimensions of the resulting sequence table and the distribution of sequence lengths.
@@ -1069,8 +1327,8 @@ runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
     derepF[[i]] <- derepFastq(filtFs[[i]])
     derepR[[i]] <- derepFastq(filtRs[[i]])
 
-    ddF[[i]] <- dada(derepF[[i]], err=errF, multithread=TRUE, verbose=verbose)
-    ddR[[i]] <- dada(derepR[[i]], err=errR, multithread=TRUE, verbose=verbose)
+    ddF[[i]] <- dada(derepF[[i]], err=errF, multithread=multithread, verbose=verbose)
+    ddR[[i]] <- dada(derepR[[i]], err=errR, multithread=multithread, verbose=verbose)
     mergers[[i]] <- mergePairs(ddF[[i]], derepF[[i]], ddR[[i]], derepR[[i]], maxMismatch=1, minOverlap = 6, verbose=verbose)
     cat(paste("Exact sequence variants inferred for sample:", sam,". \n"))
   }
@@ -1116,7 +1374,7 @@ runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
 #' This implementation is based on Ben Callahan's vignettes at \url{https://benjjneb.github.io/dada2/bigdata.html}
 #' and \url{https://benjjneb.github.io/dada2/ITS_workflow.html}.
 #'
-#' @param fn Names of input fastq files, excluding directory path which is specified by dir_in. Files that do not exist will be ignored; however, if all files do not exist, this function will throw an error. It is assumed that these are R1 (forward-read) files only.
+#' @param fn Names of input fastq files, excluding directory path which is specified by dir_in. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning. It is assumed that these are R1 (forward-read) files only.
 #' @param dir_in Directory containing input fastq files.
 #' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading.
 #' @param verbose Default FALSE. Whether to print messages regarding the dereplication step, the denoising step, and the dimensions of the resulting sequence table and the distribution of sequence lengths.
@@ -1200,7 +1458,9 @@ getN <- function(x) {
 }
 
 
-#' Get Sample Name from Fastq Filename
+#' Get Sample Name from Fastq Filename (DEPRECATED)
+#'
+#' Deprecated in favor of code that reads dnaSampleID from sequence metadata.
 #'
 #' Extracts the sample names from fastq filenames, given regular expressions
 #' denoting the different endings of R1 and R2 filenames.
@@ -1212,6 +1472,7 @@ getN <- function(x) {
 #'
 #' @examples
 getSampleName <- function(fn, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq") {
+  message("getSampleName() is deprecated. Please retrieve dnaSampleID from sequence metadata instead.")
   sapply(strsplit(basename(fn), paste0("(",post_samplename_pattern1,")|(",post_samplename_pattern2, ")")), `[`, 1)
 }
 
@@ -1249,3 +1510,73 @@ parseParamsFromRownames <- function(df, param1, param2, keep_rownames=FALSE, kee
     return(dplyr::select(df, any_of(c(!!param1, !!param2, "runID", "sampleID"))))
   }
 }
+
+
+#' Plot Expected Errors Profile
+#'
+#' @param fn Full names of input fastq files, including directory.
+#' @param n (Optional) Default 5e+5. The number of reads to sample when processing fastq files; passed to \code{\link[ShortRead]{qa}}.
+#' @param logEE (Optional) Default FALSE. Whether to log10-transform the Y-axis of the expected error profile.
+#' @param include_quality_profile (Optional) Default FALSE. Whether to include the quality profile. If TRUE, returns a grob that must be explicitly plotted to device.
+#'
+#' @return If include_quality_profile = FALSE (default), returns a ggplot object that will be plotted to device if not assigned to a variable. If include_quality_profile = TRUE, returns a 2x1 TableGrob that must be explicitly plotted to device.
+#'
+#' @examples
+#' \dontrun{
+#' plotEEProfile(fnFs) # plots to device
+#' p <- plotEEProfile(fnFs, logEE=TRUE) # does NOT plot to device
+#' p2 <- plotEEProfile(fnFs, logEE=TRUE, include_quality_profile = TRUE) # does NOT plot to device
+#' p2 # does NOT plot to device
+#' plot(plotEEProfile(fnFs, logEE=TRUE, include_quality_profile = TRUE)) # plots to device
+#' plot(p2) # plots to device
+#' }
+plotEEProfile <- function(fn, n=5e+5, logEE=FALSE, include_quality_profile=FALSE) {
+  srqa <- suppressWarnings(ShortRead::qa(fn, n = n))
+  df <- srqa[["perCycle"]]$quality
+  means <- rowsum(df$Score * df$Count, df$Cycle)/rowsum(df$Count,
+                                                        df$Cycle)
+  get_quant <- function(xx, yy, q) {
+    xx[which(cumsum(yy)/sum(yy) >= q)][[1]]
+  }
+  q25s <- by(df, df$Cycle, function(foo) get_quant(foo$Score,
+                                                   foo$Count, 0.25), simplify = TRUE)
+  q50s <- by(df, df$Cycle, function(foo) get_quant(foo$Score,
+                                                   foo$Count, 0.5), simplify = TRUE)
+  q75s <- by(df, df$Cycle, function(foo) get_quant(foo$Score,
+                                                   foo$Count, 0.75), simplify = TRUE)
+  cums <- by(df, df$Cycle, function(foo) sum(foo$Count),
+             simplify = TRUE)
+  if (!all(sapply(list(names(q25s), names(q50s), names(q75s),
+                       names(cums)), identical, rownames(means)))) {
+    stop("Calculated quantiles/means weren't compatible.")
+  }
+
+  qdf <- as.data.frame(cbind(q25s, q50s, q75s))
+  qdf$mean <- means
+  eedf <- as.data.frame(apply(qdf, 2, function(Q) {
+    cumsum(10^(-Q/10))
+  }))
+  eedf$cycle <- as.numeric(rownames(means))
+  eedf <- tidyr::gather(eedf, key="series", value="expected_errors", q25s:mean)
+
+  p_eedf <- ggplot(eedf, aes(x=cycle, y=expected_errors, col=series)) +
+    geom_line() +
+    labs(x="Cycle", y="Expected errors", col="")
+  if(logEE) {
+    p_eedf <- p_eedf + scale_y_continuous(trans="log10")
+  }
+
+  if(include_quality_profile) {
+    qdf$cycle <- as.numeric(rownames(means))
+    qdf <- tidyr::gather(qdf, key="series", value="quality", q25s:q75s)
+    p_qdf <- ggplot(qdf, aes(x=cycle, y=quality, col=series)) +
+      geom_line() +
+      labs(x="Cycle", y="Quality score", col="")
+    g <- gridExtra::arrangeGrob(p_qdf, p_eedf)
+    return(g)
+  } else {
+    return(p_eedf)
+  }
+}
+
+
