@@ -123,7 +123,7 @@ for (i in 1:loop_length) {
   trim_trackReads <- trimPrimers16S(fn_base, PATH_RAW, PATH_TRIMMED, "CCTACGGGNBGCASCAG", "GACTACNVGGGTATCTAATCC")
 
   # Filter reads based on the settings in params.r
-  filter_trackReads <- qualityFilter16S(fn_base, PATH_TRIMMED, PATH_FILTERED, MULTITHREAD, maxEE = c(MAX_EE_FWD, MAX_EE_REV), truncLen_manual = NULL, truncLen=220) # truncation lengths will be determined automatically using get_truncation_length()
+  filter_trackReads <- qualityFilter16S(fn_base, PATH_TRIMMED, PATH_FILTERED, MULTITHREAD, maxEE = c(MAX_EE_FWD, MAX_EE_REV), truncLen=220) # truncation lengths will be determined automatically using get_truncation_length()
 
   # Now create sequence table for run
   seqtab.list <- runDada16S(fn_base, PATH_FILTERED, MULTITHREAD, VERBOSE)
