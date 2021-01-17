@@ -886,15 +886,7 @@ removeUnpairedFastqFiles <- function(fnFs, fnRs, meta, value=TRUE, verbose=TRUE)
     ))
   }
 }
-#
-# Test the above function on this:
-# fnFs <- as.character(read.csv("rawFs.csv", row.names=1)[,1])
-# fnRs <- as.character(read.csv("rawRs.csv", row.names=1)[,1])
-# c(length(fnFs), length(fnRs))
-# meta <- read.csv("NEON/sequence_metadata/mmg_soilMetadata_16S_2021-01-12135435.csv")
-# dim(meta)
-# matched_fn <- removeUnpairedFastqFiles(fnFs, fnRs, meta, value=FALSE)
-# c(length(matched_fn[[1]]), length(matched_fn[[2]]))
+
 
 #' Match Fastq Files to Metadata
 #'
@@ -1109,23 +1101,7 @@ qualityFilter16S2 <- function(fn, fn_out, meta, trunc_qscore = 23, multithread =
 
   return(out)
 }
-# # Test on the following data:
-# fn <- c(list.files("./NEON/raw_sequence/16S/0_raw/", pattern="R1", full.names=TRUE)[1:10], list.files("./NEON/raw_sequence/16S/0_raw/", pattern="R2", full.names=TRUE)[1:10], "sillyfile.txt", "sillyfile_R1.fastq", "sillyfile_R2.fastq")
-# fn_out <- file.path("./NEON/raw_sequence/16S/test_1-14-2021", basename(fn))
-# c(length(fn), length(fn_out))
-# meta <- read.csv("NEON/sequence_metadata/mmg_soilMetadata_16S_2021-01-12135435.csv")
-#
-# readDots <- function(...) {
-#   dots <- list(...)
-#   dots$z <- "new_arg"
-#   print(names(dots))
-#   print(paste0(unlist(dots)))
-#   print(dots$x)
-#   print(dots$y)
-#   print(dots$z)
-# }
 
-readDots(x=c(1,2,3), y=c("a","b","c"))
 
 #' Filter ITS Sequences
 #'
