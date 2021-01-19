@@ -703,7 +703,7 @@ trimPrimers16S2 <- function(fn, fn_out, meta, primer_16S_fwd, primer_16S_rev, mu
   if(length(fn) == 0) warning(paste0("trimPrimers16S: No files found at specified location(s). Check file paths, or input metadata."))
 
   # Get metadata matching files
-  meta_ext <- matchFastqFiles(fn, meta)
+  meta_ext <- matchFastqToMetadata(fn, meta)
 
   # Reference metadata to retrieve R1 and R2 files
   fn_pairs <- getPairedFastqFiles(fn, meta, value=FALSE)
