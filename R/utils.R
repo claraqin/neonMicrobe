@@ -676,6 +676,67 @@ trimPrimers16S <- function(fn, dir_in, dir_out, primer_16S_fwd, primer_16S_rev, 
 }
 
 
+#' Trim Primers from 16S Sequences (with metadata)
+#'
+#' Trims primers from 16S sequences using \code{\link[dada2]{filterAndTrim}}. This function
+#' assumes that each read begins with its full primer sequence and operates
+#' by truncating the beginning of each read by the length of its primer
+#' sequence.
+#'
+#' @param fn Full names of input fastq files, including directory. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning.
+#' @param fn_out Full names of output locations, where filtered fastq files will be written.
+#' @param meta Metadata downloaded using \code{\link{downloadSequenceMetadata}} that corresponds to the fastq files.
+#' @param primer_16S_fwd,primer_16S_rev DNA sequences of 16S forward and reverse primer, respectively
+#' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
+#'
+#' @return Integer matrix denoting the number of reads remaining after primer-trimming for each input file.
+#'
+#' @examples
+#' \dontrun{
+#' trimPrimers16S(c("sample1_R1.fastq", "sample1_R2.fastq", "sample2_R1.fastq", "sample2_R2.fastq"), "path/to/input", "path/to/output", "CCTACGGGNBGCASCAG", "GACTACNVGGGTATCTAATCC", multithread = TRUE)
+#' }
+trimPrimers16S2 <- function(fn, fn_out, meta, primer_16S_fwd, primer_16S_rev, multithread = MULTITHREAD) {
+  if(length(fn) != length(fn_out)) stop("fn and fn_out must be the same length")
+
+  keep_fn <- file.exists(fn) & !duplicated(fn)
+  fn <- fn[keep_fn]
+  if(length(fn) == 0) warning(paste0("trimPrimers16S: No files found at specified location(s). Check file paths, or input metadata."))
+
+  # Get metadata matching files
+  meta_ext <- matchFastqFiles(fn, meta)
+
+  # Reference metadata to retrieve R1 and R2 files
+  fn_pairs <- getPairedFastqFiles(fn, meta, value=FALSE)
+  fnFs <- fn[fn_pairs[[1]]]
+  fnRs <- fn[fn_pairs[[2]]]
+
+  # Confirm target gene
+  if(any(!grepl("16S", meta_ext$targetGene))) warning("You are using qualityFilter16S() on some non-16S files. Did you mean to use qualityFilterITS()?")
+
+  # Attempt to get DNA sample IDs to use as row names
+  dnaSampleIDs <- meta_ext$dnaSampleID
+  fn_as_rownames <- any(is.na(dnaSampleIDs))
+  if(fn_as_rownames) {
+    warning(sum(is.na(dnaSampleIDs)),
+            " files do not have associated dnaSampleIDs in the input metadata. ",
+            "Therefore, input R1 file names, instead of dnaSampleIDs, will be used as the rownames for the read tracking table.")
+  }
+
+  # Confirm output filenames
+  trimFs <- fn_out[keep_fn][fn_pairs[[1]]]
+  trimRs <- fn_out[keep_fn][fn_pairs[[2]]]
+
+  # Just trim the length of fwd and rev primers
+  qa.out <- filterAndTrim(fnFs, trimFs, fnRs, trimRs, multithread = multithread,
+                          matchIDs = TRUE, trimLeft = c(nchar(primer_16S_fwd), nchar(primer_16S_rev)), compress=F)
+
+  colnames(qa.out) <- c("input", "trimmed")
+  rownames(qa.out) <- sample.names
+  return(qa.out)
+}
+
+
+
 #' Trim Primers from ITS Sequences
 #'
 #' Trims primers from ITS sequences using cutadapt. Cutadapt must be installed in order for this to work. Currently only supports R1 (forward-read) files.
@@ -737,6 +798,75 @@ trimPrimersITS <- function(fn, dir_in, dir_out, primer_ITS_fwd, primer_ITS_rev, 
   }
 }
 
+
+#' Trim Primers from ITS Sequences (with metadata)
+#'
+#' Trims primers from ITS sequences using cutadapt. Cutadapt must be installed in order for this to work. Currently only supports R1 (forward-read) files.
+#'
+#' @param fn Full names of input fastq files, including directory. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning. It is assumed that these are R1 (forward-read) files only.
+#' @param fn_out Full names of output locations, where filtered fastq files will be written.
+#' @param meta Metadata downloaded using \code{\link{downloadSequenceMetadata}} that corresponds to the fastq files.
+#' @param primer_ITS_fwd,primer_ITS_rev DNA sequence of the ITS forward and reverse primer, respectively.
+#' @param cutadapt_path Default CUTADAPT_PATH in params.R. Path to cutadapt on your file system.
+#' @param very_verbose Default FALSE. Whether to print output from cutadapt. Unlike some other "verbose" arguments associated with the functions in this package, this does not default to VERBOSE in params.R.
+#' @param discard_untrimmed Default FALSE. Whether to discard reads where a primer could not be found, leaving only those reads in which a primer has been trimmed.
+#'
+#' @return No value is returned.
+#'
+#' @examples
+#' \dontrun{
+#' trimPrimersITS(c("sample1_ITS_R1.fastq", "sample2_ITS_R1.fastq"), "path/to/input", "path/to/output", "CTTGGTCATTTAGAGGAAGTAA")
+#' }
+trimPrimersITS2 <- function(fn, fn_out, meta, primer_ITS_fwd, primer_ITS_rev, cutadapt_path = CUTADAPT_PATH, very_verbose=FALSE, discard_untrimmed=FALSE) {
+  if(length(fn) != length(fn_out)) stop("fn and fn_out must be the same length")
+
+  keep_fn <- file.exists(fn) & !duplicated(fn)
+  fn <- fn[keep_fn]
+  if(length(fn) == 0) warning(paste0("trimPrimersITS: No files found at specified location(s). Check file paths, or input metadata."))
+
+  # Reference metadata to retrieve R1 files
+  meta_ext <- matchFastqToMetadata(fn, meta)
+  fnFs <- fn[grep("R1", meta_ext$rawDataFileDescription)]
+
+  # Confirm target gene
+  if(any(!grepl("ITS", meta_ext$targetGene))) warning("You are using qualityFilterITS() on some non-ITS files. Did you mean to use qualityFilter16S()?")
+
+  # Attempt to get DNA sample IDs to use as row names
+  dnaSampleIDs <- meta_ext$dnaSampleID
+  fn_as_rownames <- any(is.na(dnaSampleIDs))
+  if(fn_as_rownames) {
+    warning(sum(is.na(dnaSampleIDs)),
+            " files do not have associated dnaSampleIDs in the input metadata. ",
+            "Therefore, input R1 file names, instead of dnaSampleID, will be used as the rownames for the read tracking table.")
+  }
+
+  # Confirm output filenames
+  trimFs <- fn_out[keep_fn][grep("R1", meta_ext$rawDataFileDescription)]
+
+  # Get reverse-complement sequence of reverse primer
+  rev_rc <- dada2:::rc(primer_ITS_rev)
+
+  # Trim forward primer and the reverse-complement of reverse primer off of R1 (forward reads)
+  R1.flags <- paste("-g", primer_ITS_fwd, "-a", rev_rc)
+
+  # Discard untrimmed reads?
+  if(discard_untrimmed) {
+    discard_untrimmed_flag <- "--discard-untrimmed"
+  } else {
+    discard_untrimmed_flag <- ""
+  }
+
+  # Run Cutadapt
+  for(i in seq_along(fnFs)) {
+    system2(cutadapt_path, args = c(R1.flags, "-n", 2, # -n 2 required to remove FWD and REV from reads
+                                    "-o", trimFs[i], # output files
+                                    fnFs[i], # input files
+                                    "--minimum-length", "1", # min length of cutadapted reads: >0
+                                    discard_untrimmed_flag,
+                                    "-e", "0.2"), # -e 0.2 allows up to 4 mismatched bases
+            stdout = ifelse(very_verbose, "", FALSE))
+  }
+}
 
 
 #' Remove Unmatched Fastq Files (DEPRECATED)
@@ -901,7 +1031,7 @@ removeUnpairedFastqFiles <- function(fnFs, fnRs, meta, value=TRUE, verbose=TRUE)
 #' @param meta Metadata downloaded using \code{\link{downloadSequenceMetadata}} that corresponds to the fastq files.
 #' @param verbose (Optional) Default TRUE. Whether to print warning messages when metadata does not contain records corresponding to all provided fastq files.
 #'
-#' @return Data frame, in which the first column contains the fastq file names, and the remaining columns contain corresponding metadata records.
+#' @return Data frame, in which the first column contains the fastq file names in the order received, and the remaining columns contain corresponding metadata records.
 #'
 #' @examples
 #' \dontrun{
@@ -1006,9 +1136,8 @@ qualityFilter16S <- function(fn, dir_in, dir_out, trunc_qscore = 23, multithread
 #' Applies a quality filter to 16S sequence fastq files via the \code{\link[dada2]{filterAndTrim}} function.
 #' It is assumed that both forward- and reverse-read files are included.
 #'
-#' @param fn Names of input fastq files, excluding directory path which is specified by dir_in. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning.
-#' @param dir_in Directory containing input fastq files.
-#' @param dir_out Path to output directory where filtered fastq files will be written.
+#' @param fn Full names of input fastq files, including directory. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning. It is assumed that these are R1 (forward-read) files only.
+#' @param fn_out Full names of output locations, where filtered fastq files will be written.
 #' @param meta Metadata downloaded using \code{\link{downloadSequenceMetadata}} that corresponds to the fastq files.
 #' @param trunc_qscore Default 23. Quality score at which point to truncate each read, if truncLen is NULL.
 #' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
@@ -1022,10 +1151,10 @@ qualityFilter16S2 <- function(fn, fn_out, meta, trunc_qscore = 23, multithread =
   fn <- fn[keep_fn]
   if(length(fn) == 0) warning(paste0("qualityFilter16S: No files found at specified location(s). Check file paths, or input metadata."))
 
+  # Get metadata matching files
+  meta_ext <- matchFastqFiles(fn, meta)
+
   # Reference metadata to retrieve R1 and R2 files
-  # meta_ext <- matchFastqToMetadata(fn, meta)
-  # fnFs <- fn[grep("R1", meta_ext$rawDataFileDescription)]
-  # fnRs <- fn[grep("R2", meta_ext$rawDataFileDescription)]
   fn_pairs <- getPairedFastqFiles(fn, meta, value=FALSE)
   fnFs <- fn[fn_pairs[[1]]]
   fnRs <- fn[fn_pairs[[2]]]
@@ -1339,6 +1468,145 @@ runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
   return(list("seqtab" = seqtab,
               "seqtab.nochim" = seqtab.nochim,
               "track" = track))
+}
+
+
+#' Run Dada on Paired-End 16S Sequences (with metadata)
+#'
+#' Runs the Dada algorithm to infer sample composition from paired-end 16S fastq files.
+#' This implementation is based on Ben Callahan's vignette at \url{https://benjjneb.github.io/dada2/bigdata_paired.html}.
+#'
+#' @param fn Full names of input fastq files, including directory. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning.
+#' @param meta Metadata downloaded using \code{\link{downloadSequenceMetadata}} that corresponds to the fastq files.
+#' @param out_seqtab,out_track (Optional) File locations where sequence table and read-tracking table (respectively) will be saved as csv files. If blank (default), will not save to file.
+#' @param remove_chimeras (Optional) Default TRUE. Whether to remove chimeras from the sequence table. Currently only supports removal using \code{\link[dada2]{removeBimeraDenovo}} with the consensus method.
+#' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading.
+#' @param verbose Default FALSE. Whether to print messages regarding the samples being processed, dimensions of the resulting sequence table, and the distribution of sequence lengths.
+#' @param seed (Optional) Integer to use as random seed for reproducibility.
+#' @param nbases (Optional) Number of bases to use for learning errors. Default 1e7.
+#'
+#' @return A list of two elements. \strong{seqtab} is the sequence table, with chimeras removed if remove_chimeras == TRUE, and \strong{track} is a data frame displaying the number of reads remaining for each sample at various points throughout the processing pipeline.
+#'
+#' @examples
+#' \dontrun{
+#' seqtab.list <- runDada16S(c("sample1_R1.fastq", "sample1_R2.fastq", "sample2_R1.fastq", "sample2_R2.fastq"), seed=1010100)
+#' }
+runDada16S2 <- function(fn, meta, out_seqtab = "", out_track = "", remove_chimeras = TRUE, multithread = MULTITHREAD, verbose = FALSE, seed = NULL, nbases=1e7){
+  if (!is.null(seed)) set.seed(seed)
+
+  keep_fn <- file.exists(fn) & !duplicated(fn)
+  fn <- fn[keep_fn]
+  if(length(fn) == 0) warning(paste0("runDada16S: No files found at specified location(s). Check file paths, or input metadata."))
+
+  # Get metadata matching files
+  meta_ext <- matchFastqToMetadata(fn, meta)
+
+  # Reference metadata to retrieve R1 and R2 files
+  fn_pairs <- getPairedFastqFiles(fn, meta, value=FALSE)
+  fnFs <- fn[fn_pairs[[1]]]
+  fnRs <- fn[fn_pairs[[2]]]
+
+  # Confirm target gene
+  if(any(!grepl("16S", meta_ext$targetGene))) warning("You are using qualityFilter16S() on some non-16S files. Did you mean to use qualityFilterITS()?")
+
+  # Attempt to get DNA sample IDs to use as row names
+  dnaSampleIDs <- as.character(meta_ext$dnaSampleID[match(fnFs, meta_ext$file)])
+  fn_as_rownames <- any(is.na(dnaSampleIDs))
+  if(fn_as_rownames) {
+    warning(sum(is.na(dnaSampleIDs)),
+            " files do not have associated dnaSampleIDs in the input metadata. ",
+            "Therefore, input R1 file names, instead of dnaSampleIDs, will be used as the rownames for the read tracking table.")
+  }
+
+  names(fnFs) <- dnaSampleIDs
+  names(fnRs) <- dnaSampleIDs
+
+  # Learn forward and reverse error rates
+  errF <- learnErrors(fnFs, nbases=nbases, randomize=TRUE, multithread=multithread, verbose=verbose)
+  errR <- learnErrors(fnRs, nbases=nbases, randomize=TRUE, multithread=multithread, verbose=verbose)
+
+  # Create output vectors
+  derepF <- derepR <- ddF <- ddR <- mergers <- vector("list", length(dnaSampleIDs))
+  names(derepF) <- names(derepR) <- names(ddF) <- names(ddR) <- names(mergers) <- dnaSampleIDs
+
+  # Sample inference and merger of paired-end reads
+  message("runDada16S progress out of ", length(dnaSampleIDs), " samples:")
+  progressbar <- txtProgressBar(min = 0, max = length(dnaSampleIDs), style = 3)
+  for(i in 1:length(dnaSampleIDs)) {
+    sam <- dnaSampleIDs[[i]]
+    if(verbose) cat("Processing:", sam, "\n")
+
+    derepF[[i]] <- derepFastq(fnFs[[i]])
+    derepR[[i]] <- derepFastq(fnRs[[i]])
+
+    ddF[[i]] <- dada(derepF[[i]], err=errF, multithread=multithread, verbose=verbose)
+    ddR[[i]] <- dada(derepR[[i]], err=errR, multithread=multithread, verbose=verbose)
+    if(verbose) {
+      mergers[[i]] <- mergePairs(ddF[[i]], derepF[[i]], ddR[[i]], derepR[[i]], maxMismatch=1, minOverlap = 6, verbose=TRUE)
+    } else {
+      mergers[[i]] <- suppressMessages(mergePairs(ddF[[i]], derepF[[i]], ddR[[i]], derepR[[i]], maxMismatch=1, minOverlap = 6, verbose=FALSE))
+    }
+    if(verbose) cat(paste("Exact sequence variants inferred for sample:", sam,". \n"))
+    setTxtProgressBar(progressbar, i)
+  }
+  close(progressbar)
+
+  # Construct sequence table and remove chimeras
+  if(verbose) {
+    seqtab <- makeSequenceTable(mergers)
+  } else {
+    seqtab <- suppressMessages(makeSequenceTable(mergers))
+  }
+  if(remove_chimeras) seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=multithread, verbose=verbose)
+
+  if(verbose){
+    cat(paste0("\nDimensions of ESV table: ", dim(seqtab)[1], " samples, ", dim(seqtab)[2], " ESVs\n"))
+    cat("\nDistribution of sequence lengths (should be bimodal for v3v4 region):")
+    print(table(nchar(getSequences(seqtab))))
+    cat(paste0("\n", round(sum(seqtab.nochim)/sum(seqtab), 3)*100, "% reads remain after removal of chimeras"))
+  }
+
+  # Track reads through this part of the pipeline
+  suppressWarnings({
+    track <- Reduce(
+      function(x, y, ...) transform(merge(x, y, by=0, all = TRUE, ...), row.names=Row.names, Row.names=NULL),
+      list(sapply(derepF, getN),
+           sapply(derepR, getN),
+           sapply(ddF, getN),
+           denoisedR = sapply(ddR, getN),
+           suppressMessages(sapply(mergers, getN)),
+           rowSums(seqtab.nochim))
+    )
+  })
+  names(track) <- c("derepF", "derepR", "denoisedF", "denoisedR", "merged", "nonchim")
+  track[is.na(track)] <- 0
+
+  if(out_seqtab != "") {
+    if(!dir.exists(dirname(out_seqtab))) {
+      dir.create(dirname(out_seqtab), recursive=TRUE)
+      message("Output directory created for sequence table: ", dirname(out_seqtab))
+    }
+    if(remove_chimeras) {
+      write.csv(seqtab.nochim, out_seqtab)
+    } else {
+      write.csv(seqtab, out_seqtab)
+    }
+  }
+  if(out_track != "") {
+    if(!dir.exists(dirname(out_track))) {
+      dir.create(dirname(out_track), recursive=TRUE)
+      message("Output directory created for read tracking table: ", dirname(out_track))
+    }
+    write.csv(track, out_track)
+  }
+
+  if(remove_chimeras) {
+    return(list("seqtab" = seqtab.nochim,
+                "track" = track))
+  } else {
+    return(list("seqtab" = seqtab,
+                "track" = track))
+  }
 }
 
 
