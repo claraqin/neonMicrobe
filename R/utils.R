@@ -711,7 +711,7 @@ trimPrimers16S2 <- function(fn, fn_out, meta, primer_16S_fwd, primer_16S_rev, mu
   fnRs <- fn[fn_pairs[[2]]]
 
   # Confirm target gene
-  if(any(!grepl("16S", meta_ext$targetGene))) warning("You are using qualityFilter16S() on some non-16S files. Did you mean to use qualityFilterITS()?")
+  if(any(!grepl("16S", meta_ext$targetGene))) warning("You are using trimPrimers16S() on some non-16S files. Did you mean to use trimPrimersITS()?")
 
   # Attempt to get DNA sample IDs to use as row names
   dnaSampleIDs <- meta_ext$dnaSampleID
@@ -829,7 +829,7 @@ trimPrimersITS2 <- function(fn, fn_out, meta, primer_ITS_fwd, primer_ITS_rev, cu
   fnFs <- fn[grep("R1", meta_ext$rawDataFileDescription)]
 
   # Confirm target gene
-  if(any(!grepl("ITS", meta_ext$targetGene))) warning("You are using qualityFilterITS() on some non-ITS files. Did you mean to use qualityFilter16S()?")
+  if(any(!grepl("ITS", meta_ext$targetGene))) warning("You are using trimPrimersITS() on some non-ITS files. Did you mean to use trimPrimers16S()?")
 
   # Attempt to get DNA sample IDs to use as row names
   dnaSampleIDs <- meta_ext$dnaSampleID
@@ -1507,7 +1507,7 @@ runDada16S2 <- function(fn, meta, out_seqtab = "", out_track = "", remove_chimer
   fnRs <- fn[fn_pairs[[2]]]
 
   # Confirm target gene
-  if(any(!grepl("16S", meta_ext$targetGene))) warning("You are using qualityFilter16S() on some non-16S files. Did you mean to use qualityFilterITS()?")
+  if(any(!grepl("16S", meta_ext$targetGene))) warning("You are using runDada16S() on some non-16S files. Did you mean to use runDadaITS()?")
 
   # Attempt to get DNA sample IDs to use as row names
   dnaSampleIDs <- as.character(meta_ext$dnaSampleID[match(fnFs, meta_ext$file)])
