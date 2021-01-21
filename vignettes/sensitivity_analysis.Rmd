@@ -28,7 +28,7 @@ The purpose of this vignette is to demonstrate how a researcher can test the eff
 The parameters that we vary to observe their downstream effects include the following:
 
 * `trunLen.R`: Reverse reads that do not meet or exceed `truncLen.R` in length will be discarded. Reverse reads that exceed `truncLen.R` will be truncated to `truncLen.R`.
-* `maxEE.R`: After truncation, reads with higher than `maxEE` expected errors will be discarded. Expected errors are calculated from the nominal definition of the quality score: EE = sum(10^(-Q/10)).
+* `maxEE.R`: After truncation, reads with greater than `maxEE` expected errors will be discarded. Expected errors are calculated from the nominal definition of the quality score: EE = sum(10^(-Q/10)).
 
 Because we are interested in variation in these benchmark metrics across different parameter sets, we refer to this analysis as a **sensitivity analysis**. This vignette is intended to provide a boilerplate for users of this R package to construct their own sensitivity analyses.
 
@@ -74,9 +74,9 @@ Parameters specific to this sensitivity analysis
 ```{r}
 # N_SAMPLES <- 210
 N_SAMPLES <- 30
-DIRNAME_TEST <- "qf_test_1-12-2021"
-# runIDs <-  c("runB69PP", "runB69RN", "runB9994", "runBDNB6", "runBF462", "runBFDG8", "runBNMJ5", "runBNMWB", "runBRPH4", "runBTP49", "runC24VW", "runC25T6", "runC5B2R", "runC7WK3", "runC8VMV", "runC977L", "runC983L", "runCBJYB", "runCBTWG", "runCDHG2", "runCDJ5J")
-runIDs <- c("runC5B2R", "runCBTWG", "runBFDG8")
+DIRNAME_TEST <- "qf_test_1-13-2021"
+runIDs <-  c("runB69PP", "runB69RN", "runB9994", "runBDNB6", "runBF462", "runBFDG8", "runBNMJ5", "runBNMWB", "runBRPH4", "runC24VW", "runC25T6", "runC5B2R", "runC7WK3", "runC8VMV", "runC977L", "runC983L", "runCBJYB", "runCBTWG", "runCDHG2", "runCDJ5J")
+# runIDs <- c("runC5B2R", "runCBTWG", "runBFDG8")
 ```
 
 Parameter value grid. The following allows testing of two quality filtering parameters at a time.
@@ -148,8 +148,10 @@ if(length(rawFs) > N_SAMPLES) {
     rawFs_runID <- rawFs[grep(runIDs[i], rawFs)]
     rawRs_runID <- rawRs[grep(runIDs[i], rawRs)]
     if(length(rawFs_runID) > 5) {
-      rawFs_subset <- c(rawFs_subset, rawFs_runID[round(quantile(1:length(rawFs_runID), probs=seq(0,1,length.out=N_SAMPLES/length(runIDs))))])
-      rawRs_subset <- c(rawRs_subset, rawRs_runID[round(quantile(1:length(rawRs_runID), probs=seq(0,1,length.out=N_SAMPLES/length(runIDs))))])
+      rawFs_subset <- c(rawFs_subset, rawFs_runID[1:round(N_SAMPLES/length(runIDs))])
+      rawRs_subset <- c(rawFs_subset, rawRs_runID[1:round(N_SAMPLES/length(runIDs))])
+      # rawFs_subset <- c(rawFs_subset, rawFs_runID[round(quantile(1:length(rawFs_runID), probs=seq(0,1,length.out=N_SAMPLES/length(runIDs))))])
+      # rawRs_subset <- c(rawRs_subset, rawRs_runID[round(quantile(1:length(rawRs_runID), probs=seq(0,1,length.out=N_SAMPLES/length(runIDs))))])
     } else {
       rawFs_subset <- c(rawFs_subset, rawFs_runID)
       rawRs_subset <- c(rawRs_subset, rawRs_runID)
@@ -215,6 +217,12 @@ for(i in 1:length(param_sets)) {
 filter_trackReads_mat <- do.call(rbind, filter_trackReads)
 ```
 
+Optionally, save the read-tracking table, in case the job fails:
+
+```{r, eval=FALSE}
+write.csv(filter_trackReads_mat, file.path(PATH_TEST, "results",  "sensitivity_trackReads_filter.csv"), row.names=TRUE)
+```
+
 ## Run the rest of the processing pipeline
 
 Although the quality filtering step is the only part of the processing pipeline where we vary the parameters, we must follow through with the rest of the pipeline to observe the downstream effects on remaining reads, merging rate, taxonomic resolution, and alpha- and beta-diversity estimates.
@@ -241,6 +249,10 @@ for(i in 1:length(param_sets)) {
 
     rownames(seqtabs[[i]][[j]]) <- paste0(param_sets[i], "|", rownames(seqtabs[[i]][[j]]))
     rownames(dada_trackReads[[i]][[j]]) <- paste0(param_sets[i], "|", rownames(dada_trackReads[[i]][[j]]))
+    
+    # Can save work as you go:
+    saveRDS(seqtab.list$seqtab.nochim, file.path(PATH_PARAMSETS[i], paste0("sensitivity_seqtab_", runIDs[j], ".Rds")))
+    write.csv(seqtab.list$track, file.path(PATH_PARAMSETS[i], paste0("sensitivity_trackReads_dada_", runIDs[j], ".csv")), row.names=TRUE)
   }
 }
 
@@ -285,8 +297,8 @@ write.csv(track, file.path(PATH_TEST, "results", "sensitivity_trackReads.csv"), 
 You can reload RDS objects into R to pick up where you left off:
 
 ```{r, eval=FALSE}
-seqtabs_joinrun <- readRDS(file.path(PATH_16S, "qf_test_12-30-2020", "results", "sensitivity_seqtabs_joinrun_list.Rds"))
-track <- read.csv(file.path(PATH_16S, "qf_test_12-30-2020", "results", "sensitivity_trackReads.csv"), row.names=1)
+seqtabs_joinrun <- readRDS(file.path(PATH_16S, "qf_test_1-13-2021", "results", "sensitivity_seqtabs_joinrun_list.Rds"))
+track <- read.csv(file.path(PATH_16S, "qf_test_1-13-2021", "results", "sensitivity_trackReads.csv"), row.names=1)
 ```
 
 
@@ -319,12 +331,13 @@ Plot!
 theme_set(theme_bw())
 ggplot(track_aggRun, aes(x=step, y=reads, col=as.factor(maxEE.R))) +
   geom_line(aes(linetype=as.factor(truncLen.R), group=interaction(maxEE.R, truncLen.R))) +
-  facet_wrap(~runID, scales="free_y") +
+  # facet_wrap(~runID, scales="free_y") +
+  facet_wrap(~runID) +
   labs(linetype="truncLen.R", color="maxEE.R") +
   scale_linetype_manual(values=c("dotted", "dashed", "solid")) +
   theme(axis.text.x = element_text(angle=45, hjust=1)) +
   scale_y_continuous(trans="log10")
-ggsave(file.path(PATH_TEST, "results", "track_reads_plot.png"), width=9, height=3.5, units="in")
+ggsave(file.path(PATH_TEST, "results", "track_reads_plot.png"), width=10, height=7, units="in")
 ```
 
 
@@ -372,43 +385,56 @@ Plot!
 
 ```{r, fig.width=5, fig.height=5}
 theme_set(theme_bw())
-ggplot(diversity_df, aes(y=obsrich, col=as.factor(maxEE.R), x=as.factor(truncLen.R))) +
+ggplot(diversity_df, aes(y=obsrich, col=as.factor(truncLen.R), x=as.factor(maxEE.R))) +
   geom_boxplot() +
-  facet_wrap(~runID, scales="free_y") +
-  labs(col="maxEE.R", x="truncLen.R") +
+  # facet_wrap(~runID, scales="free_y") +
+  facet_wrap(~runID) +
+  labs(col="truncLen.R", x="maxEE.R") +
   ylab("Observed richness")
-ggsave(file.path(PATH_TEST, "results", "diversity_plot_obsrich.png"), width=5, height=5, units="in")
+ggsave(file.path(PATH_TEST, "results", "diversity_plot_obsrich.png"), width=10, height=7, units="in")
 ```
 
 ```{r, fig.width=5, fig.height=5}
 theme_set(theme_bw())
-ggplot(diversity_df, aes(y=shannon, col=as.factor(maxEE.R), x=as.factor(truncLen.R))) +
+ggplot(diversity_df, aes(y=shannon, col=as.factor(truncLen.R), x=as.factor(maxEE.R))) +
   geom_boxplot() +
-  facet_wrap(~runID, scales="free_y") +
-  labs(col="maxEE.R", x="truncLen.R") +
+  # facet_wrap(~runID, scales="free_y") +
+  facet_wrap(~runID) +
+  labs(col="truncLen.R", x="maxEE.R") +
   ylab("Shannon index")
-ggsave(file.path(PATH_TEST, "results", "diversity_plot_shannon.png"), width=5, height=5, units="in")
+ggsave(file.path(PATH_TEST, "results", "diversity_plot_shannon.png"), width=10, height=7, units="in")
 ```
 
 Test statistical significance using ANOVA
 
-```{r, fig.show="hold", out.width="25%"}
+```{r}
 obsrich_aov <- aov(log(obsrich) ~ truncLen.R + maxEE.R + runID + truncLen.R:runID + maxEE.R:runID, data=diversity_df)
+
+png(file.path(PATH_TEST, "results", "aov_diagnostics_obsrich.png"))
+par(mfrow=c(2,2))
 plot(obsrich_aov)
+dev.off()
 ```
+
 
 ```{r}
-summary(obsrich_aov)
+options(knitr.kable.NA = '')
+knitr::kable(summary(obsrich_aov)[[1]], digits=3)
 ```
 
 
-```{r, fig.show="hold", out.width="25%"}
+```{r}
 shannon_aov <- aov(shannon ~ truncLen.R + maxEE.R + runID + truncLen.R:runID + maxEE.R:runID, data=diversity_df)
+
+png(file.path(PATH_TEST, "results", "aov_diagnostics_shannon.png"))
+par(mfrow=c(2,2))
 plot(shannon_aov)
+dev.off()
 ```
 
 ```{r}
-summary(shannon_aov)
+options(knitr.kable.NA = '')
+knitr::kable(summary(shannon_aov)[[1]], digits=3)
 ```
 
 **In conclusion,** `truncLen.R` affects alpha-diversity inference, whereas `maxEE.R` does not (within the range of `maxEE.R` values that we tested). `truncLen.R` affects alpha-diversity inference to a different degree depending on the sequence run. 
@@ -425,11 +451,51 @@ seqtab_joined <- mergeSequenceTables(tables=seqtabs_joinrun)
 sampledata <- parseParamsFromRownames(seqtab_joined, PARAM1, PARAM2, keep_rownames=TRUE, keep_original_cols = FALSE)
 ```
 
+**FOR TESTING ONLY**: Custom function to match rownames in this sequence table (which are based on the original fastq filenames) to the sequence metadata.
+
+```{r}
+matchSeqtabToMetadata <- function(tab, meta, verbose=TRUE) {
+  rownms <- rownames(tab)
+  samplenms <- sub(".*\\|", "", rownms)
+  
+  # Remove runID if appended to beginning of filename
+  key <- sub("^run[A-Za-z0-9]*_", "", samplenms)
+  
+  # Append "_R1" to end of samplenames
+  key <- paste0(key, "_R1.fastq.gz")
+
+  # # Append ".gz" to end of filename if missing
+  # key[!grepl(".gz$", key)] <- paste0(key[!grepl(".gz$", key)], ".gz")
+
+  key_match <- match(key, as.character(meta$rawDataFileName))
+  if(any(is.na(key_match))) {
+    if(verbose) {
+      message("Matching file names to metadata: ", sum(is.na(key_match)), " files did not have matching records in the provided metadata. ",
+              "Double-check to ensure that the provided metadata is of the appropriate scope.")
+    }
+  }
+  return(cbind(rowname = rownms, meta[key_match,], stringsAsFactors=FALSE))
+}
+
+meta_seqtab <- matchSeqtabToMetadata(seqtab_joined, read.csv("./NEON/sequence_metadata/mmg_soilMetadata_16S_2021-01-12135435.csv"))
+sampledata_with_meta <- cbind(sampledata, meta_seqtab)
+all(rownames(sampledata_with_meta) == meta_seqtab$rowname)
+```
+
+```{r}
+meta_seqtab %>%
+  group_by(dnaSampleID, siteID, plotID, collectDate) %>%
+  dplyr::summarise(n=n(), .groups="drop") %>%
+  dplyr::select(-n) ->
+  meta_seqtab_summary
+meta_seqtab_summary
+```
+
 Combine sequence table and sample data table into a phyloseq object:
 
 ```{r}
 physeq_joined <- phyloseq(otu_table(seqtab_joined,taxa_are_rows=FALSE),
-                          sample_data(sampledata))
+                          sample_data(sampledata_with_meta))
 ```
 
 Remove samples with zero total counts
@@ -446,71 +512,188 @@ physeq_joined_nonzero <- prune_taxa(taxa_sums(physeq_joined) > 10, physeq_joined
 
 Ordinate, one sequencing run at a time. (Samples from different sequencing runs may be highly dissimilar, producing difficult-to-interpret ordination plots.)
 
-```{r}
-ord_list <- list()
+```{r, message=FALSE}
+ord_list <- ps_runID <- list()
 
 for (i in 1:length(runIDs)) {
-  physeq_joined_nonzero_star <- subset_samples(physeq_joined_nonzero, runID==runIDs[i])
+  ps_runID[[i]] <- subset_samples(physeq_joined_nonzero, runID==runIDs[i])
   set.seed(1010101)
-  ord_list[[i]] <- ordinate(physeq_joined_nonzero_star, "NMDS", "bray", k=2)
+  ord_list[[i]] <- ordinate(ps_runID[[i]], "NMDS", "bray", k=2)
   saveRDS(ord_list[[i]], file.path(PATH_TEST, "results", paste0("sensitivity_ordination_", runIDs[i], ".Rds")))
+}
+```
+
+Load ordination data if previously run:
+
+```{r}
+for(i in 1:length(runIDs)) {
+  ord_list[[i]] <- readRDS(file.path(PATH_TEST, "results", paste0("sensitivity_ordination_", runIDs[i], ".Rds")))
 }
 ```
 
 Plot the ordinations!
 
-```{r, fig.width=5, fig.height=3.5}
-# Single-run version
+Generalize to plot with one facet for each runID:
+
+```{r}
+stress_annotations <- lapply(ord_list, function(o) {
+  data.frame(xloc=Inf, yloc=-Inf, 
+             label=paste0("Stress: ", formatC(signif(o$stress,digits=3), digits=3,format="fg", flag="#")),
+             hjust=1.10, vjust=-0.10)
+})
+
 theme_set(theme_bw())
 ordplot_list <- list()
 for(i in 1:length(ord_list)) {
-  sample_data(subset_samples(physeq_joined_nonzero, runID==runIDs[i]))
+  sampledata <- as(sample_data(ps_runID[[i]]), "data.frame")
+  sampledata$maxEE.R <- as.factor(sampledata$maxEE.R)
+  sampledata$truncLen.R <- as.factor(sampledata$truncLen.R)
+  sampledata <- cbind(sampledata, scores(ord_list[[i]])[match(rownames(sampledata), rownames(scores(ord_list[[i]]))),])
+  ordplot_list[[i]] <- ggplot(sampledata, aes(x=NMDS1, y=NMDS2)) +
+    geom_point(aes(col=truncLen.R, shape=maxEE.R)) + 
+    stat_ellipse(aes(group=sampleID), lwd=0.1, col="grey20") +
+    scale_shape_manual(values=c(21, 22, 24)) +
+    guides(col=FALSE, shape=FALSE) +
+    ggtitle(runIDs[i]) +
+    geom_text(data=stress_annotations[[i]], aes(x=xloc, y=yloc, label=label, hjust=hjust, vjust=vjust), size=3) +
+    NULL
 }
-sample_data(physeq_joined_nonzero_runC5B2R)[,"maxEE.R.factor"] <- as.factor(get_variable(physeq_joined_nonzero_runC5B2R, "maxEE.R"))
-sample_data(physeq_joined_nonzero_runC5B2R)[,"truncLen.R.factor"] <- as.factor(get_variable(physeq_joined_nonzero_runC5B2R, "truncLen.R"))
-plot_ordination(physeq_joined_nonzero_runC5B2R, ordination, type="samples",
-                col="truncLen.R.factor", shape="maxEE.R.factor") +
-  stat_ellipse(aes(group=sampleID), lwd=0.1, col="grey20") +
-  scale_shape_manual(values=c(21, 22, 24)) +
-  # coord_cartesian(xlim=c(-0.096, -0.09), ylim=c(-0.002, 0.001)) +
-  NULL
-ggsave(file.path(PATH_TEST, "results", "sensitivity_ordination_runC5B2R.png"), width=5, height=3.5, units="in")
+g <- gridExtra::arrangeGrob(grobs=ordplot_list, ncol=5)
+ggsave(file.path(PATH_TEST, "results", "ordination_plot.png"), plot=g, width=10, height=7, units="in")
+plot(g)
 ```
 
-What if we removed samples with `truncLen.R` = 160?
+Ordinate samples from different sequencing runs together:
 
-```{r, fig.width=5, fig.height=3.5}
-physeq_joined_nonzero_runC5B2R_hitrunc <- subset_samples(physeq_joined_nonzero_runC5B2R, truncLen.R!=160)
+```{r}
+for(i in 1:length(runIDs)) {
+  message(runIDs[i])
+  print(unique(get_variable(ps_runID[[i]], "siteID")))
+  # print(unique(get_variable(ps_runID[[i]], "dataQF.seq")))
+}
+```
+
+```{r}
+# HARV_runs <- c("runB69RN", "runC8VMV", "runC983L")
+# HARV_runs <- c("runC8VMV", "runC983L")
+# select_runs <- c("runC24VW", "runCDHG2", "runCDJ5J") # contain sites TALL, STER, OAES
+select_sites <- c("TALL", "STER", "OAES")
+select_runs <- c("runCDHG2", "runCDJ5J")
+```
+
+```{r}
+ps_select <- subset_samples(physeq_joined_nonzero, runID %in% select_runs & siteID %in% select_sites)
 set.seed(1010101)
-ordination_runC52BR_hitrunc <- ordinate(physeq_joined_nonzero_runC5B2R_hitrunc, "NMDS", "bray", k=2)
+ord_select <- ordinate(ps_select, "NMDS", "bray", k=2)
+saveRDS(ord_select, file.path(PATH_TEST, "results", paste0("sensitivity_ordination_select_runs.Rds")))
+```
 
-plot_ordination(physeq_joined_nonzero_runC5B2R_hitrunc, ordination_runC52BR_hitrunc, type="samples",
-                col="truncLen.R.factor", shape="maxEE.R.factor") +
-  stat_ellipse(aes(group=sampleID), lwd=0.1, col="grey20") +
+
+```{r}
+sampledata <- as(sample_data(ps_select), "data.frame")
+sampledata$maxEE.R <- as.factor(sampledata$maxEE.R)
+sampledata$truncLen.R <- as.factor(sampledata$truncLen.R)
+sampledata <- cbind(sampledata, scores(ord_select)[match(rownames(sampledata), rownames(scores(ord_select))),])
+ggplot(sampledata, aes(x=NMDS1, y=NMDS2)) +
+  # geom_point(aes(col=truncLen.R, shape=maxEE.R)) +
+  # geom_point(aes(col=plotID, shape=maxEE.R)) +
+  geom_point(aes(col=truncLen.R, shape=runID)) +
+  stat_ellipse(aes(group=siteID), lwd=0.1, col="grey20") +
   scale_shape_manual(values=c(21, 22, 24)) +
-  # coord_cartesian(xlim=c(-0.096, -0.09), ylim=c(-0.002, 0.001)) +
+  # guides(col=FALSE, shape=FALSE) +
+  ggtitle(runIDs[i]) +
+  # geom_text(data=stress_annotations[[i]], aes(x=xloc, y=yloc, label=label, hjust=hjust, vjust=vjust), size=3) +
   NULL
-ggsave(file.path(PATH_TEST, "results", "sensitivity_ordination_runC5B2R_hitrunc.png"), width=5, height=3.5, units="in")
+```
+
+Try ordinating ALL sensitivity analysis samples:
+
+```{r}
+# Start by pruning low-sequencing depth samples and removing uncommon taxa
+ps_nonzero_mindepth <- prune_samples(sample_sums(physeq_joined_nonzero) > 2500, physeq_joined_nonzero)
+ps_nonzero_mindepth <- prune_taxa(taxa_sums(ps_nonzero_mindepth) > 15, ps_nonzero_mindepth)
+set.seed(1010101)
+ord_all <- ordinate(ps_nonzero_mindepth, "NMDS", "bray", k=2)
+saveRDS(ord_all, file.path(PATH_TEST, "results", paste0("sensitivity_ordination_all_runs.Rds")))
+```
+
+
+```{r, fig.width=12}
+sampledata <- as(sample_data(ps_nonzero_mindepth), "data.frame")
+sampledata$maxEE.R <- as.factor(sampledata$maxEE.R)
+sampledata$truncLen.R <- as.factor(sampledata$truncLen.R)
+sampledata <- cbind(sampledata, scores(ord_all)[match(rownames(sampledata), rownames(scores(ord_all))),])
+sampledata$collectYear <- as.integer(format(as.Date(sampledata$collectDate), "%Y"))
+sampledata$processedYear.rawFiles <- as.integer(format(as.Date(sampledata$processedDate.rawFiles), "%Y"))
+sampledata$processedYear.dna <- as.integer(format(as.Date(sampledata$processedDate.dna), "%Y"))
+sampledata$processedYear.pcr <- as.integer(format(as.Date(sampledata$processedDate.pcr), "%Y"))
+sampledata$processedYear.seq <- as.integer(format(as.Date(sampledata$processedDate.seq), "%Y"))
+# ggplot(sampledata, aes(x=NMDS1, y=NMDS2)) +
+#   # geom_point(aes(col=truncLen.R, shape=maxEE.R)) +
+#   # geom_point(aes(col=plotID, shape=maxEE.R)) +
+#   geom_point(aes(col=sequencerRunID, shape=maxEE.R)) +
+#   stat_ellipse(aes(group=runID), lwd=0.1, col="grey20") +
+#   scale_shape_manual(values=c(21, 22, 24)) +
+#   # guides(col=FALSE, shape=FALSE) +
+#   # geom_text(data=stress_annotations[[i]], aes(x=xloc, y=yloc, label=label, hjust=hjust, vjust=vjust), size=3) +
+#   NULL
+sampledata_selectparams <- sampledata[sampledata$maxEE.R==4 & sampledata$truncLen.R==220,]
+gridExtra::grid.arrange(
+  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=processedYear.rawFiles)),
+  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=processedYear.dna)),
+  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=processedYear.pcr)),
+  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=processedYear.seq)) + stat_ellipse(aes(group=processedYear.seq))
+)
+  
 ```
 
 ```{r}
-# Failed
-
-theme_set(theme_bw())
-sample_data(physeq_joined_nonzero_runCBTWG)[,"maxEE.R.factor"] <- as.factor(get_variable(physeq_joined_nonzero_runCBTWG, "maxEE.R"))
-plot_ordination(physeq_joined_nonzero_runCBTWG, ordination, type="samples",
-                col="truncLen.R", shape="maxEE.R.factor") +
-  # stat_ellipse(aes(group=sampleID), lwd=0.1, col="grey20")
-  # coord_cartesian(xlim=c(-0.096, -0.09), ylim=c(-0.002, 0.001)) +
-  NULL
-ggsave(file.path(PATH_TEST, "results", "sensitivity_ordination_runCBTWG.png"), width=5, height=3.5, units="in")
+cor(sampledata$NMDS1, sampledata$processedYear.seq)
 ```
-
 
 ```{r}
-ordination_scores <- scores(ordination)
-
+n_distinct <- apply(sampledata, 2, function(x) length(unique(x)))
+n_distinct[n_distinct <= 3]
 ```
+
+```{r, fig.width=12}
+gridExtra::grid.arrange(
+  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=library_strategy)),
+  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=library_source)),
+  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=library_layout)),
+  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=sequenceAnalysisType)),
+  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=testProtocolVersion.pcr)),
+  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=testProtocolVersion.seq))
+)
+  
+```
+
+```{r, fig.height=8, fig.width=6}
+gridExtra::grid.arrange(
+  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=siteID)),
+  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=domainID))
+)
+gridExtra::grid.arrange(
+  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + stat_ellipse(aes(group=siteID), lwd=0.5, col="grey") + geom_point(aes(col=siteID)),
+  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + stat_ellipse(aes(group=domainID), lwd=0.5, col="grey") + geom_point(aes(col=domainID))
+)
+```
+
+```{r}
+n_distinct[grep("rotocol", names(n_distinct))]
+```
+
+Weird -- there is a separation in the ordination that maps to *the year in which sequencing was performed.* Even though I don't think this is an artefact from our pipeline, I still think that it may be prudent to select only one of the sequencing years in order to avoid confusion, at least until we can confirm the source of this artefact.
+
+```{r}
+sample_data(ps_nonzero_mindepth)$processedYear.seq <- as.integer(format(as.Date(get_variable(ps_nonzero_mindepth, "processedDate.seq")), "%Y"))
+ps_seq2019 <- subset_samples(ps_nonzero_mindepth, processedYear.seq %in% c(2017, 2018))
+set.seed(1010101)
+ord_all <- ordinate(ps_nonzero_mindepth, "NMDS", "bray", k=2)
+saveRDS(ord_all, file.path(PATH_TEST, "results", paste0("sensitivity_ordination_seq2017-18.Rds")))
+```
+
+
 
 Test statistical significance using permANOVA. 
 
