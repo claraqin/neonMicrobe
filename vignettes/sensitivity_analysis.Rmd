@@ -563,49 +563,6 @@ ggsave(file.path(PATH_TEST, "results", "ordination_plot.png"), plot=g, width=10,
 plot(g)
 ```
 
-Ordinate samples from different sequencing runs together:
-
-```{r}
-for(i in 1:length(runIDs)) {
-  message(runIDs[i])
-  print(unique(get_variable(ps_runID[[i]], "siteID")))
-  # print(unique(get_variable(ps_runID[[i]], "dataQF.seq")))
-}
-```
-
-```{r}
-# HARV_runs <- c("runB69RN", "runC8VMV", "runC983L")
-# HARV_runs <- c("runC8VMV", "runC983L")
-# select_runs <- c("runC24VW", "runCDHG2", "runCDJ5J") # contain sites TALL, STER, OAES
-select_sites <- c("TALL", "STER", "OAES")
-select_runs <- c("runCDHG2", "runCDJ5J")
-```
-
-```{r}
-ps_select <- subset_samples(physeq_joined_nonzero, runID %in% select_runs & siteID %in% select_sites)
-set.seed(1010101)
-ord_select <- ordinate(ps_select, "NMDS", "bray", k=2)
-saveRDS(ord_select, file.path(PATH_TEST, "results", paste0("sensitivity_ordination_select_runs.Rds")))
-```
-
-
-```{r}
-sampledata <- as(sample_data(ps_select), "data.frame")
-sampledata$maxEE.R <- as.factor(sampledata$maxEE.R)
-sampledata$truncLen.R <- as.factor(sampledata$truncLen.R)
-sampledata <- cbind(sampledata, scores(ord_select)[match(rownames(sampledata), rownames(scores(ord_select))),])
-ggplot(sampledata, aes(x=NMDS1, y=NMDS2)) +
-  # geom_point(aes(col=truncLen.R, shape=maxEE.R)) +
-  # geom_point(aes(col=plotID, shape=maxEE.R)) +
-  geom_point(aes(col=truncLen.R, shape=runID)) +
-  stat_ellipse(aes(group=siteID), lwd=0.1, col="grey20") +
-  scale_shape_manual(values=c(21, 22, 24)) +
-  # guides(col=FALSE, shape=FALSE) +
-  ggtitle(runIDs[i]) +
-  # geom_text(data=stress_annotations[[i]], aes(x=xloc, y=yloc, label=label, hjust=hjust, vjust=vjust), size=3) +
-  NULL
-```
-
 Try ordinating ALL sensitivity analysis samples:
 
 ```{r}
@@ -628,15 +585,11 @@ sampledata$processedYear.rawFiles <- as.integer(format(as.Date(sampledata$proces
 sampledata$processedYear.dna <- as.integer(format(as.Date(sampledata$processedDate.dna), "%Y"))
 sampledata$processedYear.pcr <- as.integer(format(as.Date(sampledata$processedDate.pcr), "%Y"))
 sampledata$processedYear.seq <- as.integer(format(as.Date(sampledata$processedDate.seq), "%Y"))
-# ggplot(sampledata, aes(x=NMDS1, y=NMDS2)) +
-#   # geom_point(aes(col=truncLen.R, shape=maxEE.R)) +
-#   # geom_point(aes(col=plotID, shape=maxEE.R)) +
-#   geom_point(aes(col=sequencerRunID, shape=maxEE.R)) +
-#   stat_ellipse(aes(group=runID), lwd=0.1, col="grey20") +
-#   scale_shape_manual(values=c(21, 22, 24)) +
-#   # guides(col=FALSE, shape=FALSE) +
-#   # geom_text(data=stress_annotations[[i]], aes(x=xloc, y=yloc, label=label, hjust=hjust, vjust=vjust), size=3) +
-#   NULL
+```
+
+At this point I noticed there were two clusters in the ordination, and chose to filter the ordination dataset to only look at one set of quality filtering parameters, so it was clear that the clusters were not produced by the parameters.
+
+```{r}
 sampledata_selectparams <- sampledata[sampledata$maxEE.R==4 & sampledata$truncLen.R==220,]
 gridExtra::grid.arrange(
   ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=processedYear.rawFiles)),
@@ -644,7 +597,6 @@ gridExtra::grid.arrange(
   ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=processedYear.pcr)),
   ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=processedYear.seq)) + stat_ellipse(aes(group=processedYear.seq))
 )
-  
 ```
 
 ```{r}
