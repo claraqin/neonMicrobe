@@ -164,8 +164,21 @@ if(length(all.seqtabs) == 1) {
 }
 ```
 
-## Assign taxonomy using the Silva reference database
+Next, we'll assign taxonomy to each of the identified sequences. This is a computationally expensive step - it can take hours, or even days, to run. Because of this, we're going to reduce the size of the dataset, by removing samples with fewer than 1000 reads, as well as any taxa with fewer than 10 counts in the whole dataset. This is optional, and the cutoffs here can be modified.
+```{r}
+# Remove low-abundance taxa (optional)
+keep <- which(colSums(seqtab_orig) > 10)
+seqtab_joined <- seqtab_orig[,keep]
 
+# Remove low-quality samples (optional)
+keep <- which(rowSums(seqtab) > 1000)
+seqtab_joined <- seqtab_joined[keep,]
+
+# Check size of dataset
+print(dim(seqtab_joined))
+```
+
+## Assign taxonomy using the Silva reference database
 ```{r}
 tax <- assignTaxonomy(seqtab_joined, SILVA_REF_PATH, multithread = MULTITHREAD, verbose = VERBOSE)
 ```
@@ -175,8 +188,8 @@ tax <- assignTaxonomy(seqtab_joined, SILVA_REF_PATH, multithread = MULTITHREAD, 
 ```{r}
 # Save OTU table and taxonomic table as RDS files
 # to hand off to dada2_to_phyloseq.R
-saveRDS(seqtab_joined, "./data/NEON_16S_seqtab_nochim.Rds")
-saveRDS(tax, "./data/NEON_16S_tax.Rds")
+saveRDS(seqtab_joined, "./data/NEON_16S_seqtab_nochim_SMALLSUBSET.Rds")
+saveRDS(tax, "./data/NEON_16S_tax_SMALLSUBSET.Rds")
 ```
 
 
