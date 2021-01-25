@@ -185,6 +185,16 @@ print(dim(seqtab_joined))
 
 ## Assign taxonomy using the UNITE reference database
 
+## Download UNITE database if necessary
+If you have already downloaded a taxonomic database, change the `UNITE_REF_PATH` parameter in the params.r file.
+```{r}
+unite.url <- "https://files.plutof.ut.ee/public/orig/E7/28/E728E2CAB797C90A01CD271118F574B8B7D0DAEAB7E81193EB89A2AC769A0896.gz"
+if(!file.exists(UNITE_REF_PATH)){
+	download.file(unite.url, UNITE_REF_PATH)
+}
+
+```
+
 ```{r eval=FALSE}
 tax <- assignTaxonomy(seqtab_joined, UNITE_REF_PATH, multithread = MULTITHREAD, verbose = VERBOSE)
 ```

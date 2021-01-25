@@ -178,6 +178,17 @@ seqtab_joined <- seqtab_joined[keep,]
 print(dim(seqtab_joined))
 ```
 
+
+# Download Silva reference database if necessary
+If you have already downloaded a taxonomic database, change the `SILVA_REF_PATH` parameter in the params.r file.
+```{r}
+silva.url <- "https://zenodo.org/record/3986799/files/silva_nr99_v138_train_set.fa.gz"
+if(!file.exists(SILVA_REF_PATH)){
+	download.file(silva.url, SILVA_REF_PATH)
+}
+
+```
+
 ## Assign taxonomy using the Silva reference database
 ```{r}
 tax <- assignTaxonomy(seqtab_joined, SILVA_REF_PATH, multithread = MULTITHREAD, verbose = VERBOSE)
