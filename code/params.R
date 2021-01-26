@@ -4,7 +4,7 @@
 
 # Output directory for the pipeline. Absolute path.
 # Output directory for the pipeline. Creates a "NEON" directory within current working directory.
-PRESET_OUTDIR = file.path(getwd(), "NEON")
+PRESET_OUTDIR = file.path(getwd(), "data/")
 
 # Can leave the following blank to generate default directory structure.
 # Or, character string to append to the end of PRESET_OUTDIR to generate
@@ -12,12 +12,7 @@ PRESET_OUTDIR = file.path(getwd(), "NEON")
 PRESET_OUTDIR_SEQUENCE = "raw_sequence" # for sequence data (fastq files)
 PRESET_OUTDIR_SEQMETA = "sequence_metadata" # for sequence metadata
 PRESET_OUTDIR_SOIL = "soil" # for soil data
-
-# Other output directories and filenames. Absolute paths.
-PRESET_OUTDIR_SOIL_DB = "/data/ZHULAB/NEON_DOB" # Database containing both seqmeta and soil data
-PRESET_OUTDIR_DADA2 = "/raid/users/claraqin/zhulab/neonSoilMicrobeProcessing/data" # for phyloseq outputs
-PRESET_FILENAME_JOINED_SEQTAB = "NEON_ITS_seqtab_nochim_DL08-13-2019_truncQ4_maxEE8_R1only.Rds"
-PRESET_FILENAME_TAXTAB = "NEON_ITS_taxa_DL08-13-2019_truncQ4_maxEE8_R1only.Rds"
+PRESET_OUTDIR_TAXREF = "tax_ref" # for taxonomy reference data
 
 ## PARAMETERS FOR DADA2_WORKFLOW
 
@@ -33,9 +28,10 @@ if(!file.exists(CUTADAPT_PATH)){
   message("Could not find the cutadapt tool in file system. This tool is necessary for ITS (fungal) raw sequence processing. Please load the module if necessary on an HPC (i.e. 'module load cutadapt') or download from https://cutadapt.readthedocs.io/en/stable/installation.html")
 }
 
-# UNITE reference database (FASTA file) path
-UNITE_REF_PATH = "/data/sh_general_release_dynamic_04.02.2020.fasta"
-SILVA_REF_PATH = "/projectnb/talbot-lab-data/zrwerbin/decomposition/silva_training_set.fa.gz"
+# ITS: UNITE reference database (FASTA file) path
+UNITE_REF_PATH = file.path(PRESET_OUTDIR, PRESET_OUTDIR_TAXREF, "sh_general_release_dynamic_04.02.2020.fasta") 
+# 16S: SILVA reference database (FASTA file) path
+SILVA_REF_PATH = file.path(PRESET_OUTDIR, PRESET_OUTDIR_TAXREF, "silva_training_set.fa.gz")
 
 # Whether to download and process only a small subset
 SMALL_SUBSET = FALSE # If TRUE, all fastq.gz.tar files matching these parameters will still be downloaded,
@@ -52,7 +48,7 @@ VERBOSE = FALSE
 if (Sys.info()["sysname"] == "Windows"){
   MULTITHREAD = FALSE
 } else {
-  MULTITHREAD = 4
+  MULTITHREAD = 8
 }
 
 # filterAndTrim arguments
