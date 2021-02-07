@@ -12,17 +12,17 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
-if(dir.exists("~/zhulab/")) {
-  knitr::opts_knit$set(
-  root.dir = "~/zhulab/neonSoilMicrobeProcessing/" # Update as necessary. Should refer to the absolute filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
-  )
-}
-if(dir.exists("/Users/lstanish/Github/")) {
-  knitr::opts_knit$set(
-  root.dir = "/Users/lstanish/Github/NEON_soil_microbe_processing/" # LFS directory file path. 
-  )
-}
-
+# if(dir.exists("~/zhulab/")) {
+#   knitr::opts_knit$set(
+#   root.dir = "~/Documents/UCSC/Projects/NEON_soil_microbe_processing" # Update as necessary. Should refer to the absolute filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
+#   )
+# }
+# if(dir.exists("/Users/lstanish/Github/")) {
+#   knitr::opts_knit$set(
+#   root.dir = "/Users/lstanish/Github/NEON_soil_microbe_processing/" # LFS directory file path. 
+#   )
+# }
+knitr::opts_knit$set(root.dir = "~/Documents/UCSC/Projects/NEON_soil_microbe_processing")
 
 ```
 
@@ -58,7 +58,6 @@ In addition, source files associated with this package:
 ```{r}
 source("./R/utils.R")
 source("./code/params.R")
-
 ```
 
 # Set up directories
@@ -106,6 +105,26 @@ In the following example, we run `downloadSequenceMetadata()` with a number of a
 meta <- downloadSequenceMetadata(startYrMo = "2018-02", endYrMo = "2018-03", 
                                  sites = c("CLBJ"),
                                  targetGene = "all")
+```
+
+## Quality control sequence metadata
+
+The following function performs basic QAQC checks on sequence metadata prior to downloading sequence data. This will reduce the number of sequence files that are downloaded to only those that will be used for analysis, thereby saving file space and reducing download times.
+
+Specifically, this function will remove duplicates and, optionally, will also remove any R1 fastq files without corresponding R2 files.
+
+```{r}
+meta_16s <- meta[grep("16S", meta$targetGene),]
+meta_16s_qc <- qcMetadata(meta_16s)
+```
+
+```{r}
+meta_its <- meta[grep("ITS", meta$targetGene),]
+meta_its_qc <- qcMetadata(meta_its)
+```
+
+```{r}
+meta <- rbind(meta_16s_qc, meta_its_qc)
 ```
 
 ## Download raw sequence data
