@@ -638,12 +638,12 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
 #' Running this function will remove metadata records for samples that do not meet user specifications. This will reduce the number of sequence files that are downloaded to only those that will be used for analysis, thereby saving file space and reducing download times.
 #'
 #' @param metadata The output of downloadSequenceMetadata(). Must be provided as either the data.frame returned by downloadSequenceMetadata() or as a filepath to the csv file produced by downloadSequenceMetadata() when outdir is provided.
-#' @param outDir Default file.path(PRESET_OUTDIR_SEQMETA). Directory where raw sequence files can be found before reorganizing.
-#' @param keepR2 "Y" (default) or "N". Should the reverse reads for a sample be retained? If "Y", then only samples that have both the forward (R1) and reverse (R2) reads will be retained.
-#' @param rmDupes TRUE (default) or FALSE. Should duplicate samples be removed? If TRUE, then only the first records encountered for a particular sample identifier will be retained.
+#' @param outDir Default current working directory. Directory where raw sequence files can be found before reorganizing.
+#' @param pairedReads "Y" (default) or "N". Should the forward reads for a sample be removed if the corresponding reverse read is missing? If "Y", then only samples that have both the forward (R1) and reverse (R2) reads will be retained.
+#' @param rmDupes TRUE (default) or FALSE. Should records with duplicated dnaSampleIDs be removed? If TRUE, then only the first records encountered for a particular dnaSampleID will be retained.
 #'
 #' @return QC'd dataframe is returned as an object and saved as csv file.
-qcMetadata <- function(metadata, outDir=getwd(), keepR2="Y", rmDupes=TRUE) {
+qcMetadata <- function(metadata, outDir=getwd(), pairedReads="Y", rmDupes=TRUE) {
   library(plyr)
   options(stringsAsFactors = FALSE)
   
@@ -665,9 +665,9 @@ qcMetadata <- function(metadata, outDir=getwd(), keepR2="Y", rmDupes=TRUE) {
     stop("'metadata' must be the data.frame output from downloadSequenceMetadata() or a filepath to the local copy of the output from downloadSequenceMetadata()")
   }
   
-  # validate keepR2
-  if(!(keepR2 %in% c("Y", "N")) ) {
-    stop("value for argument keepR2 invalid. Must be 'Y' or 'N.")
+  # validate pairedReads
+  if(!(pairedReads %in% c("Y", "N")) ) {
+    stop("value for argument pairedReads invalid. Must be 'Y' or 'N.")
   }
   
   # get targetGene and confirm that only one targetGene is in input data set
@@ -743,12 +743,12 @@ qcMetadata <- function(metadata, outDir=getwd(), keepR2="Y", rmDupes=TRUE) {
   if(length(missingR2)>0) {
     print(paste0("Reverse read missing from ", length(missingR2), " records") )
     # If specified, remove R1 file
-    if(keepR2=="Y") {
-      print("Removing R1 files lacking a matching R2 file (default action when keepR2='Y')" )
+    if(pairedReads=="Y") {
+      print("Removing R1 files lacking a matching R2 file (default action when pairedReads='Y')" )
       metaNotFlagged <- metaNotFlagged[-intersect(which(metaNotFlagged$runDir=="R1"), which(metaNotFlagged$dnaSampleID %in% missingR2) ), ]
     } else {
       metaNotFlagged$runDirFlag[intersect(which(metaNotFlagged$runDir=="R1"), which(metaNotFlagged$dnaSampleID %in% missingR2) )] <- "1"
-      print("Flagging R1 files lacking a matching R2 file (default action when keepR2='N')" )
+      print("Flagging R1 files lacking a matching R2 file (default action when pairedReads='N')" )
     }
   }
   # Handle sequence data with missing R1 data
