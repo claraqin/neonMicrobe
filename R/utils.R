@@ -791,7 +791,7 @@ qcMetadata <- function(metadata, outDir=getwd(), pairedReads="Y", rmDupes=TRUE, 
   # Recombine original flagged records and remaining records post-initial flagging.
   out <- suppressMessages(plyr::join(metaNotFlagged, metaFlagged))
   
-  write.csv(out, paste0(qcDir, "mmg_metadata_", targetGene, "_QCed_", Sys.Date(), '.csv'), row.names = FALSE)
+  write.csv(out, paste0(qcDir, "mmg_metadata_", gsub("\\ ", "", targetGene), "_QCed_", gsub("-", "", Sys.Date()), '.csv'), row.names = FALSE)
   cat(paste("Output QCed file contains", nrow(out), "rows. File saved to the following directory:", qcDir))
   cat("\nNOTE: Always review output before proceeding with analysis.")
   return(out)
