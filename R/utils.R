@@ -756,13 +756,15 @@ qcMetadata <- function(metadata, outDir=getwd(), pairedReads="Y", rmDupes=TRUE, 
   metaFlagged <- metadata[metadata$duplicateDnaSampleIDFlag=="1", ]
   metaNotFlagged <- metadata[metadata$duplicateDnaSampleIDFlag=="0", ]
   
+  metaNotFlagged$dnaSampleID <- as.character(metaNotFlagged$dnaSampleID)
+  
+  # Check existence of R1 (and R2 based on user input) #
+  dnaSampTab <- data.frame(with(metaNotFlagged, table(dnaSampleID, runDir)) )
+  
   # convert factors to characters
   dfType <- sapply(dnaSampTab, class)
   colsToFix <- names(dnaSampTab[which(dfType=='factor')])
   dnaSampTab[colsToFix] <- sapply(dnaSampTab[colsToFix], as.character)
-  
-  # Check existence of R1 (and R2 based on user input) #
-  dnaSampTab <- data.frame(with(metaNotFlagged, table(dnaSampleID, runDir)) )
   
   # Handle sequence data with missing run direction
   missingR1 <- dnaSampTab$dnaSampleID[which(dnaSampTab$Freq[dnaSampTab$runDir=="R1"]==0)]
