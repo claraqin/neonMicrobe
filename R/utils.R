@@ -643,7 +643,7 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
 #' @param rmDupes TRUE (default) or FALSE. Should records with duplicated dnaSampleIDs be removed? If TRUE, then only the first records encountered for a particular dnaSampleID will be retained.
 #'
 #' @return QC'd dataframe is returned as an object and saved as csv file.
-qcMetadata <- function(metadata, outDir=getwd(), pairedReads="Y", rmDupes=TRUE) {
+qcMetadata <- function(metadata, outDir=getwd(), pairedReads="Y", rmDupes=TRUE, rmFlagged="N") {
   library(plyr)
   options(stringsAsFactors = FALSE)
   
@@ -667,7 +667,12 @@ qcMetadata <- function(metadata, outDir=getwd(), pairedReads="Y", rmDupes=TRUE) 
   
   # validate pairedReads
   if(!(pairedReads %in% c("Y", "N")) ) {
-    stop("value for argument pairedReads invalid. Must be 'Y' or 'N.")
+    stop("value for argument pairedReads invalid. Must be 'Y' or 'N'.")
+  }
+  
+  # validate rmFlagged
+  if(!(rmFlagged %in% c("Y", "N")) ) {
+    stop("value for argument rmFlagged invalid. Must be 'Y' or 'N'.")
   }
   
   # get targetGene and confirm that only one targetGene is in input data set
@@ -685,6 +690,31 @@ qcMetadata <- function(metadata, outDir=getwd(), pairedReads="Y", rmDupes=TRUE) 
   # Print size of dataset
   print(paste("Input dataset contains", nrow(metadata), "rows.") )
   
+  
+  # Remove flagged records, if rmFlagged="Y"
+  if(rmFlagged=="Y") {
+    print("Removing records with existing quality flag...")
+    # Define flag values for removal based on LOV values #
+    flagVals <- "Fail|legacyData"
+    # Remove NA values #
+    metadata[is.na(metadata)] <- ""
+    flagFields <- grep("qaqcStatus|dataQF", names(metadata))
+    ind <- vector()
+    for(i in flagFields) {
+      flagged <- grep(flagVals, metadata[,i])
+      ind <- c(ind,flagged)
+    }
+    if(length(ind)==0) {
+      print("No flagged records found.")
+    } else {
+      ind <- unique(ind)
+      numDupes <- length(ind)
+      print(paste0(length(ind), " flagged records found. Removing flagged record(s).") )
+      metadata <- metadata[-ind, ]
+    }
+    Sys.sleep(3)
+  }
+  
   # check for and remove duplicate sequence file names
   print("QC check for duplicate sequence file names...")
   # Add pause #
@@ -694,7 +724,7 @@ qcMetadata <- function(metadata, outDir=getwd(), pairedReads="Y", rmDupes=TRUE) 
     print("QC check Pass. No duplicate sequence file names.")
   } else {
     numDupes <- length(dupeSeqIDs)
-    print(paste0("QC check Fail. ", numDupes, " duplicate sequence file names found. Removing duplicated file(s). NOTE: files may not be identical. Review output before proceeding.") )
+    print(paste0("QC check Fail. ", numDupes, " duplicate sequence file names found. Removing duplicated file(s).") )
     print(paste0("Removing duplicated row: ", which(duplicated(metadata$rawDataFileName)) ) )
     metadata <- metadata[!duplicated(metadata$rawDataFileName), ]
   }
@@ -703,7 +733,7 @@ qcMetadata <- function(metadata, outDir=getwd(), pairedReads="Y", rmDupes=TRUE) 
   # check for and flag duplicate dnaSampleIDs
   print("QC checking duplicate dnaSampleIDs...")
   # Add pause #
-  Sys.sleep(1)
+  Sys.sleep(2)
   metadata$runDir <- ""
   metadata$runDir[grep("R1", metadata$rawDataFileDescription)] <- "R1"
   metadata$runDir[grep("R2", metadata$rawDataFileDescription)] <- "R2"
@@ -738,7 +768,7 @@ qcMetadata <- function(metadata, outDir=getwd(), pairedReads="Y", rmDupes=TRUE) 
   metaNotFlagged$runDirFlag <- "0"
   print("Check for missing forward or reverse read...")
   # Add pause #
-  Sys.sleep(1)
+  Sys.sleep(2)
   # Handle sequence data with missing R2 data
   if(length(missingR2)>0) {
     print(paste0("Reverse read missing from ", length(missingR2), " records") )
@@ -761,8 +791,9 @@ qcMetadata <- function(metadata, outDir=getwd(), pairedReads="Y", rmDupes=TRUE) 
   # Recombine original flagged records and remaining records post-initial flagging.
   out <- suppressMessages(plyr::join(metaNotFlagged, metaFlagged))
   
-  write.csv(out, paste0(qcDir, "mcc_metadata_", targetGene, "_QCed_", Sys.Date(), '.csv'), row.names = FALSE)
+  write.csv(out, paste0(qcDir, "mmg_metadata_", targetGene, "_QCed_", Sys.Date(), '.csv'), row.names = FALSE)
   cat(paste("Output QCed file contains", nrow(out), "rows. File saved to the following directory:", qcDir))
+  cat("\nNOTE: Always review output before proceeding with analysis.")
   return(out)
 }
 
