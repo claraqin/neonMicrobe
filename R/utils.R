@@ -643,7 +643,7 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
 #' @param rmDupes TRUE (default) or FALSE. Should records with duplicated dnaSampleIDs be removed? If TRUE, then only the first records encountered for a particular dnaSampleID will be retained.
 #'
 #' @return QC'd dataframe is returned as an object and saved as csv file.
-qcMetadata <- function(metadata, outDir=getwd(), pairedReads="Y", rmDupes=TRUE, rmFlagged="N") {
+qcMetadata <- function(metadata, outDir=getwd(), pairedReads="Y", rmDupes=TRUE, rmFlagged="N", verbose=FALSE) {
   library(plyr)
   options(stringsAsFactors = FALSE)
   
@@ -725,7 +725,7 @@ qcMetadata <- function(metadata, outDir=getwd(), pairedReads="Y", rmDupes=TRUE, 
   } else {
     numDupes <- length(dupeSeqIDs)
     print(paste0("QC check Fail. ", numDupes, " duplicate sequence file names found. Removing duplicated file(s).") )
-    print(paste0("Removing duplicated row: ", which(duplicated(metadata$rawDataFileName)) ) )
+    if(verbose) print(paste0("Removing duplicated row: ", which(duplicated(metadata$rawDataFileName)) ) )
     metadata <- metadata[!duplicated(metadata$rawDataFileName), ]
   }
   
@@ -756,12 +756,14 @@ qcMetadata <- function(metadata, outDir=getwd(), pairedReads="Y", rmDupes=TRUE, 
   metaFlagged <- metadata[metadata$duplicateDnaSampleIDFlag=="1", ]
   metaNotFlagged <- metadata[metadata$duplicateDnaSampleIDFlag=="0", ]
   
-  # Check existence of R1 (and R2 based on user input) #
-  dnaSampTab <- data.frame(with(metaNotFlagged, table(dnaSampleID, runDir)) )
   # convert factors to characters
   dfType <- sapply(dnaSampTab, class)
   colsToFix <- names(dnaSampTab[which(dfType=='factor')])
   dnaSampTab[colsToFix] <- sapply(dnaSampTab[colsToFix], as.character)
+  
+  # Check existence of R1 (and R2 based on user input) #
+  dnaSampTab <- data.frame(with(metaNotFlagged, table(dnaSampleID, runDir)) )
+  
   # Handle sequence data with missing run direction
   missingR1 <- dnaSampTab$dnaSampleID[which(dnaSampTab$Freq[dnaSampTab$runDir=="R1"]==0)]
   missingR2 <- dnaSampTab$dnaSampleID[which(dnaSampTab$Freq[dnaSampTab$runDir=="R2"]==0)]
