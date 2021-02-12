@@ -78,11 +78,13 @@ makeOutputDirectories <- function(base_dir = PRESET_OUTDIR, seq_dirname=PRESET_O
 #' @param verbose If TRUE, prints status messages and progress bars associated with file downloads.
 #'
 #' @return Returns (invisibly) a list of integer codes: 0 indicates success of downloads and a non-zero integer indicates failure. See the help page for \code{\link[utils]{download.file}} for more details.
-downloadRawSequenceData <- function(metadata, outdir = file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE), ignore_tar_files=TRUE, verbose=FALSE) {
+downloadRawSequenceData <- function(metadata, outDir = file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE),
+                                    ignore_tar_files=TRUE, checkSize=TRUE, verbose=FALSE) {
 
   library(utils)
   library(dplyr)
-
+  options(stringsAsFactors = FALSE)
+  
   metadata_load_err <- FALSE
 
   if(class(metadata) == "data.frame") {
@@ -100,7 +102,7 @@ downloadRawSequenceData <- function(metadata, outdir = file.path(PRESET_OUTDIR, 
   if(metadata_load_err) {
     stop("'metadata' must be the data.frame output from downloadSequenceMetadata() or a filepath to the local copy of the output from downloadSequenceMetadata()")
   }
-
+  
   if(ignore_tar_files) {
     tar_ind <- grep('\\.tar\\.gz', metadata$rawDataFileName)
     if(length(tar_ind) > 0) {
@@ -115,33 +117,67 @@ downloadRawSequenceData <- function(metadata, outdir = file.path(PRESET_OUTDIR, 
     }
   }
 
-  u.urls <- unique(metadata$rawDataFilePath)
-  fileNms <- gsub('^.*\\/', "", u.urls)
-  print(paste("There are", length(u.urls), "unique raw sequence files to download."))
-
+  # Get unique file names
+  metadata.u <- metadata[!duplicated(metadata$rawDataFilePath), ]
+  print(paste("There are", nrow(metadata.u), "unique raw sequence files to download."))
+  
+  #Loop to check existence and cumulative size of files
+  cat("checking file sizes...\n")
+  fileSize <- 0
+  idx <- 1
+  idxrem <- vector()
+  for(i in 1:nrow(metadata.u)) {
+    # get file metadata
+    response <- httr::HEAD(metadata.u$rawDataFilePath[i])
+    # check for file found
+    if(is.null(httr::headers(response)[["Content-Length"]])) {
+      cat(paste('No file found for url ', metadata.u$rawDataFilePath[i], '. Skipping\n', sep=''))
+      idxrem[idx] <- c(idxrem, i)
+      idx <- idx + 1
+    } else {
+      # grab file size
+      fileSize <- fileSize + as.numeric(httr::headers(response)[["Content-Length"]])
+    }
+  }
+  #  Sum up file sizes and convert bytes to MB
+  totalFileSize <- fileSize/1e6
+  
+  # Remove missing files from download list
+  if(length(idxrem)>0) {
+    metadata.u <- metadata.u[-idxrem, ]
+  }
+  
+  if(checkSize==TRUE) {
+    resp <- readline(paste("Continuing will download",nrow(metadata.u), "files totaling approximately",
+                           totalFileSize, "MB. Do you want to proceed y/n: ", sep=" "))
+    if(!(resp %in% c("y","Y"))) stop("Stopping")
+  }else{
+    cat("Downloading",length(idx), "files totaling approximately",totalFileSize," MB.\n")
+  }
+  
+  
   download_success <- list()
-  for(i in 1:length(u.urls)) {
-    ## TODO: download.file commands should be replaced by neonUtilities::zipsByURI
+  for(i in 1:nrow(metadata.u)) {
     tryCatch({
       download_success[[i]] <- download.file(
-        url = as.character(u.urls[i]),
-        destfile = ifelse(dir.exists(outdir), paste(outdir, fileNms[i], sep="/"), paste(getwd(), fileNms[i], sep="/" )),
+        url = metadata.u.urls[i],
+        destfile = ifelse(dir.exists(outDir), paste(outDir, metadata.u$rawDataFileName[i], sep="/"), paste(getwd(), metadata.u$rawDataFileName[i], sep="/" ) ),
         quiet = !verbose)
     }, error = function(e) { # Occasionally an error arises because _fastq should be replaced by .fastq
       tryCatch({
-        revised_url <- sub("_fastq", ".fastq", as.character(u.urls[i]))
+        revised_url <- sub("_fastq", ".fastq", as.character(metadata.u$rawDataFilePath[i]))
         download_success[[i]] <- download.file(
           url = revised_url,
-          destfile = ifelse(dir.exists(outdir), paste(outdir, fileNms[i], sep="/"), paste(getwd(), fileNms[i], sep="/" )),
+          destfile = ifelse(dir.exists(outDir), paste(outDir, metadata.u$rawDataFileName[i], sep="/"), paste(getwd(), metadata.u$rawDataFileName[i], sep="/" )),
           quiet = !verbose)
       }, error = function(f) {
         download_success[[i]] <- 2
       })
     })
-    if(dir.exists(outdir)) {
-      if(verbose) message("Finished downloading ", paste(outdir, fileNms[i], sep="/"))
+    if(dir.exists(outDir)) {
+      if(verbose) message("Finished downloading ", paste(outDir, metadata.u$rawDataFileName[i], sep="/"))
     } else {
-      if(verbose) message("Finished downloading ", paste(getwd(), fileNms[i], sep="/" ))
+      if(verbose) message("Finished downloading ", paste(getwd(), metadata.u$rawDataFileName[i], sep="/" ))
     }
   }
 
@@ -155,7 +191,7 @@ downloadRawSequenceData <- function(metadata, outdir = file.path(PRESET_OUTDIR, 
 #' renames files to include sequencer run ID, and untars sequence data if necessary.
 #'
 #' @param fn Character vector of full names (including path) of raw sequence files. Can include tarballs.
-#' @param metadata The output of downloadSequenceMetadata(). Must be provided as either the data.frame returned by downloadSequenceMetadata() or as a filepath to the csv file produced by downloadSequenceMetadata() when outdir is provided.
+#' @param metadata The output of downloadSequenceMetadata(). Must be provided as either the data.frame returned by downloadSequenceMetadata() or as a filepath to the csv file produced by downloadSequenceMetadata() when outDir is provided.
 #' @param outdir_sequence Default file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE). Directory where raw sequence files can be found before reorganizing.
 #' @param verbose If TRUE, prints message each time a file is reorganized.
 #'
