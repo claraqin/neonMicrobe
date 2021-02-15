@@ -149,7 +149,7 @@ downloadRawSequenceData <- function(metadata, outDir = file.path(PRESET_OUTDIR, 
   
   if(checkSize==TRUE) {
     resp <- readline(paste("Continuing will download",nrow(metadata.u), "files totaling approximately",
-                           totalFileSize, "MB. Do you want to proceed y/n: ", sep=" "))
+                           totalFileSize, "MB. Do you want to proceed? y/n: ", sep=" "))
     if(!(resp %in% c("y","Y"))) stop("Stopping")
   }else{
     cat("Downloading",length(idx), "files totaling approximately",totalFileSize," MB.\n")
@@ -160,7 +160,7 @@ downloadRawSequenceData <- function(metadata, outDir = file.path(PRESET_OUTDIR, 
   for(i in 1:nrow(metadata.u)) {
     tryCatch({
       download_success[[i]] <- download.file(
-        url = metadata.u.urls[i],
+        url = metadata.u$rawDataFilePath[i],
         destfile = ifelse(dir.exists(outDir), paste(outDir, metadata.u$rawDataFileName[i], sep="/"), paste(getwd(), metadata.u$rawDataFileName[i], sep="/" ) ),
         quiet = !verbose)
     }, error = function(e) { # Occasionally an error arises because _fastq should be replaced by .fastq
@@ -171,13 +171,14 @@ downloadRawSequenceData <- function(metadata, outDir = file.path(PRESET_OUTDIR, 
           destfile = ifelse(dir.exists(outDir), paste(outDir, metadata.u$rawDataFileName[i], sep="/"), paste(getwd(), metadata.u$rawDataFileName[i], sep="/" )),
           quiet = !verbose)
       }, error = function(f) {
+        message("Could not download from URL: ", metadata.u$rawDataFilePath[i])
         download_success[[i]] <- 2
       })
     })
     if(dir.exists(outDir)) {
-      if(verbose) message("Finished downloading ", paste(outDir, metadata.u$rawDataFileName[i], sep="/"))
+      if(verbose) message("Finished downloading ", paste(outDir, metadata.u$rawDataFileName[i], sep="/"), ".\n")
     } else {
-      if(verbose) message("Finished downloading ", paste(getwd(), metadata.u$rawDataFileName[i], sep="/" ))
+      if(verbose) message("Finished downloading ", paste(getwd(), metadata.u$rawDataFileName[i], sep="/" ), ".\n")
     }
   }
 
