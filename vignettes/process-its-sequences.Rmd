@@ -73,6 +73,13 @@ PATH_SEQTABS <- file.path(PATH_ITS, "4_seqtabs")
 PATH_TRACK <- file.path(PATH_ITS, "track_reads")
 ```
 
+Create output directory using today's date:
+```{r}
+today <- Sys.Date()
+PATH_OUTPUTS <- file.path(PRESET_OUTDIR, PRESET_OUTDIR_OUTPUTS, today)
+dir.create(PATH_OUTPUTS)
+```
+
 Get all run IDs so you can group by them:
 
 ```{r}
@@ -200,16 +207,11 @@ tax <- assignTaxonomy(seqtab_joined, UNITE_REF_PATH, multithread = MULTITHREAD, 
 ```
 
 ## Save processed data to file
-
 ```{r}
-# saveRDS(seqtab_joined, "./data/NEON_ITS_seqtab_nochim.Rds")
-saveRDS(seqtab_joined, "./data/NEON_ITS_seqtab.Rds")
-```
-
-```{r eval=FALSE}
-saveRDS(tax, "./data/NEON_ITS_tax.Rds")
+# Save OTU table and taxonomic table as RDS files
+# to hand off to dada2_to_phyloseq.R
+saveRDS(seqtab_joined, file.path(PATH_OUTPUTS, "NEON_ITS_seqtab.rds"))
+saveRDS(tax, file.path(PATH_OUTPUTS, "NEON_ITS_tax.rds"))
 ```
 
 The ASV table and taxonomic table will be joined into a phyloseq object, and will also be joined with environmental data, in the next vignette.
-
-

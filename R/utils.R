@@ -22,21 +22,24 @@
 #' }
 makeOutputDirectories <- function(base_dir = PRESET_OUTDIR, seq_dirname=PRESET_OUTDIR_SEQUENCE,
                                   seqmeta_dirname=PRESET_OUTDIR_SEQMETA, soil_dirname=PRESET_OUTDIR_SOIL, 
-																	taxref_dirname=PRESET_OUTDIR_TAXREF) {
+																	taxref_dirname=PRESET_OUTDIR_TAXREF, outputs_dirname=PRESET_OUTDIR_OUTPUTS) {
   if(is.null(seq_dirname) | seq_dirname == "") seq_dirname <- "raw_sequence"
   if(is.null(seqmeta_dirname) | seqmeta_dirname == "") seqmeta_dirname <- "sequence_metadata"
   if(is.null(soil_dirname) | soil_dirname == "") soil_dirname <- "soil"
-
+  if(is.null(outputs_dirname) | outputs_dirname == "") outputs_dirname <- "outputs"
+  
   seq_dir <- file.path(base_dir, seq_dirname)
   seqmeta_dir <- file.path(base_dir, seqmeta_dirname)
   soil_dir <- file.path(base_dir, soil_dirname)
   taxref_dir <- file.path(base_dir, taxref_dirname)
+  outputs_dir <- file.path(base_dir, outputs_dirname)
   
   message("Building output directories from base directory '", base_dir, "'.")
   message("Using '", seq_dir, "' as sequence subdirectory.")
   message("Using '", seqmeta_dir, "' as sequence metadata subdirectory.")
   message("Using '", soil_dir, "' as soil data subdirectory.")
   message("Using '", taxref_dir, "' as taxonomic reference data subdirectory.")
+  message("Using '", outputs_dir, "' as output data subdirectory.")
   
   seq_its_dir <- file.path(seq_dir, "ITS")
   seq_16s_dir <- file.path(seq_dir, "16S")
@@ -46,6 +49,7 @@ makeOutputDirectories <- function(base_dir = PRESET_OUTDIR, seq_dirname=PRESET_O
   if(!dir.exists(seqmeta_dir)) dir.create(seqmeta_dir, recursive=TRUE)
   if(!dir.exists(soil_dir)) dir.create(soil_dir, recursive=TRUE)
   if(!dir.exists(taxref_dir)) dir.create(taxref_dir, recursive=TRUE)
+  if(!dir.exists(outputs_dir)) dir.create(outputs_dir, recursive=TRUE)
   
   # If preset output directories for ITS and 16S data do not exist, create them
   if(!dir.exists(seq_its_dir)) dir.create(seq_its_dir)
