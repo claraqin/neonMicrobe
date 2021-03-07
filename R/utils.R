@@ -22,21 +22,24 @@
 #' }
 makeOutputDirectories <- function(base_dir = PRESET_OUTDIR, seq_dirname=PRESET_OUTDIR_SEQUENCE,
                                   seqmeta_dirname=PRESET_OUTDIR_SEQMETA, soil_dirname=PRESET_OUTDIR_SOIL, 
-																	taxref_dirname=PRESET_OUTDIR_TAXREF) {
+																	taxref_dirname=PRESET_OUTDIR_TAXREF, outputs_dirname=PRESET_OUTDIR_OUTPUTS) {
   if(is.null(seq_dirname) | seq_dirname == "") seq_dirname <- "raw_sequence"
   if(is.null(seqmeta_dirname) | seqmeta_dirname == "") seqmeta_dirname <- "sequence_metadata"
   if(is.null(soil_dirname) | soil_dirname == "") soil_dirname <- "soil"
-
+  if(is.null(outputs_dirname) | outputs_dirname == "") outputs_dirname <- "outputs"
+  
   seq_dir <- file.path(base_dir, seq_dirname)
   seqmeta_dir <- file.path(base_dir, seqmeta_dirname)
   soil_dir <- file.path(base_dir, soil_dirname)
   taxref_dir <- file.path(base_dir, taxref_dirname)
+  outputs_dir <- file.path(base_dir, outputs_dirname)
   
   message("Building output directories from base directory '", base_dir, "'.")
   message("Using '", seq_dir, "' as sequence subdirectory.")
   message("Using '", seqmeta_dir, "' as sequence metadata subdirectory.")
   message("Using '", soil_dir, "' as soil data subdirectory.")
   message("Using '", taxref_dir, "' as taxonomic reference data subdirectory.")
+  message("Using '", outputs_dir, "' as output data subdirectory.")
   
   seq_its_dir <- file.path(seq_dir, "ITS")
   seq_16s_dir <- file.path(seq_dir, "16S")
@@ -46,6 +49,7 @@ makeOutputDirectories <- function(base_dir = PRESET_OUTDIR, seq_dirname=PRESET_O
   if(!dir.exists(seqmeta_dir)) dir.create(seqmeta_dir, recursive=TRUE)
   if(!dir.exists(soil_dir)) dir.create(soil_dir, recursive=TRUE)
   if(!dir.exists(taxref_dir)) dir.create(taxref_dir, recursive=TRUE)
+  if(!dir.exists(outputs_dir)) dir.create(outputs_dir, recursive=TRUE)
   
   # If preset output directories for ITS and 16S data do not exist, create them
   if(!dir.exists(seq_its_dir)) dir.create(seq_its_dir)
@@ -78,11 +82,13 @@ makeOutputDirectories <- function(base_dir = PRESET_OUTDIR, seq_dirname=PRESET_O
 #' @param verbose If TRUE, prints status messages and progress bars associated with file downloads.
 #'
 #' @return Returns (invisibly) a list of integer codes: 0 indicates success of downloads and a non-zero integer indicates failure. See the help page for \code{\link[utils]{download.file}} for more details.
-downloadRawSequenceData <- function(metadata, outdir = file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE), ignore_tar_files=TRUE, verbose=FALSE) {
+downloadRawSequenceData <- function(metadata, outDir = file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE),
+                                    ignore_tar_files=TRUE, checkSize=TRUE, verbose=FALSE) {
 
   library(utils)
   library(dplyr)
-
+  options(stringsAsFactors = FALSE)
+  
   metadata_load_err <- FALSE
 
   if(class(metadata) == "data.frame") {
@@ -100,7 +106,7 @@ downloadRawSequenceData <- function(metadata, outdir = file.path(PRESET_OUTDIR, 
   if(metadata_load_err) {
     stop("'metadata' must be the data.frame output from downloadSequenceMetadata() or a filepath to the local copy of the output from downloadSequenceMetadata()")
   }
-
+  
   if(ignore_tar_files) {
     tar_ind <- grep('\\.tar\\.gz', metadata$rawDataFileName)
     if(length(tar_ind) > 0) {
@@ -115,33 +121,68 @@ downloadRawSequenceData <- function(metadata, outdir = file.path(PRESET_OUTDIR, 
     }
   }
 
-  u.urls <- unique(metadata$rawDataFilePath)
-  fileNms <- gsub('^.*\\/', "", u.urls)
-  print(paste("There are", length(u.urls), "unique raw sequence files to download."))
-
+  # Get unique file names
+  metadata.u <- metadata[!duplicated(metadata$rawDataFilePath), ]
+  print(paste("There are", nrow(metadata.u), "unique raw sequence files to download."))
+  
+  #Loop to check existence and cumulative size of files
+  cat("checking file sizes...\n")
+  fileSize <- 0
+  idx <- 1
+  idxrem <- vector()
+  for(i in 1:nrow(metadata.u)) {
+    # get file metadata
+    response <- httr::HEAD(metadata.u$rawDataFilePath[i])
+    # check for file found
+    if(is.null(httr::headers(response)[["Content-Length"]])) {
+      cat(paste('No file found for url ', metadata.u$rawDataFilePath[i], '. Skipping\n', sep=''))
+      idxrem[idx] <- c(idxrem, i)
+      idx <- idx + 1
+    } else {
+      # grab file size
+      fileSize <- fileSize + as.numeric(httr::headers(response)[["Content-Length"]])
+    }
+  }
+  #  Sum up file sizes and convert bytes to MB
+  totalFileSize <- fileSize/1e6
+  
+  # Remove missing files from download list
+  if(length(idxrem)>0) {
+    metadata.u <- metadata.u[-idxrem, ]
+  }
+  
+  if(checkSize==TRUE) {
+    resp <- readline(paste("Continuing will download",nrow(metadata.u), "files totaling approximately",
+                           totalFileSize, "MB. Do you want to proceed? y/n: ", sep=" "))
+    if(!(resp %in% c("y","Y"))) stop("Stopping")
+  }else{
+    cat("Downloading",length(idx), "files totaling approximately",totalFileSize," MB.\n")
+  }
+  
+  
   download_success <- list()
-  for(i in 1:length(u.urls)) {
-    ## TODO: download.file commands should be replaced by neonUtilities::zipsByURI
+  for(i in 1:nrow(metadata.u)) {
     tryCatch({
       download_success[[i]] <- download.file(
-        url = as.character(u.urls[i]),
-        destfile = ifelse(dir.exists(outdir), paste(outdir, fileNms[i], sep="/"), paste(getwd(), fileNms[i], sep="/" )),
+        url = metadata.u$rawDataFilePath[i],
+        destfile = ifelse(dir.exists(outDir), paste(outDir, metadata.u$rawDataFileName[i], sep="/"), paste(getwd(), metadata.u$rawDataFileName[i], sep="/" ) ),
         quiet = !verbose)
     }, error = function(e) { # Occasionally an error arises because _fastq should be replaced by .fastq
       tryCatch({
-        revised_url <- sub("_fastq", ".fastq", as.character(u.urls[i]))
+        revised_url <- sub("_fastq", ".fastq", as.character(metadata.u$rawDataFilePath[i]))
         download_success[[i]] <- download.file(
           url = revised_url,
-          destfile = ifelse(dir.exists(outdir), paste(outdir, fileNms[i], sep="/"), paste(getwd(), fileNms[i], sep="/" )),
+          destfile = ifelse(dir.exists(outDir), paste(outDir, metadata.u$rawDataFileName[i], sep="/"), paste(getwd(), metadata.u$rawDataFileName[i], sep="/" )),
           quiet = !verbose)
       }, error = function(f) {
+        message("Could not download from URL: ", metadata.u$rawDataFilePath[i])
         download_success[[i]] <- 2
       })
     })
-    if(dir.exists(outdir)) {
-      if(verbose) message("Finished downloading ", paste(outdir, fileNms[i], sep="/"))
+    if(dir.exists(outDir)) {
+      if(verbose) message("Finished downloading ", paste(outDir, metadata.u$rawDataFileName[i], sep="/"), ".\n")
     } else {
-      if(verbose) message("Finished downloading ", paste(getwd(), fileNms[i], sep="/" ))
+      if(verbose) message("Finished downloading ", paste(getwd(), metadata.u$rawDataFileName[i], sep="/" ), ".\n")
     }
   }
 
@@ -155,7 +196,7 @@ downloadRawSequenceData <- function(metadata, outdir = file.path(PRESET_OUTDIR, 
 #' renames files to include sequencer run ID, and untars sequence data if necessary.
 #'
 #' @param fn Character vector of full names (including path) of raw sequence files. Can include tarballs.
-#' @param metadata The output of downloadSequenceMetadata(). Must be provided as either the data.frame returned by downloadSequenceMetadata() or as a filepath to the csv file produced by downloadSequenceMetadata() when outdir is provided.
+#' @param metadata The output of downloadSequenceMetadata(). Must be provided as either the data.frame returned by downloadSequenceMetadata() or as a filepath to the csv file produced by downloadSequenceMetadata() when outDir is provided.
 #' @param outdir_sequence Default file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE). Directory where raw sequence files can be found before reorganizing.
 #' @param verbose If TRUE, prints message each time a file is reorganized.
 #'
@@ -629,6 +670,176 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
   message(paste0("variables file downloaded to: ", outDir) )
 
   return(outPCR)
+}
+
+
+#' QC Sequence Metadata
+#'
+#' Performs basic QAQC checks on sequence metadata prior to downloading sequence data and performing bioinformatics processing.
+#' Running this function will remove metadata records for samples that do not meet user specifications. This will reduce the number of sequence files that are downloaded to only those that will be used for analysis, thereby saving file space and reducing download times.
+#'
+#' @param metadata The output of downloadSequenceMetadata(). Must be provided as either the data.frame returned by downloadSequenceMetadata() or as a filepath to the csv file produced by downloadSequenceMetadata() when outdir is provided.
+#' @param outDir Default current working directory. Directory where raw sequence files can be found before reorganizing.
+#' @param pairedReads "Y" (default) or "N". Should the forward reads for a sample be removed if the corresponding reverse read is missing? If "Y", then only samples that have both the forward (R1) and reverse (R2) reads will be retained.
+#' @param rmDupes TRUE (default) or FALSE. Should records with duplicated dnaSampleIDs be removed? If TRUE, then only the first records encountered for a particular dnaSampleID will be retained.
+#'
+#' @return QC'd dataframe is returned as an object and saved as csv file.
+qcMetadata <- function(metadata, outDir=getwd(), pairedReads="Y", rmDupes=TRUE, rmFlagged="N", verbose=FALSE) {
+  library(plyr)
+  options(stringsAsFactors = FALSE)
+  
+  metadata_load_err <- FALSE
+  
+  if(class(metadata) == "data.frame") {
+    metadata <- metadata
+  } else if(class(metadata) == "character") {
+    if(file.exists(metadata)) {
+      metadata <- read.csv(metadata)
+    } else {
+      metadata_load_err <- TRUE
+    }
+  } else {
+    metadata_load_err <- TRUE
+  }
+  
+  if(metadata_load_err) {
+    stop("'metadata' must be the data.frame output from downloadSequenceMetadata() or a filepath to the local copy of the output from downloadSequenceMetadata()")
+  }
+  
+  # validate pairedReads
+  if(!(pairedReads %in% c("Y", "N")) ) {
+    stop("value for argument pairedReads invalid. Must be 'Y' or 'N'.")
+  }
+  
+  # validate rmFlagged
+  if(!(rmFlagged %in% c("Y", "N")) ) {
+    stop("value for argument rmFlagged invalid. Must be 'Y' or 'N'.")
+  }
+  
+  # get targetGene and confirm that only one targetGene is in input data set
+  targetGene <- unique(metadata$targetGene)
+  if(length(targetGene) > 1) {
+    stop("more than one targetGene in input data set. Only one targetGene can be QCed at a time.")
+  }
+  
+  # create output folder for QCed metadata #
+  qcDir <- paste0(outDir, '/QC_output/')
+  if(!dir.exists(qcDir) ) {
+    dir.create(qcDir)
+  }
+  
+  # Print size of dataset
+  print(paste("Input dataset contains", nrow(metadata), "rows.") )
+  
+  
+  # Remove flagged records, if rmFlagged="Y"
+  if(rmFlagged=="Y") {
+    print("Removing records with existing quality flag...")
+    # Define flag values for removal based on LOV values #
+    flagVals <- "Fail|legacyData"
+    # Remove NA values #
+    metadata[is.na(metadata)] <- ""
+    flagFields <- grep("qaqcStatus|dataQF", names(metadata))
+    ind <- vector()
+    for(i in flagFields) {
+      flagged <- grep(flagVals, metadata[,i])
+      ind <- c(ind,flagged)
+    }
+    if(length(ind)==0) {
+      print("No flagged records found.")
+    } else {
+      ind <- unique(ind)
+      numDupes <- length(ind)
+      print(paste0(length(ind), " flagged records found. Removing flagged record(s).") )
+      metadata <- metadata[-ind, ]
+    }
+    Sys.sleep(3)
+  }
+  
+  # check for and remove duplicate sequence file names
+  print("QC check for duplicate sequence file names...")
+  # Add pause #
+  Sys.sleep(1)
+  dupeSeqIDs <- as.character(metadata$rawDataFileName[duplicated(metadata$rawDataFileName)] )
+  if(length(dupeSeqIDs)==0) {
+    print("QC check Pass. No duplicate sequence file names.")
+  } else {
+    numDupes <- length(dupeSeqIDs)
+    print(paste0("QC check Fail. ", numDupes, " duplicate sequence file names found. Removing duplicated file(s).") )
+    if(verbose) print(paste0("Removing duplicated row: ", which(duplicated(metadata$rawDataFileName)) ) )
+    metadata <- metadata[!duplicated(metadata$rawDataFileName), ]
+  }
+  
+  
+  # check for and flag duplicate dnaSampleIDs
+  print("QC checking duplicate dnaSampleIDs...")
+  # Add pause #
+  Sys.sleep(2)
+  metadata$runDir <- ""
+  metadata$runDir[grep("R1", metadata$rawDataFileDescription)] <- "R1"
+  metadata$runDir[grep("R2", metadata$rawDataFileDescription)] <- "R2"
+  dnaIDsPerRunDir <- paste(metadata$dnaSampleID, metadata$sequencerRunID, metadata$runDir, sep="-")
+  metadata$duplicateDnaSampleIDFlag <- "0"
+  if(any(duplicated(dnaIDsPerRunDir)) ) {
+    ind <- which(duplicated(dnaIDsPerRunDir))
+    metadata$duplicateDnaSampleIDFlag[ind] <- "1"
+    if(rmDupes==TRUE) {
+      metadata <- metadata[-ind,]
+      print("Duplicated dnaSampleID record(s) found and removed.")
+    } else {
+      print("Duplicated dnaSampleID(s) found. Flagging affected record(s).")
+    }
+  } else {
+    print("No duplicated dnaSampleID records found.")
+  }
+  
+  # Subset qced data to un-flagged records
+  metaFlagged <- metadata[metadata$duplicateDnaSampleIDFlag=="1", ]
+  metaNotFlagged <- metadata[metadata$duplicateDnaSampleIDFlag=="0", ]
+  
+  metaNotFlagged$dnaSampleID <- as.character(metaNotFlagged$dnaSampleID)
+  
+  # Check existence of R1 (and R2 based on user input) #
+  dnaSampTab <- data.frame(with(metaNotFlagged, table(dnaSampleID, runDir)) )
+  
+  # convert factors to characters
+  dfType <- sapply(dnaSampTab, class)
+  colsToFix <- names(dnaSampTab[which(dfType=='factor')])
+  dnaSampTab[colsToFix] <- sapply(dnaSampTab[colsToFix], as.character)
+  
+  # Handle sequence data with missing run direction
+  missingR1 <- dnaSampTab$dnaSampleID[which(dnaSampTab$Freq[dnaSampTab$runDir=="R1"]==0)]
+  missingR2 <- dnaSampTab$dnaSampleID[which(dnaSampTab$Freq[dnaSampTab$runDir=="R2"]==0)]
+  metaNotFlagged$runDirFlag <- "0"
+  print("Check for missing forward or reverse read...")
+  # Add pause #
+  Sys.sleep(2)
+  # Handle sequence data with missing R2 data
+  if(length(missingR2)>0) {
+    print(paste0("Reverse read missing from ", length(missingR2), " records") )
+    # If specified, remove R1 file
+    if(pairedReads=="Y") {
+      print("Removing R1 files lacking a matching R2 file (default action when pairedReads='Y')" )
+      metaNotFlagged <- metaNotFlagged[-intersect(which(metaNotFlagged$runDir=="R1"), which(metaNotFlagged$dnaSampleID %in% missingR2) ), ]
+    } else {
+      metaNotFlagged$runDirFlag[intersect(which(metaNotFlagged$runDir=="R1"), which(metaNotFlagged$dnaSampleID %in% missingR2) )] <- "1"
+      print("Flagging R1 files lacking a matching R2 file (default action when pairedReads='N')" )
+    }
+  }
+  # Handle sequence data with missing R1 data
+  if(length(missingR1)>0) {
+    print(paste0("Forward read missing from ", length(missingR1), " record(s). Removing R2 file for affected sequence data set(s).") )
+    # remove R2 file
+    metaNotFlagged <- metaNotFlagged[-intersect(which(metaNotFlagged$runDir=="R2"), which(metaNotFlagged$dnaSampleID %in% missingR1) ), ]
+  }
+  
+  # Recombine original flagged records and remaining records post-initial flagging.
+  out <- suppressMessages(plyr::join(metaNotFlagged, metaFlagged))
+  
+  write.csv(out, paste0(qcDir, "mmg_metadata_", gsub("\\ ", "", targetGene), "_QCed_", gsub("-", "", Sys.Date()), '.csv'), row.names = FALSE)
+  cat(paste("Output QCed file contains", nrow(out), "rows. File saved to the following directory:", qcDir))
+  cat("\nNOTE: Always review output before proceeding with analysis.")
+  return(out)
 }
 
 

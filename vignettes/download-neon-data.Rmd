@@ -12,17 +12,17 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
-if(dir.exists("~/zhulab/")) {
-  knitr::opts_knit$set(
-  root.dir = "~/zhulab/neonSoilMicrobeProcessing/" # Update as necessary. Should refer to the absolute filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
-  )
-}
-if(dir.exists("/Users/lstanish/Github/")) {
-  knitr::opts_knit$set(
-  root.dir = "/Users/lstanish/Github/NEON_soil_microbe_processing/" # LFS directory file path. 
-  )
-}
-
+# if(dir.exists("~/zhulab/")) {
+#   knitr::opts_knit$set(
+#   root.dir = "~/Documents/UCSC/Projects/NEON_soil_microbe_processing" # Update as necessary. Should refer to the absolute filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
+#   )
+# }
+# if(dir.exists("/Users/lstanish/Github/")) {
+#   knitr::opts_knit$set(
+#   root.dir = "/Users/lstanish/Github/NEON_soil_microbe_processing/" # LFS directory file path. 
+#   )
+# }
+knitr::opts_knit$set(root.dir = "~/Documents/UCSC/Projects/NEON_soil_microbe_processing")
 
 ```
 
@@ -58,7 +58,6 @@ In addition, source files associated with this package:
 ```{r}
 source("./R/utils.R")
 source("./code/params.R")
-
 ```
 
 # Set up directories
@@ -103,17 +102,39 @@ If time and space limitations are not issues for you, you can download the entir
 In the following example, we run `downloadSequenceMetadata()` with a number of arguments to narrow the range of data to be downloaded. Note that the output metadata file by default is placed in the metadata output directory defined in your params.R file.
 
 ```{r}
-meta <- downloadSequenceMetadata(startYrMo = "2018-02", endYrMo = "2018-03", 
-                                 sites = c("CLBJ"),
-                                 targetGene = "all")
+meta_16s <- downloadSequenceMetadata(startYrMo = "2018-02", endYrMo = "2018-03", 
+                                     sites = c("CLBJ"),
+                                     targetGene = "16S")
+meta_its <- downloadSequenceMetadata(startYrMo = "2018-02", endYrMo = "2018-03", 
+                                     sites = c("CLBJ"),
+                                     targetGene = "ITS")
 ```
+
+## Quality control sequence metadata
+
+The following function performs basic QAQC checks on sequence metadata prior to downloading sequence data. This will reduce the number of sequence files that are downloaded to only those that will be used for analysis, thereby saving file space and reducing download times.
+
+Specifically, this function will remove duplicates and, optionally, will also remove any R1 fastq files without corresponding R2 files.
+
+```{r}
+meta_16s_qc <- qcMetadata(meta_16s)
+```
+
+```{r}
+meta_its_qc <- qcMetadata(meta_its)
+```
+
 
 ## Download raw sequence data
 
 Now that we have the metadata table loaded into memory, we retrieve a table of unique raw data files and their sequencing run IDs. 
 
 ```{r, message=1:5}
-download_success <- downloadRawSequenceData(meta)
+download_success_16s <- downloadRawSequenceData(meta_16s_qc)
+```
+
+```{r, message=1:5}
+download_success_its <- downloadRawSequenceData(meta_its_qc)
 ```
 
 ## Reorganize and rename the downloaded files
@@ -122,14 +143,22 @@ Get the names of all downloaded files.
 
 ```{r}
 outdir_sequence <- file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE)
-fn0 <- file.path(outdir_sequence, meta$rawDataFileName)
-fn <- unique(fn0[file.exists(fn0)])
+fn0_16s <- file.path(outdir_sequence, meta_16s_qc$rawDataFileName)
+fn0_16s <- file.path(outdir_sequence, meta_its_qc$rawDataFileName)
+fn_16s <- unique(fn0_16s[file.exists(fn0_16s)])
+fn_its <- unique(fn0_its[file.exists(fn0_its)])
 ```
 
-The following function untars each file (if necessary), appends the sequencer run ID to the beginning of each filename, and moves files to subfolders within your  sequence directory according to their target gene. The terminal directory name for either target gene will be `0_raw`.
+The following function untars each file (if necessary), appends the sequencer run ID to the beginning of each filename, and moves files to subfolders within your sequence directory according to their target gene. The terminal directory name for either target gene will be `0_raw`.
 
 ```{r}
-reorganized_files <- organizeRawSequenceData(fn, meta)
-head(reorganized_files)
+reorganized_files_16s <- organizeRawSequenceData(fn_16s, meta_16s_qc)
+head(reorganized_files_16s)
 ```
+
+```{r}
+reorganized_files_its <- organizeRawSequenceData(fn_its, meta_its_qc)
+head(reorganized_files_its)
+```
+
 

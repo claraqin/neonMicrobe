@@ -70,6 +70,13 @@ PATH_SEQTABS <- file.path(PATH_16S, "3_seqtabs")
 PATH_TRACK <- file.path(PATH_16S, "track_reads")
 ```
 
+Create output directory using today's date:
+```{r}
+today <- Sys.Date()
+PATH_OUTPUTS <- file.path(PRESET_OUTDIR, PRESET_OUTDIR_OUTPUTS, today)
+dir.create(PATH_OUTPUTS)
+```
+
 Get all run IDs so you can group by them:
 
 ```{r}
@@ -199,8 +206,8 @@ tax <- assignTaxonomy(seqtab_joined, SILVA_REF_PATH, multithread = MULTITHREAD, 
 ```{r}
 # Save OTU table and taxonomic table as RDS files
 # to hand off to dada2_to_phyloseq.R
-saveRDS(seqtab_joined, "./data/NEON_16S_seqtab_nochim_SMALLSUBSET.Rds")
-saveRDS(tax, "./data/NEON_16S_tax_SMALLSUBSET.Rds")
+saveRDS(seqtab_joined, file.path(PATH_OUTPUTS, "NEON_16S_seqtab.rds"))
+saveRDS(tax, file.path(PATH_OUTPUTS, "NEON_16S_tax.rds"))
 ```
 
 

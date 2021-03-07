@@ -14,6 +14,9 @@ PRESET_OUTDIR_SEQMETA = "sequence_metadata" # for sequence metadata
 PRESET_OUTDIR_SOIL = "soil" # for soil data
 PRESET_OUTDIR_TAXREF = "tax_ref" # for taxonomy reference data
 
+### NEW PARAMETERS FOR DYNAMIC FILE NAMING ###
+PRESET_OUTDIR_OUTPUTS = "outputs" # for outputs (sequence table, taxonomy table, phyloseq object)
+
 ## PARAMETERS FOR DADA2_WORKFLOW
 
 # Primers
