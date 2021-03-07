@@ -12,17 +12,17 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
-# if(dir.exists("~/zhulab/")) {
-#   knitr::opts_knit$set(
-#   root.dir = "~/Documents/UCSC/Projects/NEON_soil_microbe_processing" # Update as necessary. Should refer to the absolute filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
-#   )
-# }
-# if(dir.exists("/Users/lstanish/Github/")) {
-#   knitr::opts_knit$set(
-#   root.dir = "/Users/lstanish/Github/NEON_soil_microbe_processing/" # LFS directory file path. 
-#   )
-# }
-knitr::opts_knit$set(root.dir = "~/Documents/UCSC/Projects/NEON_soil_microbe_processing")
+if(dir.exists("~/zhulab/")) {
+  knitr::opts_knit$set(
+    root.dir = "~/zhulab/neonSoilMicrobeProcessing/" # Update as necessary. Should refer to the absolute filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
+  )
+}
+if(dir.exists("/Users/lstanish/Github/")) {
+  knitr::opts_knit$set(
+    root.dir = "/Users/lstanish/Github/NEON_soil_microbe_processing/" # LFS directory file path. 
+  )
+}
+
 
 ```
 
