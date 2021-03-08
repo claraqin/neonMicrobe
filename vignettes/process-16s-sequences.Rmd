@@ -134,8 +134,12 @@ for (i in 1:length(unique_runs)) {
   message(paste0("Began processing ", runID, " at ", Sys.time()))
 
   # Get fastq files from this sequencing run ID
-  fn <- meta_fn$file[meta_fn$sequencerRunID==runID]
+  fn <- meta_fn$file[which(meta_fn$sequencerRunID==runID)]
   fn_base <- basename(fn)
+  if(length(fn)==0) {
+    message("No files found for sequencing run ", runID, ". Trying next sequencing run.")
+    next
+  }
 
   # Trim reads based on the primer lengths supplied in params.r
   # trim_trackReads <- trimPrimers16S(fn, PATH_TRIMMED, "CCTACGGGNBGCASCAG", "GACTACNVGGGTATCTAATCC")
