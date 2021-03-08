@@ -14,7 +14,7 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 knitr::opts_knit$set(
-  root.dir = "~/zhulab/neonSoilMicrobeProcessing/" # Update as necessary. Should refer to the absolute filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
+  root.dir = "~/Documents/UCSC/Projects/NEON_soil_microbe_processing/" # Update as necessary. Should refer to the absolute filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
 )
 ```
 
@@ -121,7 +121,8 @@ rawRs <- sort(list.files(PATH_RAW, pattern = paste0("(",paste0("(", runIDs, ")",
 Retrieve metadata. If you saved your metadata to file, you can load it here:
 
 ```{r}
-meta <- read.csv("./NEON/sequence_metadata/mmg_soilMetadata_16S_2021-01-12135435.csv")
+meta0 <- read.csv("./NEON/sequence_metadata/mmg_soilMetadata_16S_2021-01-12135435.csv")
+meta <- qcMetadata(meta0, PATH_TEST, pairedReads="N", rmDupes=TRUE, rmFlagged="Y")
 ```
 
 If you did not save your metadata to file, you can re-download it using `downloadSequenceMetadata()`:
@@ -133,7 +134,7 @@ meta <- downloadSequenceMetadata(targetGene = "16S")
 Remove any samples that only have forward reads or only have reverse reads.
 
 ```{r}
-matched_fn <- removeUnmatchedFastqFiles(rawFs, rawRs, meta)
+matched_fn <- removeUnpairedFastqFiles(rawFs, rawRs, meta)
 rawFs <- matched_fn[[1]]
 rawRs <- matched_fn[[2]]
 ```
@@ -147,9 +148,11 @@ if(length(rawFs) > N_SAMPLES) {
   for(i in 1:length(runIDs)) {
     rawFs_runID <- rawFs[grep(runIDs[i], rawFs)]
     rawRs_runID <- rawRs[grep(runIDs[i], rawRs)]
-    if(length(rawFs_runID) > 5) {
-      rawFs_subset <- c(rawFs_subset, rawFs_runID[1:round(N_SAMPLES/length(runIDs))])
-      rawRs_subset <- c(rawFs_subset, rawRs_runID[1:round(N_SAMPLES/length(runIDs))])
+    if(length(rawFs_runID) > N_SAMPLES/length(runIDs)) {
+      set.seed(1010101010+i)
+      subset <- sample(seq(1,length(rawFs_runID)), N_SAMPLES/length(runIDs), FALSE)
+      rawFs_subset <- c(rawFs_subset, rawFs_runID[subset])
+      rawRs_subset <- c(rawRs_subset, rawRs_runID[subset])
       # rawFs_subset <- c(rawFs_subset, rawFs_runID[round(quantile(1:length(rawFs_runID), probs=seq(0,1,length.out=N_SAMPLES/length(runIDs))))])
       # rawRs_subset <- c(rawRs_subset, rawRs_runID[round(quantile(1:length(rawRs_runID), probs=seq(0,1,length.out=N_SAMPLES/length(runIDs))))])
     } else {
@@ -157,9 +160,24 @@ if(length(rawFs) > N_SAMPLES) {
       rawRs_subset <- c(rawRs_subset, rawRs_runID)
     }
   }
-  rawFs <- rawFs_subset
-  rawRs <- rawRs_subset
+  # rawFs <- rawFs_subset
+  # rawRs <- rawRs_subset
 }
+write.csv(cbind(rawFs, rawRs), file.path(PATH_TEST, "input_files.csv"))
+```
+
+Ensure there are no poor quality flags or legacy data in the subset.
+
+```{r}
+# meta_ext <- matchFastqToMetadata(c(rawFs, rawRs), meta)
+meta_ext <- matchFastqToMetadata(c(rawFs_subset, rawRs_subset), meta)
+with(meta_ext, table(sequencerRunID, qaqcStatus.dna))
+with(meta_ext, table(sequencerRunID, qaqcStatus.pcr))
+with(meta_ext, table(sequencerRunID, qaqcStatus.seq))
+with(meta_ext, table(sequencerRunID, dataQF.rawFiles))
+with(meta_ext, table(sequencerRunID, dataQF.dna))
+with(meta_ext, table(sequencerRunID, dataQF.pcr))
+with(meta_ext, table(sequencerRunID, dataQF.seq))
 ```
 
 Plot quality profiles

@@ -27,6 +27,10 @@ if(dir.exists("/projectnb/dietzelab/zrwerbin/")) {
   root.dir = "/projectnb/dietzelab/zrwerbin/NEON_soil_microbe_processing/" # ZW directory file path.
   )
 }
+
+knitr::opts_knit$set(
+  root.dir = "~/Documents/UCSC/Projects/NEON_soil_microbe_processing"
+)
 ```
 
 The goal of this vignette is to merge various NEON data products to link the outputs of the DADA2 pipeline (e.g. non-chimeric sequence table, taxonomic table) to environmental/sample data. We assume that you have already run the entire pipeline and have a sequence table and taxonomic table prepared.
