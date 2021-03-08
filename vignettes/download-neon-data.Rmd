@@ -134,11 +134,6 @@ download_success_16s <- downloadRawSequenceData(meta_16s_qc)
 ```
 
 
-```{r}
-meta <- read.csv("~/Downloads/test_mmg_metadata_16SrRNA_QCed_20210208.csv")
-download_success_16s <- downloadRawSequenceData(meta)
-```
-
 ```{r, message=1:5}
 download_success_its <- downloadRawSequenceData(meta_its_qc)
 ```
@@ -150,7 +145,7 @@ Get the names of all downloaded files.
 ```{r}
 outdir_sequence <- file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE)
 fn0_16s <- file.path(outdir_sequence, meta_16s_qc$rawDataFileName)
-fn0_16s <- file.path(outdir_sequence, meta_its_qc$rawDataFileName)
+fn0_its <- file.path(outdir_sequence, meta_its_qc$rawDataFileName)
 fn_16s <- unique(fn0_16s[file.exists(fn0_16s)])
 fn_its <- unique(fn0_its[file.exists(fn0_its)])
 ```

@@ -125,7 +125,7 @@ unique_runs <- unique(meta_fn$sequencerRunID)
 We use DADA2 to process reads one sequencing run at a time.
 
 ```{r}
-all.seqtabs <- list()
+# all.seqtabs <- list()
 t1 <- Sys.time()
 ti <- c()
 first <- TRUE
@@ -151,7 +151,7 @@ for (i in 1:length(unique_runs)) {
 
   # Now create sequence table for run
   # seqtab.list <- runDada16S(fn_base, PATH_FILTERED, MULTITHREAD, VERBOSE)
-  seqtab.list <- runDada16S2(file.path(PATH_FILTERED, fn_base), meta, multithread = MULTITHREAD, verbose = VERBOSE)
+  seqtab.list <- runDada16S2(file.path(PATH_FILTERED, fn_base), meta, remove_chimeras = TRUE, multithread = MULTITHREAD, verbose = VERBOSE)
 
   # Create output tracking file
   track <- Reduce(
@@ -164,11 +164,11 @@ for (i in 1:length(unique_runs)) {
   track[is.na(track)] <- 0
 
   # Append sequence table to output list
-  all.seqtabs[[runID]] <- seqtab.list$seqtab.nochim
+  # all.seqtabs[[runID]] <- seqtab.list$seqtab.nochim
 
   # Save tracking table (which tracks no. of reads remaining at each stage) and sequence table
   write.csv(track, file.path(PATH_TRACK, paste0("track_reads_", runID, ".csv")))
-  saveRDS(seqtab.list$seqtab.nochim, file.path(PATH_SEQTABS, paste0("NEON_16S_seqtab_nochim_", runID, ".rds")))
+  saveRDS(seqtab.list$seqtab, file.path(PATH_SEQTABS, paste0("NEON_16S_seqtab_nochim_", runID, ".rds")))
   message(paste0("Finished processing reads in ", runID, " at ", Sys.time()))
   message(paste0("Sequencing run-specific sequence tables can be found in ", PATH_SEQTABS))
 }
@@ -177,14 +177,15 @@ for (i in 1:length(unique_runs)) {
 Merge the sequence tables from all runs
 
 ```{r}
-if(length(all.seqtabs) == 1) {
-  seqtab_joined <- all.seqtabs[[1]]
+if(length(unique_runs) == 1) {
+  seqtab_joined <- seqtab.list$seqtab
 } else {
-  seqtab_joined <- mergeSequenceTables(tables = all.seqtabs)
+  seqtab_joined <- mergeSequenceTables(tables = file.path(PATH_SEQTABS, paste0("NEON_16S_seqtab_nochim_", unique_runs, ".rds")))
 }
 ```
 
 Next, we'll assign taxonomy to each of the identified sequences. This is a computationally expensive step - it can take hours, or even days, to run. Because of this, we're going to reduce the size of the dataset, by removing samples with fewer than 1000 reads, as well as any taxa with fewer than 10 counts in the whole dataset. This is optional, and the cutoffs here can be modified.
+
 ```{r}
 # Remove low-abundance taxa (optional)
 keep <- which(colSums(seqtab_orig) > 10)
@@ -199,8 +200,9 @@ print(dim(seqtab_joined))
 ```
 
 
-# Download Silva reference database if necessary
+## Download Silva reference database if necessary
 If you have already downloaded a taxonomic database, change the `SILVA_REF_PATH` parameter in the params.r file.
+
 ```{r}
 silva.url <- "https://zenodo.org/record/3986799/files/silva_nr99_v138_train_set.fa.gz"
 if(!file.exists(SILVA_REF_PATH)){

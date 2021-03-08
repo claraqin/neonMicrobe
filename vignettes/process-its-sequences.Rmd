@@ -103,7 +103,7 @@ if (SMALL_SUBSET) {
 We use DADA2 to process reads one sequencing run at a time.
 
 ```{r}
-all.seqtabs <- list()
+# all.seqtabs <- list()
 t1 <- Sys.time()
 ti <- c()
 for (i in 1:loop_length) {
@@ -147,19 +147,11 @@ for (i in 1:loop_length) {
   track[is.na(track)] <- 0
   
   # Append sequence table to output list
-  all.seqtabs[[runID]] <- seqtab.list$seqtab.nochim
-  # all.seqtabs[[runID]] <- seqtab.list$seqtab
+  # all.seqtabs[[runID]] <- seqtab.list$seqtab.nochim
 
   # Save tracking table (which tracks no. of reads remaining at each stage) and sequence table
-  if(SMALL_SUBSET) {
-    write.csv(track, file.path(PATH_TRACK, paste0("track_reads_",runID,"_SMALLSUBSET.csv")))
-    saveRDS(seqtab.list$seqtab.nochim, file.path(PATH_SEQTABS, paste0("NEON_ITS_seqtab_nochim_", runID, "_SMALLSUBSET.rds")))
-    saveRDS(seqtab.list$seqtab, file.path(PATH_SEQTABS, paste0("NEON_ITS_seqtab_", runID, "_SMALLSUBSET.rds")))
-  } else {
-    write.csv(track, file.path(PATH_TRACK, paste0("track_reads_",runID,".csv")))
-    saveRDS(seqtab.list$seqtab.nochim, file.path(PATH_SEQTABS, paste0("NEON_ITS_seqtab_nochim_", runID, ".rds")))
-    saveRDS(seqtab.list$seqtab, file.path(PATH_SEQTABS, paste0("NEON_ITS_seqtab_", runID, ".rds")))
-  }
+  write.csv(track, file.path(PATH_TRACK, paste0("track_reads_",runID,".csv")))
+  saveRDS(seqtab.list$seqtab, file.path(PATH_SEQTABS, paste0("NEON_ITS_seqtab_nochim_", runID, ".rds")))
   message(paste0("Finished processing reads in ", runID, " at ", Sys.time()))
   message(paste0("Sequencing run-specific sequence tables can be found in ", PATH_SEQTABS))
 }
@@ -168,10 +160,10 @@ for (i in 1:loop_length) {
 Merge the sequence tables from all runs:
 
 ```{r}
-if(length(all.seqtabs) == 1) {
-  seqtab_joined <- all.seqtabs[[1]]
+if(length(unique_runs) == 1) {
+  seqtab_joined <- seqtab.list$seqtab
 } else {
-  seqtab_joined <- mergeSequenceTables(tables = all.seqtabs)
+  seqtab_joined <- mergeSequenceTables(tables = file.path(PATH_SEQTABS, paste0("NEON_ITS_seqtab_nochim_", unique_runs, ".rds")))
 }
 ```
 
