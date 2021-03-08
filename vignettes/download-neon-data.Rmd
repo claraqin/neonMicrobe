@@ -133,6 +133,12 @@ Now that we have the metadata table loaded into memory, we retrieve a table of u
 download_success_16s <- downloadRawSequenceData(meta_16s_qc)
 ```
 
+
+```{r}
+meta <- read.csv("~/Downloads/test_mmg_metadata_16SrRNA_QCed_20210208.csv")
+download_success_16s <- downloadRawSequenceData(meta)
+```
+
 ```{r, message=1:5}
 download_success_its <- downloadRawSequenceData(meta_its_qc)
 ```

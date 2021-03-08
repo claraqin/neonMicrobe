@@ -899,7 +899,7 @@ trimPrimers16S <- function(fn, dir_in, dir_out, primer_16S_fwd, primer_16S_rev, 
 #' sequence.
 #'
 #' @param fn Full names of input fastq files, including directory. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning.
-#' @param fn_out Full names of output locations, where filtered fastq files will be written.
+#' @param dir_out Directory where filtered fastq files will be written.
 #' @param meta Metadata downloaded using \code{\link{downloadSequenceMetadata}} that corresponds to the fastq files.
 #' @param primer_16S_fwd,primer_16S_rev DNA sequences of 16S forward and reverse primer, respectively
 #' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
@@ -908,10 +908,11 @@ trimPrimers16S <- function(fn, dir_in, dir_out, primer_16S_fwd, primer_16S_rev, 
 #'
 #' @examples
 #' \dontrun{
-#' trimPrimers16S(c("sample1_R1.fastq", "sample1_R2.fastq", "sample2_R1.fastq", "sample2_R2.fastq"), "path/to/input", "path/to/output", "CCTACGGGNBGCASCAG", "GACTACNVGGGTATCTAATCC", multithread = TRUE)
+#' trimPrimers16S(c("sample1_R1.fastq", "sample1_R2.fastq", "sample2_R1.fastq", "sample2_R2.fastq"), "path/to/output", meta, "CCTACGGGNBGCASCAG", "GACTACNVGGGTATCTAATCC", multithread = TRUE)
 #' }
-trimPrimers16S2 <- function(fn, fn_out, meta, primer_16S_fwd, primer_16S_rev, multithread = MULTITHREAD) {
-  if(length(fn) != length(fn_out)) stop("fn and fn_out must be the same length")
+trimPrimers16S2 <- function(fn, dir_out, meta, primer_16S_fwd, primer_16S_rev, multithread = MULTITHREAD) {
+  dir.create(dir_out, recursive = TRUE)
+  fn_out <- file.path(dir_out, basename(fn))
 
   keep_fn <- file.exists(fn) & !duplicated(fn)
   fn <- fn[keep_fn]
@@ -919,17 +920,17 @@ trimPrimers16S2 <- function(fn, fn_out, meta, primer_16S_fwd, primer_16S_rev, mu
 
   # Get metadata matching files
   meta_ext <- matchFastqToMetadata(fn, meta)
-
+  
   # Reference metadata to retrieve R1 and R2 files
   fn_pairs <- getPairedFastqFiles(fn, meta, value=FALSE)
   fnFs <- fn[fn_pairs[[1]]]
   fnRs <- fn[fn_pairs[[2]]]
-
+  
   # Confirm target gene
   if(any(!grepl("16S", meta_ext$targetGene))) warning("You are using trimPrimers16S() on some non-16S files. Did you mean to use trimPrimersITS()?")
-
+  
   # Attempt to get DNA sample IDs to use as row names
-  dnaSampleIDs <- meta_ext$dnaSampleID
+  dnaSampleIDs <- meta$dnaSampleID[keep_fn][fn_pairs[[1]]]
   fn_as_rownames <- any(is.na(dnaSampleIDs))
   if(fn_as_rownames) {
     warning(sum(is.na(dnaSampleIDs)),
@@ -946,7 +947,11 @@ trimPrimers16S2 <- function(fn, fn_out, meta, primer_16S_fwd, primer_16S_rev, mu
                           matchIDs = TRUE, trimLeft = c(nchar(primer_16S_fwd), nchar(primer_16S_rev)), compress=F)
 
   colnames(qa.out) <- c("input", "trimmed")
-  rownames(qa.out) <- sample.names
+  if(fn_as_rownames) {
+    rownames(qa.out) <- fnFs
+  } else {
+    rownames(qa.out) <- dnaSampleIDs
+  }
   return(qa.out)
 }
 
@@ -1019,7 +1024,7 @@ trimPrimersITS <- function(fn, dir_in, dir_out, primer_ITS_fwd, primer_ITS_rev, 
 #' Trims primers from ITS sequences using cutadapt. Cutadapt must be installed in order for this to work. Currently only supports R1 (forward-read) files.
 #'
 #' @param fn Full names of input fastq files, including directory. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning. It is assumed that these are R1 (forward-read) files only.
-#' @param fn_out Full names of output locations, where filtered fastq files will be written.
+#' @param dir_out Directory where filtered fastq files will be written.
 #' @param meta Metadata downloaded using \code{\link{downloadSequenceMetadata}} that corresponds to the fastq files.
 #' @param primer_ITS_fwd,primer_ITS_rev DNA sequence of the ITS forward and reverse primer, respectively.
 #' @param cutadapt_path Default CUTADAPT_PATH in params.R. Path to cutadapt on your file system.
@@ -1032,8 +1037,9 @@ trimPrimersITS <- function(fn, dir_in, dir_out, primer_ITS_fwd, primer_ITS_rev, 
 #' \dontrun{
 #' trimPrimersITS(c("sample1_ITS_R1.fastq", "sample2_ITS_R1.fastq"), "path/to/input", "path/to/output", "CTTGGTCATTTAGAGGAAGTAA")
 #' }
-trimPrimersITS2 <- function(fn, fn_out, meta, primer_ITS_fwd, primer_ITS_rev, cutadapt_path = CUTADAPT_PATH, very_verbose=FALSE, discard_untrimmed=FALSE) {
-  if(length(fn) != length(fn_out)) stop("fn and fn_out must be the same length")
+trimPrimersITS2 <- function(fn, dir_out, meta, primer_ITS_fwd, primer_ITS_rev, cutadapt_path = CUTADAPT_PATH, very_verbose=FALSE, discard_untrimmed=FALSE) {
+  dir.create(dir_out, recursive = TRUE)
+  fn_out <- file.path(dir_out, basename(fn))
 
   keep_fn <- file.exists(fn) & !duplicated(fn)
   fn <- fn[keep_fn]
@@ -1253,8 +1259,11 @@ removeUnpairedFastqFiles <- function(fnFs, fnRs, meta, value=TRUE, verbose=TRUE)
 #' meta_ext <- matchFastqToMetadata(c("sample1_R1.fastq", "sample1_R2.fastq"), )
 #' }
 matchFastqToMetadata <- function(fn, meta, verbose=TRUE) {
+  # Get basenames of fn
+  fn_base <- basename(fn)
+  
   # Remove runID if appended to beginning of filename
-  key <- sub("^run[A-Za-z0-9]*_", "", basename(fn))
+  key <- sub("^run[A-Za-z0-9]*_", "", basename(fn_base))
 
   # Append ".gz" to end of filename if missing
   key[!grepl(".gz$", key)] <- paste0(key[!grepl(".gz$", key)], ".gz")
@@ -1352,22 +1361,23 @@ qualityFilter16S <- function(fn, dir_in, dir_out, trunc_qscore = 23, multithread
 #' It is assumed that both forward- and reverse-read files are included.
 #'
 #' @param fn Full names of input fastq files, including directory. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning. It is assumed that these are R1 (forward-read) files only.
-#' @param fn_out Full names of output locations, where filtered fastq files will be written.
+#' @param dir_out Directory where filtered fastq files will be written.
 #' @param meta Metadata downloaded using \code{\link{downloadSequenceMetadata}} that corresponds to the fastq files.
 #' @param trunc_qscore Default 23. Quality score at which point to truncate each read, if truncLen is NULL.
 #' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
 #' @param ... Other arguments to be passed to \code{\link[dada2]{filterAndTrim}}, such as maxEE and truncLen. See documentation for more details.
 #'
 #' @return Two-column matrix displaying the number of reads in input vs. output for each file.
-qualityFilter16S2 <- function(fn, fn_out, meta, trunc_qscore = 23, multithread = MULTITHREAD, ...){
-  if(length(fn) != length(fn_out)) stop("fn and fn_out must be the same length")
+qualityFilter16S2 <- function(fn, dir_out, meta, trunc_qscore = 23, multithread = MULTITHREAD, ...){
+  dir.create(dir_out, recursive = TRUE)
+  fn_out <- file.path(dir_out, basename(fn))
 
   keep_fn <- file.exists(fn) & !duplicated(fn)
   fn <- fn[keep_fn]
   if(length(fn) == 0) warning(paste0("qualityFilter16S: No files found at specified location(s). Check file paths, or input metadata."))
 
   # Get metadata matching files
-  meta_ext <- matchFastqFiles(fn, meta)
+  meta_ext <- matchFastqToMetadata(fn, meta)
 
   # Reference metadata to retrieve R1 and R2 files
   fn_pairs <- getPairedFastqFiles(fn, meta, value=FALSE)
@@ -1378,7 +1388,7 @@ qualityFilter16S2 <- function(fn, fn_out, meta, trunc_qscore = 23, multithread =
   if(any(!grepl("16S", meta_ext$targetGene))) warning("You are using qualityFilter16S() on some non-16S files. Did you mean to use qualityFilterITS()?")
 
   # Attempt to get DNA sample IDs to use as row names
-  dnaSampleIDs <- meta_ext$dnaSampleID
+  dnaSampleIDs <- meta$dnaSampleID[keep_fn][fn_pairs[[1]]]
   fn_as_rownames <- any(is.na(dnaSampleIDs))
   if(fn_as_rownames) {
     warning(sum(is.na(dnaSampleIDs)),
@@ -1494,14 +1504,15 @@ qualityFilterITS <- function(fn, dir_in, dir_out, multithread = MULTITHREAD, pos
 #' Currently only supports filtering forward-read sequences.
 #'
 #' @param fn Full names of input fastq files, including directory. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning. It is assumed that these are R1 (forward-read) files only.
-#' @param fn_out Full names of output locations, where filtered fastq files will be written.
+#' @param dir_out Directory where filtered fastq files will be written.
 #' @param meta Metadata downloaded using \code{\link{downloadSequenceMetadata}} that corresponds to the fastq files.
 #' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
 #' @param ... Other arguments to be passed to \code{\link[dada2]{filterAndTrim}}, such as maxEE. See documentation for more details.
 #'
 #' @return Two-column matrix displaying the number of reads in input vs. output for each file.
-qualityFilterITS2 <- function(fn, fn_out, meta, multithread = MULTITHREAD, ...){
-  if(length(fn) != length(fn_out)) stop("fn and fn_out must be the same length")
+qualityFilterITS2 <- function(fn, dir_out, meta, multithread = MULTITHREAD, ...){
+  dir.create(dir_out, recursive = TRUE)
+  fn_out <- file.path(dir_out, basename(fn))
 
   keep_fn <- file.exists(fn) & !duplicated(fn)
   fn <- fn[keep_fn]
@@ -1515,7 +1526,7 @@ qualityFilterITS2 <- function(fn, fn_out, meta, multithread = MULTITHREAD, ...){
   if(any(!grepl("ITS", meta_ext$targetGene))) warning("You are using qualityFilterITS() on some non-ITS files. Did you mean to use qualityFilter16S()?")
 
   # Attempt to get DNA sample IDs to use as row names
-  dnaSampleIDs <- meta_ext$dnaSampleID
+  dnaSampleIDs <- meta$dnaSampleID[keep_fn][fn_pairs[[1]]]
   fn_as_rownames <- any(is.na(dnaSampleIDs))
   if(fn_as_rownames) {
     warning(sum(is.na(dnaSampleIDs)),
