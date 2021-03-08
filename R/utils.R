@@ -315,13 +315,13 @@ organizeRawSequenceData <- function(fn, metadata, outdir_sequence = file.path(PR
 #' (2) DP1.10086.001: "Soil physical properties (Distributed periodic)".
 #' This function uses \code{\link[neonUtilities]{loadByProduct}} to conduct the downloads.
 #'
-#' @param sites Either the string 'all', meaning all available sites, or a character vector of 4-letter NEON site codes, e.g. c('ONAQ','RMNP'). Defaults to PRESET_SITES parameter in params.R.
-#' @param startYrMo,endYrMo Either NA, meaning all available dates, or a character vector in the form YYYY-MM, e.g. 2017-01. Defaults to PRESET_START_YR_MO in params.R.
+#' @param sites Either the string 'all' (default), meaning all available sites, or a character vector of 4-letter NEON site codes, e.g. c('ONAQ','RMNP'). Defaults to PRESET_SITES parameter in params.R.
+#' @param startYrMo,endYrMo Either NA (default), meaning all available dates, or a character vector in the form YYYY-MM, e.g. 2017-01. Defaults to PRESET_START_YR_MO in params.R.
 #' @param dpID NEON data product(s) of interest. Default is both DP1.10078.001 ("Soil chemical properties (Distributed periodic)") and DP1.10086.001 ("Soil physical properties (Distributed periodic)").
 #' @param outDir (Optional) If a local copy of the filtered metadata is desired, provide path to output directory.
 #'
 #' @return If return_data==TRUE, returns a dataframe consisting of joined soil data records from DP1.10078 ("Soil chemical properties (Distributed periodic)") and DP1.10086 ("Soil physical properties (Distributed periodic)"). Otherwise, no value is returned.
-downloadRawSoilData <- function(sites='all', startYrMo, endYrMo,
+downloadRawSoilData <- function(sites='all', startYrMo = NA, endYrMo = NA,
                                 dpID = c("DP1.10078.001", "DP1.10086.001"), outDir="") {
 
   library(dplyr)
