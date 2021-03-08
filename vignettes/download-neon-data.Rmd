@@ -12,17 +12,17 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
-# if(dir.exists("~/zhulab/")) {
-#   knitr::opts_knit$set(
-#   root.dir = "~/Documents/UCSC/Projects/NEON_soil_microbe_processing" # Update as necessary. Should refer to the absolute filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
-#   )
-# }
-# if(dir.exists("/Users/lstanish/Github/")) {
-#   knitr::opts_knit$set(
-#   root.dir = "/Users/lstanish/Github/NEON_soil_microbe_processing/" # LFS directory file path. 
-#   )
-# }
-knitr::opts_knit$set(root.dir = "~/Documents/UCSC/Projects/NEON_soil_microbe_processing")
+if(dir.exists("~/zhulab/")) {
+  knitr::opts_knit$set(
+    root.dir = "~/zhulab/neonSoilMicrobeProcessing/" # Update as necessary. Should refer to the absolute filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
+  )
+}
+if(dir.exists("/Users/lstanish/Github/")) {
+  knitr::opts_knit$set(
+    root.dir = "/Users/lstanish/Github/NEON_soil_microbe_processing/" # LFS directory file path. 
+  )
+}
+
 
 ```
 
@@ -133,6 +133,7 @@ Now that we have the metadata table loaded into memory, we retrieve a table of u
 download_success_16s <- downloadRawSequenceData(meta_16s_qc)
 ```
 
+
 ```{r, message=1:5}
 download_success_its <- downloadRawSequenceData(meta_its_qc)
 ```
@@ -144,7 +145,7 @@ Get the names of all downloaded files.
 ```{r}
 outdir_sequence <- file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE)
 fn0_16s <- file.path(outdir_sequence, meta_16s_qc$rawDataFileName)
-fn0_16s <- file.path(outdir_sequence, meta_its_qc$rawDataFileName)
+fn0_its <- file.path(outdir_sequence, meta_its_qc$rawDataFileName)
 fn_16s <- unique(fn0_16s[file.exists(fn0_16s)])
 fn_its <- unique(fn0_its[file.exists(fn0_its)])
 ```
