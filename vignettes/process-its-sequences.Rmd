@@ -124,6 +124,7 @@ unique_runs <- unique(meta_fn$sequencerRunID)
 We use DADA2 to process reads one sequencing run at a time.
 
 ```{r}
+seqtab_filenames <- c()
 t1 <- Sys.time()
 ti <- c()
 for (i in 1:length(unique_runs)) {
@@ -166,18 +167,24 @@ for (i in 1:length(unique_runs)) {
   # Save tracking table (which tracks no. of reads remaining at each stage) and sequence table
   write.csv(track, file.path(PATH_TRACK, paste0("track_reads_",runID,".csv")))
   saveRDS(seqtab.list$seqtab, file.path(PATH_SEQTABS, paste0("NEON_ITS_seqtab_nochim_", runID, ".rds")))
+  seqtab_filenames <- c(seqtab_filenames, file.path(PATH_SEQTABS, paste0("NEON_16S_seqtab_nochim_", runID, ".rds")))
   message(paste0("Finished processing reads in ", runID, " at ", Sys.time()))
   message(paste0("Sequencing run-specific sequence tables can be found in ", PATH_SEQTABS))
+  
+  # Clean up
+  rm(prefilter_trackReads)
+  rm(filter_trackReads)
+  rm(seqtab.list)
 }
 ```
 
 Merge the sequence tables from all runs:
 
 ```{r}
-if(length(unique_runs) == 1) {
-  seqtab_joined <- seqtab.list$seqtab
+if(length(seqtab_filenames) == 1) {
+  seqtab_joined <- readRDS(seqtab_filenames[1])
 } else {
-  seqtab_joined <- mergeSequenceTables(tables = file.path(PATH_SEQTABS, paste0("NEON_ITS_seqtab_nochim_", unique_runs, ".rds")))
+  seqtab_joined <- mergeSequenceTables(tables = seqtab_filenames)
 }
 ```
 
