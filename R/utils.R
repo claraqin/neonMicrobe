@@ -1244,7 +1244,7 @@ removeUnpairedFastqFiles <- function(fnFs, fnRs, meta, value=TRUE, verbose=TRUE)
 #' Helper function to match fastq file names to sequence metadata via
 #' the sequence metadata table's "rawDataFileName" column. Tolerant to
 #' filenames with appended run ID prefix (e.g. "runB69RN_...") and
-#' agnostic to .gz compression.
+#' agnostic to .gz compression. 
 #'
 #' Used in \code{\link{getPairedFastqFiles}} and \code{\link{removeUnpairedFastqFiles}}.
 #'
@@ -1252,7 +1252,7 @@ removeUnpairedFastqFiles <- function(fnFs, fnRs, meta, value=TRUE, verbose=TRUE)
 #' @param meta Metadata downloaded using \code{\link{downloadSequenceMetadata}} that corresponds to the fastq files.
 #' @param verbose (Optional) Default TRUE. Whether to print warning messages when metadata does not contain records corresponding to all provided fastq files.
 #'
-#' @return Data frame, in which the first column contains the fastq file names in the order received, and the remaining columns contain corresponding metadata records.
+#' @return Data frame, in which the first column contains the fastq file names in the order received, and the remaining columns contain corresponding metadata records. Has as many rows as the number of input filenames.
 #'
 #' @examples
 #' \dontrun{
