@@ -24,36 +24,38 @@ makeOutputDirectories <- function(seq_dir=PRESET_OUTDIR_SEQUENCE,
   message("Using '", taxref_dir, "' as taxonomic reference data subdirectory.")
   message("Using '", outputs_dir, "' as output data subdirectory.")
 
+  createDirIfNotExist <- function(dir) {
+    if(!dir.exists(dir)) dir.create(dir, recursive=TRUE)
+  }
+
   # If preset output directories do not exist, create them
-  if(!dir.exists(seq_dir)) dir.create(seq_dir, recursive=TRUE)
-  if(!dir.exists(seqmeta_dir)) dir.create(seqmeta_dir, recursive=TRUE)
-  if(!dir.exists(soil_dir)) dir.create(soil_dir, recursive=TRUE)
-  if(!dir.exists(taxref_dir)) dir.create(taxref_dir, recursive=TRUE)
-  if(!dir.exists(outputs_dir)) dir.create(outputs_dir, recursive=TRUE)
+  createDirIfNotExist(seq_dir)
+  createDirIfNotExist(seqmeta_dir)
+  createDirIfNotExist(soil_dir)
+  createDirIfNotExist(taxref_dir)
+  createDirIfNotExist(outputs_dir)
 
   # If preset directories for ITS and 16S data do not exist, create them
   seq_its_dir <- file.path(seq_dir, "ITS")
   seq_16s_dir <- file.path(seq_dir, "16S")
-  if(!dir.exists(seq_its_dir)) dir.create(file.path(seq_its_dir, "0_raw"))
-  if(!dir.exists(seq_16s_dir)) dir.create(file.path(seq_16s_dir, "0_raw"))
+  createDirIfNotExist(file.path(seq_its_dir, "0_raw"))
+  createDirIfNotExist(file.path(seq_16s_dir, "0_raw"))
 
   # Create intermediary directories for ITS and 16S data in the middle
   # of being processed
   processing_its_dir <- file.path(outputs_dir, "mid_process", "ITS")
   processing_16s_dir <- file.path(outputs_dir, "mid_process", "16S")
-  if(!dir.exists(file.path(processing_its_dir, "1_filtN"))) dir.create(file.path(processing_its_dir, "1_filtN"))
-  if(!dir.exists(file.path(processing_its_dir, "2_trimmed"))) dir.create(file.path(processing_its_dir, "2_trimmed"))
-  if(!dir.exists(file.path(processing_its_dir, "3_filtered"))) dir.create(file.path(processing_its_dir, "3_filtered"))
-  if(!dir.exists(file.path(processing_its_dir, "track_reads"))) dir.create(file.path(processing_its_dir, "track_reads"))
-  if(!dir.exists(file.path(seq_16s_dir, "1_trimmed"))) dir.create(file.path(seq_16s_dir, "1_trimmed"))
-  if(!dir.exists(file.path(seq_16s_dir, "2_filtered"))) dir.create(file.path(seq_16s_dir, "2_filtered"))
-  if(!dir.exists(file.path(seq_16s_dir, "3_seqtabs"))) dir.create(file.path(seq_16s_dir, "3_seqtabs"))
+  createDirIfNotExist(file.path(processing_its_dir, "1_filtN"))
+  createDirIfNotExist(file.path(processing_its_dir, "2_trimmed"))
+  createDirIfNotExist(file.path(processing_its_dir, "3_filtered"))
+  createDirIfNotExist(file.path(processing_its_dir, "4_seqtabs"))
+  createDirIfNotExist(file.path(processing_16s_dir, "1_trimmed"))
+  createDirIfNotExist(file.path(processing_16s_dir, "2_filtered"))
+  createDirIfNotExist(file.path(processing_16s_dir, "3_seqtabs"))
 
   # Also create directories for read-tracking tables
   read_tracking_its_dir <- file.path(outputs_dir, "track_reads", "ITS")
   read_tracking_16s_dir <- file.path(outputs_dir, "track_reads", "16S")
-  if(!dir.exists(read_tracking_its_dir)) dir.create(read_tracking_its_dir)
-  if(!dir.exists(read_tracking_16s_dir)) dir.create(read_tracking_16s_dir)
-
-  # Create read-tracking tables
+  createDirIfNotExist(read_tracking_its_dir)
+  createDirIfNotExist(read_tracking_16s_dir)
 }
