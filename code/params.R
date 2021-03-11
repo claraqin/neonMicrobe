@@ -1,23 +1,28 @@
-# Preset parameters for utils.R, new_server_setup.R, dada2_workflow_its.R, dada2_workflow_16s.R, and reorg_sequence_data.R
+# Preset parameters for the neonMicrobe package
 
-## PARAMETERS FOR NEW_SERVER_SETUP AND OUTPUT DIRECTORIES
+# These parameters are used as the default values for many function arguments in the
+# neonMicrobe package. Thus, they can be changed on-the-fly, but you may find it
+# more convenient to set them here first.
 
-# Output directory for the pipeline. Absolute path.
-# Output directory for the pipeline. Creates a "NEON" directory within current working directory.
-PRESET_OUTDIR = file.path(getwd(), "data/")
+#################################################
+# GENERAL PARAMETERS
 
-# Can leave the following blank to generate default directory structure.
-# Or, character string to append to the end of PRESET_OUTDIR to generate
-# and use alternative directory structures.
-PRESET_OUTDIR_SEQUENCE = "raw_sequence" # for sequence data (fastq files)
-PRESET_OUTDIR_SEQMETA = "sequence_metadata" # for sequence metadata
-PRESET_OUTDIR_SOIL = "soil" # for soil data
-PRESET_OUTDIR_TAXREF = "tax_ref" # for taxonomy reference data
+# Users can modify these parameters to suit their processing needs.
 
-### NEW PARAMETERS FOR DYNAMIC FILE NAMING ###
-PRESET_OUTDIR_OUTPUTS = "outputs" # for outputs (sequence table, taxonomy table, phyloseq object)
+# Whether to print more detailed messages to output. This is used as the default value
+# for many functions in this package, unless explicitly specified otherwise.
+VERBOSE = FALSE
 
-## PARAMETERS FOR DADA2_WORKFLOW
+# Whether to use multithreading (via mclapply) in dada2 functions that allow it.
+# If integer is provided instead of TRUE/FALSE, how many threads to use.
+# NOTE: Windows users must set this to FALSE, because multithreading in mclapply
+# is not supported on Windows systems.
+MULTITHREAD = 8
+
+#################################################
+# PARAMETERS FOR SEQUENCE TRIMMING AND FILTERING
+
+# Users can modify these parameters to suit their processing needs.
 
 # Primers
 PRIMER_ITS_FWD = "CTTGGTCATTTAGAGGAAGTAA" # Forward primer sequence
@@ -25,36 +30,10 @@ PRIMER_ITS_REV = "GCTGCGTTCTTCATCGATGC" # Reverse primer sequence
 PRIMER_16S_FWD = "CCTACGGGNBGCASCAG" # Forward primer sequence
 PRIMER_16S_REV = "GACTACNVGGGTATCTAATCC" # Reverse primer sequence
 
-# Search for & set the Cutadapt path
-CUTADAPT_PATH <- ""
-if(!file.exists(CUTADAPT_PATH)){
-  message("Could not find the cutadapt tool in file system. This tool is necessary for ITS (fungal) raw sequence processing. Please load the module if necessary on an HPC (i.e. 'module load cutadapt') or download from https://cutadapt.readthedocs.io/en/stable/installation.html")
-}
+# Path to Cutadapt for ITS primer trimming, if necessary
+CUTADAPT_PATH <- "/afs/cats.ucsc.edu/users/b/claraqin/.local/bin/cutadapt"
 
-# ITS: UNITE reference database (FASTA file) path
-UNITE_REF_PATH = file.path(PRESET_OUTDIR, PRESET_OUTDIR_TAXREF, "sh_general_release_dynamic_04.02.2020.fasta") 
-# 16S: SILVA reference database (FASTA file) path
-SILVA_REF_PATH = file.path(PRESET_OUTDIR, PRESET_OUTDIR_TAXREF, "silva_training_set.fa.gz")
-
-# Whether to download and process only a small subset
-SMALL_SUBSET = FALSE # If TRUE, all fastq.gz.tar files matching these parameters will still be downloaded,
-# and all fastq files within them will be unzipped, but only the first 2 forward-reverse
-# pairs of sequence files from the first sequencing run ID will be processed in
-# dada2_workflow.R and in following scripts.
-
-# Whether to generate additional output in dada2_workflow_its.R
-VERBOSE = FALSE
-
-# Whether to use multithreading in DADA2 (Windows users should set to FALSE),
-# or, if integer is provided, how many threads to use
-#MULTITHREAD = TRUE
-if (Sys.info()["sysname"] == "Windows"){
-  MULTITHREAD = FALSE
-} else {
-  MULTITHREAD = 8
-}
-
-# filterAndTrim arguments
+# Quality filtering parameters (used as defaults in dada2::filterAndTrim)
 MAX_EE_FWD = 8 # max. allowable expected errors in forward reads that pass filter
 MAX_EE_REV = 8 # max. allowable expected errors in reverse reads that pass filter
 TRUNC_Q = 2 # base quality score after which to truncate sequence
@@ -62,12 +41,63 @@ TRUNC_Q = 2 # base quality score after which to truncate sequence
 # is to increase the proportion of reads passing the filter, as this
 # would allow fewer "expected errors" to appear in the sequence
 # (by virtue of having shorter reads)
-
 MIN_LEN = 50 # min. allowable length of reads that pass filter
 # NOTE: it may be desirable to set this higher to increase the
 # likelihood of sufficient overlap between read pairs. However,
 # this is at odds with the incentive for setting TRUNC_Q higher
 # (see previous)
 
-# VALIDITY CHECKS (do not modify)
+#################################################
+# PARAMETERS FOR FILE STRUCTURE SETUP
+
+# WE GENERALLY RECOMMEND AGAINST MODIFYING THESE PARAMETERS EXCEPT FOR CODE DEVELOPMENT PURPOSES.
+
+# Main directory structure for the pipeline. Creates nested directory structure for inputs and outputs.
+# Can leave the following as-is to generate default directory structure.
+# Or, character string to generate and use alternative directory structure.
+PRESET_OUTDIR = file.path(getwd(), "data/")
+PRESET_OUTDIR_SEQUENCE = file.path(PRESET_OUTDIR, "raw_sequence") # for sequence data (fastq files)
+PRESET_OUTDIR_SEQMETA = file.path(PRESET_OUTDIR, "sequence_metadata") # for sequence metadata
+PRESET_OUTDIR_SOIL = file.path(PRESET_OUTDIR, "soil") # for soil data
+PRESET_OUTDIR_TAXREF = file.path(PRESET_OUTDIR, "tax_ref") # for taxonomy reference data
+PRESET_OUTDIR_OUTPUTS = file.path(getwd(), "outputs") # for outputs (sequence table, taxonomy table, phyloseq object)
+
+#################################################
+# PARAMETERS FOR TAXONOMY ASSIGNMENT
+
+# ITS: UNITE reference database (FASTA file) path
+UNITE_REF_PATH = file.path(PRESET_OUTDIR_TAXREF, "sh_general_release_dynamic_04.02.2020.fasta")
+
+# 16S: SILVA reference database (FASTA file) path
+SILVA_REF_PATH = file.path(PRESET_OUTDIR_TAXREF, "silva_training_set.fa.gz")
+
+#################################################
+# VALIDITY CHECKS
+
+## DO NOT MODIFY EXCEPT FOR CODE DEVELOPMENT PURPOSES.
+
+# If Windows users attempt to set MULTITHREAD to anything but FALSE, print a warning
+if (Sys.info()["sysname"] == "Windows"){
+  if(!identical(MULTITHREAD, FALSE)){
+    warning("On Windows systems, multithreading (via mclapply) is not available. Setting MULTITHREAD to FALSE.")
+    MULTITHREAD = FALSE
+  }
+}
+
+# If CUTADAPT_PATH is invalid, print a warning
+if(!file.exists(CUTADAPT_PATH)){
+  warning("Could not find the Cutadapt tool in file system. This tool is necessary for ITS (fungal) raw sequence processing. Please load the module if necessary on an HPC (i.e. 'module load cutadapt') or download from https://cutadapt.readthedocs.io/en/stable/installation.html")
+}
+
+# If UNITE_REF_PATH is invalid, print a warning
+if(!file.exists(UNITE_REF_PATH)){
+  warning("Could not find the UNITE reference database at the provided filepath: ", UNITE_REF_PATH)
+}
+
+# If SILVA_REF_PATH is invalid, print a warning
+if(!file.exists(SILVA_REF_PATH)){
+  warning("Could not find the SILVA reference database at the provided filepath: ", SILVA_REF_PATH)
+}
+
+
 # if(!(TARGET_GENE %in% c("ITS", "16S", "all"))) warning("TARGET_GENE must be 'ITS', '16S', or 'all'")
