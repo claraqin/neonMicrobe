@@ -1,6 +1,4 @@
-# Preset parameters for the neonMicrobe package
-
-# THIS HAS BEEN DEPRECATED IN FAVOR OF THE PARAMETER FILES IN THE NEW /params DIRECTORY.
+# User parameters for the neonMicrobe package
 
 # These parameters are used as the default values for many function arguments in the
 # neonMicrobe package. Thus, they can be changed on-the-fly, but you may find it
@@ -50,21 +48,6 @@ MIN_LEN = 50 # min. allowable length of reads that pass filter
 # (see previous)
 
 #################################################
-# PARAMETERS FOR FILE STRUCTURE SETUP
-
-# WE GENERALLY RECOMMEND AGAINST MODIFYING THESE PARAMETERS EXCEPT FOR CODE DEVELOPMENT PURPOSES.
-
-# Main directory structure for the pipeline. Creates nested directory structure for inputs and outputs.
-# Can leave the following as-is to generate default directory structure.
-# Or, character string to generate and use alternative directory structure.
-PRESET_OUTDIR = file.path(getwd(), "data/")
-PRESET_OUTDIR_SEQUENCE = file.path(PRESET_OUTDIR, "raw_sequence") # for sequence data (fastq files)
-PRESET_OUTDIR_SEQMETA = file.path(PRESET_OUTDIR, "sequence_metadata") # for sequence metadata
-PRESET_OUTDIR_SOIL = file.path(PRESET_OUTDIR, "soil") # for soil data
-PRESET_OUTDIR_TAXREF = file.path(PRESET_OUTDIR, "tax_ref") # for taxonomy reference data
-PRESET_OUTDIR_OUTPUTS = file.path(getwd(), "outputs") # for outputs (sequence table, taxonomy table, phyloseq object)
-
-#################################################
 # PARAMETERS FOR TAXONOMY ASSIGNMENT
 
 # ITS: UNITE reference database (FASTA file) path
@@ -72,34 +55,3 @@ UNITE_REF_PATH = file.path(PRESET_OUTDIR_TAXREF, "sh_general_release_dynamic_04.
 
 # 16S: SILVA reference database (FASTA file) path
 SILVA_REF_PATH = file.path(PRESET_OUTDIR_TAXREF, "silva_training_set.fa.gz")
-
-#################################################
-# VALIDITY CHECKS
-
-## DO NOT MODIFY EXCEPT FOR CODE DEVELOPMENT PURPOSES.
-
-# If Windows users attempt to set MULTITHREAD to anything but FALSE, print a warning
-if (Sys.info()["sysname"] == "Windows"){
-  if(!identical(MULTITHREAD, FALSE)){
-    warning("On Windows systems, multithreading (via mclapply) is not available. Setting MULTITHREAD to FALSE.")
-    MULTITHREAD = FALSE
-  }
-}
-
-# If CUTADAPT_PATH is invalid, print a warning
-if(!file.exists(CUTADAPT_PATH)){
-  warning("Could not find the Cutadapt tool in file system. This tool is necessary for ITS (fungal) raw sequence processing. Please load the module if necessary on an HPC (i.e. 'module load cutadapt') or download from https://cutadapt.readthedocs.io/en/stable/installation.html")
-}
-
-# If UNITE_REF_PATH is invalid, print a warning
-if(!file.exists(UNITE_REF_PATH)){
-  warning("Could not find the UNITE reference database at the provided filepath: ", UNITE_REF_PATH)
-}
-
-# If SILVA_REF_PATH is invalid, print a warning
-if(!file.exists(SILVA_REF_PATH)){
-  warning("Could not find the SILVA reference database at the provided filepath: ", SILVA_REF_PATH)
-}
-
-
-# if(!(TARGET_GENE %in% c("ITS", "16S", "all"))) warning("TARGET_GENE must be 'ITS', '16S', or 'all'")

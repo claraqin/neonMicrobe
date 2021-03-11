@@ -6,6 +6,25 @@
 # remaining in this script are really "utilities" in the sense that
 # they have more general purposes than the others in this package.
 
+#' (Re)Load Parameters from Files
+#'
+#' (Re)loads parameters from files in the 'params' directory to the global environment.
+#'
+#' @param user_params (Optional) Location of the R script containing user-defined parameters.
+#' @param system_params (Optional) Location of the R script containing system parameters.
+#' @param validity_tests (Optional) Location of the R script containing parameter validity tests.
+#'
+#' @return No value is returned.
+#' @export
+#'
+#' @examples
+loadParams <- function(user_params="params/user.R", system_params="params/system.R", validity_tests="params/.test_params.R") {
+  source(system_params)
+  source(user_params)
+  # TODO: If currently in a processing batch, override user_params with batch-specific user params.
+  source(validity_tests)
+}
+
 #' Remove Unmatched Fastq Files (DEPRECATED)
 #'
 #' NOTE: This function is now deprecated in favor of \code{\link{getPairedFastqFiles}} and \code{\link{removeUnpairedFastqFiles}}.

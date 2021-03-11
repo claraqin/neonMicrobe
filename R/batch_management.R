@@ -40,27 +40,32 @@ newBatch <- function(batch_id, seq_meta_file, batches_dir = file.path(PRESET_OUT
       close(about_file)
 
       # Make directory structure in new batch directory
+      createDirIfNotExist <- function(dir) {
+        if(!dir.exists(dir)) dir.create(dir, recursive=TRUE)
+      }
+
       # First, create intermediary directories for ITS and 16S data in the middle
       # of being processed
       processing_its_dir <- file.path(this_batch_dir, "mid_process", "ITS")
       processing_16s_dir <- file.path(this_batch_dir, "mid_process", "16S")
-      if(!dir.exists(file.path(processing_its_dir, "1_filtN"))) dir.create(file.path(processing_its_dir, "1_filtN"))
-      if(!dir.exists(file.path(processing_its_dir, "2_trimmed"))) dir.create(file.path(processing_its_dir, "2_trimmed"))
-      if(!dir.exists(file.path(processing_its_dir, "3_filtered"))) dir.create(file.path(processing_its_dir, "3_filtered"))
-      if(!dir.exists(file.path(processing_its_dir, "4_seqtabs"))) dir.create(file.path(processing_its_dir, "4_seqtabs"))
-      if(!dir.exists(file.path(seq_16s_dir, "1_trimmed"))) dir.create(file.path(seq_16s_dir, "1_trimmed"))
-      if(!dir.exists(file.path(seq_16s_dir, "2_filtered"))) dir.create(file.path(seq_16s_dir, "2_filtered"))
-      if(!dir.exists(file.path(seq_16s_dir, "3_seqtabs"))) dir.create(file.path(seq_16s_dir, "3_seqtabs"))
+      createDirIfNotExist(file.path(processing_its_dir, "1_filtN"))
+      createDirIfNotExist(file.path(processing_its_dir, "2_trimmed"))
+      createDirIfNotExist(file.path(processing_its_dir, "3_filtered"))
+      createDirIfNotExist(file.path(processing_its_dir, "4_seqtabs"))
+      createDirIfNotExist(file.path(processing_16s_dir, "1_trimmed"))
+      createDirIfNotExist(file.path(processing_16s_dir, "2_filtered"))
+      createDirIfNotExist(file.path(processing_16s_dir, "3_seqtabs"))
+
       # Also create directories for read-tracking tables
       read_tracking_its_dir <- file.path(this_batch_dir, "track_reads", "ITS")
       read_tracking_16s_dir <- file.path(this_batch_dir, "track_reads", "16S")
-      if(!dir.exists(read_tracking_its_dir)) dir.create(read_tracking_its_dir)
-      if(!dir.exists(read_tracking_16s_dir)) dir.create(read_tracking_16s_dir)
+      createDirIfNotExist(read_tracking_its_dir)
+      createDirIfNotExist(read_tracking_16s_dir)
 
       message("Created new batch directory at ", this_batch_dir)
-    }
-    if(set_batch==TRUE) {
-      setBatch(batch_id, batches_dir)
+      if(set_batch==TRUE) {
+        setBatch(batch_id, batches_dir)
+      }
     }
   }
 }
@@ -157,4 +162,25 @@ listBatches <- function(batches_dir = file.path(PRESET_OUTDIR_OUTPUTS, "batches"
   } else {
     message("Specified directory does not exist. Create your first processing batch using newBatch().")
   }
+}
+
+
+
+#' Check Function Arguments against Batch-Specific Parameters
+#'
+#' If a processing batch is currently set, inserting this function into another function from
+#' neonMicrobe will check the parent function's arguments against the parameters associated
+#' with the current processing batch. If override=TRUE, the current batch's parameters would
+#' take precedence. For example, rather than writing to the standard outputs directory, the
+#' parent function would write to the current batch's outputs directory. Rather than using
+#' quality filtering parameters defined on-the-fly, the parent function would use the quality
+#' filtering parameters associated with the current batch.
+#'
+#' @return
+#'
+#' @examples
+checkArgsAgainstBatchParams <- function(override=FALSE, ...) {
+  # This might be useful https://stackoverflow.com/questions/42873592/assign-variable-in-parent-environment-of-a-function
+  # Dots (...) will refer to any arguments that have values defined in parameters, set equal to whatever
+  # value they have in the parent function, e.g. "MAX_EE_FWD = maxEE"
 }
