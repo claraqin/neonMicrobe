@@ -236,9 +236,8 @@ organizeRawSequenceData <- function(fn, metadata, outdir_sequence = PRESET_OUTDI
 
 #' Download NEON Soil Data Associated with Marker Gene Sequencing Data
 #'
-#' Downloads either or both of the following data products:
-#' (1) DP1.10078.001: "Soil chemical properties (Distributed periodic)";
-#' (2) DP1.10086.001: "Soil physical properties (Distributed periodic)".
+#' Downloads the following NEON data product:
+#' - DP1.10086.001: "Soil physical and chemical properties, periodic".
 #' This function uses \code{\link[neonUtilities]{loadByProduct}} to conduct the downloads.
 #'
 #' @param sites Either the string 'all' (default), meaning all available sites, or a character vector of 4-letter NEON site codes, e.g. c('ONAQ','RMNP'). Defaults to PRESET_SITES parameter in params.R.
