@@ -310,27 +310,26 @@ organizeRawSequenceData <- function(fn, metadata, outdir_sequence = file.path(PR
 
 #' Download NEON Soil Data Associated with Marker Gene Sequencing Data
 #'
-#' Downloads either or both of the following data products:
-#' (1) DP1.10078.001: "Soil chemical properties (Distributed periodic)";
-#' (2) DP1.10086.001: "Soil physical properties (Distributed periodic)".
+#' Downloads the following NEON data product:
+#' - DP1.10086.001: "Soil physical and chemical properties, periodic".
 #' This function uses \code{\link[neonUtilities]{loadByProduct}} to conduct the downloads.
 #'
 #' @param sites Either the string 'all' (default), meaning all available sites, or a character vector of 4-letter NEON site codes, e.g. c('ONAQ','RMNP'). Defaults to PRESET_SITES parameter in params.R.
 #' @param startYrMo,endYrMo Either NA (default), meaning all available dates, or a character vector in the form YYYY-MM, e.g. 2017-01. Defaults to PRESET_START_YR_MO in params.R.
-#' @param dpID NEON data product(s) of interest. Default is both DP1.10078.001 ("Soil chemical properties (Distributed periodic)") and DP1.10086.001 ("Soil physical properties (Distributed periodic)").
-#' @param outDir (Optional) If a local copy of the filtered metadata is desired, provide path to output directory.
+#' @param dpID NEON data product(s) of interest. Default is DP1.10086.001 ("Soil physical and chemical properties, periodic").
+#' @param outDir Default PRESET_OUTDIR_SOIL If a local copy of the filtered metadata is desired, provide path to output directory.
 #'
-#' @return If return_data==TRUE, returns a dataframe consisting of joined soil data records from DP1.10078 ("Soil chemical properties (Distributed periodic)") and DP1.10086 ("Soil physical properties (Distributed periodic)"). Otherwise, no value is returned.
+#' @return If return_data==TRUE, returns a dataframe consisting of joined soil data records from DP1.10086 ("Soil physical and chemical properties, periodic"). Otherwise, no value is returned.
 downloadRawSoilData <- function(sites='all', startYrMo = NA, endYrMo = NA,
-                                dpID = c("DP1.10078.001", "DP1.10086.001"), outDir="") {
+                                dpID = c("DP1.10086.001"), outDir=PRESET_OUTDIR_SOIL) {
 
   library(dplyr)
   library(neonUtilities)
 
   # check valid data values entered
   ## validate dpID ##
-  if(!all(grepl("DP1", dpID) & grepl('\\.001', dpID) & grepl('10078|10086', dpID))) {
-    message("Invalid Data Product ID: must follow convention 'DP1.[5-digit value].001' and must be a distributed periodic soil data product ID")
+  if(!all(grepl("DP1", dpID) & grepl('\\.001', dpID) & grepl('10086', dpID))) {
+    message("Invalid Data Product ID: must follow convention 'DP1.[5-digit value].001' and must be a distributed periodic soil data product ID. (DP1.10078.001 is no longer supported.)")
     return(NULL)
   } else {
     dpID <- dpID
@@ -361,45 +360,57 @@ downloadRawSoilData <- function(sites='all', startYrMo = NA, endYrMo = NA,
 
   joining_cols <- c("domainID", "siteID", "plotID", "sampleID")
 
+  tables_available <- data.frame(available=rep(FALSE, 4), row.names=c("sls_soilCoreCollection", "sls_soilMoisture", "sls_soilpH", "sls_soilChemistry"))
+
   if(any(grepl('10086', dpID)) & !all(is.na(slsL1[["DP1.10086.001"]]))) {
+    tables_available$available[1] <- TRUE
+
     # start with soilCoreCollection data...
-    dat_soil_phys <-
-      dplyr::select(slsL1[["DP1.10086.001"]]$"sls_soilCoreCollection",
-                    domainID, siteID, plotID, namedLocation, plotType, nlcdClass, coreCoordinateX, coreCoordinateY, geodeticDatum, decimalLatitude, decimalLongitude, elevation,
-                    sccSamplingProtocolVersion=samplingProtocolVersion, collectDate, sampleTiming, standingWaterDepth, nTransBoutType, sampleID, horizon, soilTemp, litterDepth,
-                    sampleTopDepth, sampleBottomDepth, soilSamplingDevice, geneticSampleID, sccDataQF=dataQF) %>%
-      # merge with soilMoisture data...
-      full_join(dplyr::select(slsL1[["DP1.10086.001"]]$"sls_soilMoisture",
-                              all_of(joining_cols), moistureSampleID, smSamplingProtocolVersion=samplingProtocolVersion, soilMoisture, smDataQF), by=joining_cols) %>%
-      # finally merge with soilpH data
-      full_join(dplyr::select(slsL1[["DP1.10086.001"]]$"sls_soilpH",
-                              all_of(joining_cols), pHSampleID, pHSamplingProtocolVersion=samplingProtocolVersion, soilInWaterpH, soilInCaClpH, pHDataQF), by=joining_cols)
+    dat_soil <- dplyr::select(
+      slsL1[["DP1.10086.001"]]$"sls_soilCoreCollection",
+      domainID, siteID, plotID, namedLocation, plotType, nlcdClass, coreCoordinateX, coreCoordinateY, geodeticDatum, decimalLatitude, decimalLongitude, elevation,
+      sccSamplingProtocolVersion=samplingProtocolVersion, collectDate, sampleTiming, standingWaterDepth, nTransBoutType, sampleID, horizon, soilTemp, litterDepth,
+      sampleTopDepth, sampleBottomDepth, soilSamplingDevice, geneticSampleID, sccDataQF=dataQF)
+
+    # merge with soilMoisture data...
+    if(!is.null(slsL1[["DP1.10086.001"]]$"sls_soilMoisture")) {
+      tables_available$available[2] <- TRUE
+      dat_soil <- full_join(
+        dat_soil,
+        dplyr::select(slsL1[["DP1.10086.001"]]$"sls_soilMoisture", all_of(joining_cols), moistureSampleID, smSamplingProtocolVersion=samplingProtocolVersion,
+                      soilMoisture, smDataQF), by=joining_cols)
+    }
+
+    # merge with soilpH data...
+    if(!is.null(slsL1[["DP1.10086.001"]]$"sls_soilpH")) {
+      tables_available$available[3] <- TRUE
+      dat_soil <- full_join(
+        dat_soil,
+        dplyr::select(slsL1[["DP1.10086.001"]]$"sls_soilpH", all_of(joining_cols), pHSampleID, pHSamplingProtocolVersion=samplingProtocolVersion, soilInWaterpH,
+                      soilInCaClpH, pHDataQF), by=joining_cols)
+    }
+
+    # if available, merge with soil chemistry data
+    if(!is.null(slsL1[["DP1.10086.001"]]$"sls_soilChemistry")) {
+      tables_available$available[4] <- TRUE
+      dat_soil <- full_join(
+        dat_soil,
+        dplyr::select(slsL1[["DP1.10086.001"]]$"sls_soilChemistry", all_of(joining_cols), cnSampleID, nitrogenPercent, organicCPercent, CNratio,
+                      cnTestMethod=testMethod, cnInstrument=instrument, cnDataQF=dataQF))
+    }
   } else {
-    dat_soil_phys <- NULL
+    dat_soil <- NULL
   }
 
-  if(any(grepl('10078', dpID)) & !all(is.na(slsL1[["DP1.10078.001"]]))) {
-    dat_soil_chem <- dplyr::select(slsL1[["DP1.10078.001"]]$"sls_soilChemistry",
-                                   all_of(joining_cols), cnSampleID, nitrogenPercent, organicCPercent, CNratio, cnTestMethod=testMethod, cnInstrument=instrument, cnDataQF=dataQF)
-  } else {
-    dat_soil_chem <- NULL
-  }
-
-  # TODO: Confirm that the selected columns are sufficient for downstream analysis
-  # TODO: Filter by nTransBoutType to remove incubated samples?
-
-  if(!is.null(dat_soil_phys) & !is.null(dat_soil_chem)) {
-    message("Returning soil physical and chemical variables at the specified sites and dates.")
-    dat_soil <- full_join(dat_soil_phys, dat_soil_chem, by=joining_cols)
-  } else if(!is.null(dat_soil_phys) & is.null(dat_soil_chem)) {
-    message("Returning soil physical variables (but not chemical variables) at the specified sites and dates.")
-    dat_soil <- dat_soil_phys
-  } else if(is.null(dat_soil_phys) & !is.null(dat_soil_chem)) {
-    message("Returning soil chemical variables (but not physical variables) at the specified sites and dates.")
-    dat_soil <- dat_soil_chem
+  if(!is.null(dat_soil)) {
+    message("Soil data availability for specified sites and dates:")
+    print(tables_available)
+    message("Returning soil data. Note that this function does not return the entire data product(s);\n",
+            "for specialized analyses, downloading directly from the NEON Data Portal, the NEON Data API,\n",
+            "or from neonUtilities may be necessary. Lastly, check the 'DataQF' columns to ensure you are\n",
+            "only keeping records of sufficient quality for your purposes.")
   } else {
     warning("No soil data available at the specified sites and dates. Returning NULL.")
-    dat_soil <- NULL
   }
 
   # download local copy if user provided output dir path
@@ -409,7 +420,7 @@ downloadRawSoilData <- function(sites='all', startYrMo = NA, endYrMo = NA,
     }
     write.csv(dat_soil, paste0(outDir, "/sls_soilData_", Sys.Date(), ".csv"),
               row.names=F)
-    message(paste0("soil data downloaded to: ", outDir, "/sls_soilData_", Sys.Date(), ".csv") )
+    message(paste0("Soil data downloaded to: ", outDir, "/sls_soilData_", Sys.Date(), ".csv") )
   }
 
   return(dat_soil)
