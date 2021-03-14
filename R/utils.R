@@ -497,9 +497,9 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
   # validate output directory
   if(exists("PRESET_OUTDIR_SEQMETA")) {
     outDir <- paste(PRESET_OUTDIR, PRESET_OUTDIR_SEQMETA, sep="/")
-  }
+  } 
   if(!dir.exists(outDir) ) {
-    message("Output directory does not exist")
+    message("Output directory does not exist. Please specify a valid output directory.")
     return(NULL)
   }
 
