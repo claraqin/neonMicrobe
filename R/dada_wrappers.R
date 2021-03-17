@@ -77,7 +77,7 @@ trimPrimers16S2 <- function(fn, dir_out, meta, primer_16S_fwd, primer_16S_rev, m
   meta_ext <- matchFastqToMetadata(fn, meta)
 
   # Reference metadata to retrieve R1 and R2 files
-  fn_pairs <- getPairedFastqFiles(fn, meta, value=FALSE)
+  fn_pairs <- getPairedFastqFiles(fn, meta_ext[,-1], value=FALSE)
   fnFs <- fn[fn_pairs[[1]]]
   fnRs <- fn[fn_pairs[[2]]]
 
@@ -85,7 +85,7 @@ trimPrimers16S2 <- function(fn, dir_out, meta, primer_16S_fwd, primer_16S_rev, m
   if(any(!grepl("16S", meta_ext$targetGene))) warning("You are using trimPrimers16S() on some non-16S files. Did you mean to use trimPrimersITS()?")
 
   # Attempt to get DNA sample IDs to use as row names
-  dnaSampleIDs <- as.character(meta$dnaSampleID[keep_fn][fn_pairs[[1]]])
+  dnaSampleIDs <- as.character(meta_ext$dnaSampleID[keep_fn][fn_pairs[[1]]])
   fn_as_rownames <- any(is.na(dnaSampleIDs))
   if(fn_as_rownames) {
     warning(sum(is.na(dnaSampleIDs)),
@@ -346,7 +346,7 @@ qualityFilter16S2 <- function(fn, dir_out, meta, trunc_qscore = 23, multithread 
   meta_ext <- matchFastqToMetadata(fn, meta)
 
   # Reference metadata to retrieve R1 and R2 files
-  fn_pairs <- getPairedFastqFiles(fn, meta, value=FALSE)
+  fn_pairs <- getPairedFastqFiles(fn, meta_ext[,-1], value=FALSE)
   fnFs <- fn[fn_pairs[[1]]]
   fnRs <- fn[fn_pairs[[2]]]
 
@@ -354,7 +354,7 @@ qualityFilter16S2 <- function(fn, dir_out, meta, trunc_qscore = 23, multithread 
   if(any(!grepl("16S", meta_ext$targetGene))) warning("You are using qualityFilter16S() on some non-16S files. Did you mean to use qualityFilterITS()?")
 
   # Attempt to get DNA sample IDs to use as row names
-  dnaSampleIDs <- as.character(meta$dnaSampleID[keep_fn][fn_pairs[[1]]])
+  dnaSampleIDs <- as.character(meta_ext$dnaSampleID[keep_fn][fn_pairs[[1]]])
   fn_as_rownames <- any(is.na(dnaSampleIDs))
   if(fn_as_rownames) {
     warning(sum(is.na(dnaSampleIDs)),
@@ -642,7 +642,7 @@ runDada16S2 <- function(fn, meta, out_seqtab = "", out_track = "", remove_chimer
   meta_ext <- matchFastqToMetadata(fn, meta)
 
   # Reference metadata to retrieve R1 and R2 files
-  fn_pairs <- getPairedFastqFiles(fn, meta, value=FALSE)
+  fn_pairs <- getPairedFastqFiles(fn, meta_ext[,-1], value=FALSE)
   fnFs <- fn[fn_pairs[[1]]]
   fnRs <- fn[fn_pairs[[2]]]
 

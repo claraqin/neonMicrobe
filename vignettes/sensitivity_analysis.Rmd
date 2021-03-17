@@ -14,7 +14,7 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 knitr::opts_knit$set(
-  root.dir = "~/Documents/UCSC/Projects/NEON_soil_microbe_processing/" # Update as necessary. Should refer to the absolute filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
+  root.dir = "~/zhulab/neonSoilMicrobeProcessing/" # Update as necessary. Should refer to the absolute filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
 )
 ```
 
@@ -72,11 +72,9 @@ MIN_LEN <- 50
 Parameters specific to this sensitivity analysis
 
 ```{r}
-# N_SAMPLES <- 210
-N_SAMPLES <- 30
-DIRNAME_TEST <- "qf_test_1-13-2021"
+N_SAMPLES <- 200
+DIRNAME_TEST <- "qf_test_2-8-2021"
 runIDs <-  c("runB69PP", "runB69RN", "runB9994", "runBDNB6", "runBF462", "runBFDG8", "runBNMJ5", "runBNMWB", "runBRPH4", "runC24VW", "runC25T6", "runC5B2R", "runC7WK3", "runC8VMV", "runC977L", "runC983L", "runCBJYB", "runCBTWG", "runCDHG2", "runCDJ5J")
-# runIDs <- c("runC5B2R", "runCBTWG", "runBFDG8")
 ```
 
 Parameter value grid. The following allows testing of two quality filtering parameters at a time.
@@ -149,19 +147,17 @@ if(length(rawFs) > N_SAMPLES) {
     rawFs_runID <- rawFs[grep(runIDs[i], rawFs)]
     rawRs_runID <- rawRs[grep(runIDs[i], rawRs)]
     if(length(rawFs_runID) > N_SAMPLES/length(runIDs)) {
-      set.seed(1010101010+i)
+      set.seed(101010+i)
       subset <- sample(seq(1,length(rawFs_runID)), N_SAMPLES/length(runIDs), FALSE)
       rawFs_subset <- c(rawFs_subset, rawFs_runID[subset])
       rawRs_subset <- c(rawRs_subset, rawRs_runID[subset])
-      # rawFs_subset <- c(rawFs_subset, rawFs_runID[round(quantile(1:length(rawFs_runID), probs=seq(0,1,length.out=N_SAMPLES/length(runIDs))))])
-      # rawRs_subset <- c(rawRs_subset, rawRs_runID[round(quantile(1:length(rawRs_runID), probs=seq(0,1,length.out=N_SAMPLES/length(runIDs))))])
     } else {
       rawFs_subset <- c(rawFs_subset, rawFs_runID)
       rawRs_subset <- c(rawRs_subset, rawRs_runID)
     }
   }
-  # rawFs <- rawFs_subset
-  # rawRs <- rawRs_subset
+  rawFs <- rawFs_subset
+  rawRs <- rawRs_subset
 }
 write.csv(cbind(rawFs, rawRs), file.path(PATH_TEST, "input_files.csv"))
 ```

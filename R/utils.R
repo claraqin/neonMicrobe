@@ -198,7 +198,7 @@ matchFastqToMetadata <- function(fn, meta, verbose=TRUE) {
   fn_base <- basename(fn)
 
   # Remove runID if appended to beginning of filename
-  key <- sub("^run[A-Za-z0-9]*_", "", basename(fn_base))
+  key <- sub("^run[A-Za-z0-9]*_", "", fn_base)
 
   # Append ".gz" to end of filename if missing
   key[!grepl(".gz$", key)] <- paste0(key[!grepl(".gz$", key)], ".gz")

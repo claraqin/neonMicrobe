@@ -62,23 +62,29 @@ Get filepath names:
 
 ```{r}
 if(is.null(PRESET_OUTDIR_SEQUENCE) | PRESET_OUTDIR_SEQUENCE == "") {
-  PATH_16S <- file.path(PRESET_OUTDIR, "raw_sequence", "16S")
+  PATH_RAW <- file.path(getwd(), "data", "raw_sequence", "16S", "0_raw")
 } else {
-  PATH_16S <- file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE, "16S")
+  PATH_RAW <- file.path(PRESET_OUTDIR_SEQUENCE, "16S", "0_raw")
 }
-PATH_RAW <- file.path(PATH_16S, "0_raw")
-PATH_TRIMMED <- file.path(PATH_16S, "1_trimmed")
-PATH_FILTERED <- file.path(PATH_16S, "2_filtered")
-PATH_SEQTABS <- file.path(PATH_16S, "3_seqtabs")
-PATH_TRACK <- file.path(PATH_16S, "track_reads")
 ```
 
 Create output directory using today's date:
 
 ```{r}
 today <- Sys.Date()
-PATH_OUTPUTS <- file.path(PRESET_OUTDIR, PRESET_OUTDIR_OUTPUTS, today)
+if(is.null(PRESET_OUTDIR_OUTPUTS) | PRESET_OUTDIR_OUTPUTS == "") {
+  PATH_OUTPUTS <- file.path(getwd(), "outputs", today)
+} else {
+  PATH_OUTPUTS <- file.path(PRESET_OUTDIR_OUTPUTS, today)
+}
 dir.create(PATH_OUTPUTS)
+
+PATH_MIDPROCESS <- file.path(PATH_OUTPUTS, "mid_process", "16S")
+PATH_TRACK <- file.path(PATH_OUTPUTS, "track_reads", "16S")
+
+PATH_TRIMMED <- file.path(PATH_MIDPROCESS, "1_trimmed")
+PATH_FILTERED <- file.path(PATH_MIDPROCESS, "2_filtered")
+PATH_SEQTABS <- file.path(PATH_MIDPROCESS, "3_seqtabs")
 ```
 
 Load sequence metadata. We'll pull in the newest metadata file, and give a warning if it doesn't contain as many samples as the sequence table contains.
@@ -128,7 +134,6 @@ We use DADA2 to process reads one sequencing run at a time.
 seqtab_filenames <- c()
 t1 <- Sys.time()
 ti <- c()
-first <- TRUE
 for (i in 1:length(unique_runs)) {
   runID <- unique_runs[i]
   message(paste0("Began processing ", runID, " at ", Sys.time()))

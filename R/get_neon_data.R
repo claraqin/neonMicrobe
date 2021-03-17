@@ -237,17 +237,26 @@ organizeRawSequenceData <- function(fn, metadata, outdir_sequence = PRESET_OUTDI
 #' Download NEON Soil Data Associated with Marker Gene Sequencing Data
 #'
 #' Downloads the following NEON data product:
-#' - DP1.10086.001: "Soil physical and chemical properties, periodic".
+#' - DP1.10086.001: "Soil physical and chemical properties, periodic", tables sls_soilCoreCollection, sls_soilMoisture, sls_soilpH, and sls_soilChemistry.
 #' This function uses \code{\link[neonUtilities]{loadByProduct}} to conduct the downloads.
 #'
 #' @param sites Either the string 'all' (default), meaning all available sites, or a character vector of 4-letter NEON site codes, e.g. c('ONAQ','RMNP'). Defaults to PRESET_SITES parameter in params.R.
 #' @param startYrMo,endYrMo Either NA (default), meaning all available dates, or a character vector in the form YYYY-MM, e.g. 2017-01. Defaults to PRESET_START_YR_MO in params.R.
 #' @param dpID NEON data product(s) of interest. Default is DP1.10086.001 ("Soil physical and chemical properties, periodic").
 #' @param outDir Default PRESET_OUTDIR_SOIL If a local copy of the filtered metadata is desired, provide path to output directory.
+#' @param rmSamplingImpractical Default TRUE. Whether to remove soil data records when sampling did not actually occur.
+#' @param rmNTransBouts Default TRUE. Whether to remove soil data records from bouts to collect N-transformation incubation tubes. These are only useful for calculating N-transformation rates and aren't associated with microbial data.
+#' @param rmFailedCNDataQF Default TRUE. Whether to remove soil data records where cnPercentQF indicates failure. While other QF fields exist and are simply passed to output, this particular check may be desirable because this function later aggregates nitrogenPercent and organicCPercent values for cnSampleIDs with analytical replicates.
 #'
 #' @return If return_data==TRUE, returns a dataframe consisting of joined soil data records from DP1.10086 ("Soil physical and chemical properties, periodic"). Otherwise, no value is returned.
 downloadRawSoilData <- function(sites='all', startYrMo = NA, endYrMo = NA,
-                                dpID = c("DP1.10086.001"), outDir=PRESET_OUTDIR_SOIL) {
+                                dpID = c("DP1.10086.001"), outDir=PRESET_OUTDIR_SOIL,
+                                rmSamplingImpractical=TRUE, rmNTransBouts=TRUE,
+                                rmFailedCNDataQF=TRUE) {
+  if(!dir.exists(outDir)) {
+    message("Output directory does not exist. Returning NULL.")
+    return(NULL)
+  }
 
   library(dplyr)
   library(neonUtilities)
@@ -284,46 +293,115 @@ downloadRawSoilData <- function(sites='all', startYrMo = NA, endYrMo = NA,
     })
   }
 
+  # Columns by which to join sls tables
   joining_cols <- c("domainID", "siteID", "plotID", "sampleID")
 
   tables_available <- data.frame(available=rep(FALSE, 4), row.names=c("sls_soilCoreCollection", "sls_soilMoisture", "sls_soilpH", "sls_soilChemistry"))
 
+  warnIfColsMissing <- function(table, cols, table_name) {
+    if(!all(keep_cols %in% names(table))) {
+      not_available <- which(!(keep_cols %in% names(table)))
+      warning("NEON soil data products have changed, and the following columns are no longer available in '", table_name, "': ",
+              paste(keep_cols[not_available], collapse=", "),
+              ". Please file an Issue on the GitHub page: https://github.com/claraqin/neonMicrobe/issues")
+    }
+  }
+
+  # If DP1.10086.001 is found
   if(any(grepl('10086', dpID)) & !all(is.na(slsL1[["DP1.10086.001"]]))) {
     tables_available$available[1] <- TRUE
 
     # start with soilCoreCollection data...
-    dat_soil <- dplyr::select(
-      slsL1[["DP1.10086.001"]]$"sls_soilCoreCollection",
-      domainID, siteID, plotID, namedLocation, plotType, nlcdClass, coreCoordinateX, coreCoordinateY, geodeticDatum, decimalLatitude, decimalLongitude, elevation,
-      sccSamplingProtocolVersion=samplingProtocolVersion, collectDate, sampleTiming, standingWaterDepth, nTransBoutType, sampleID, horizon, soilTemp, litterDepth,
-      sampleTopDepth, sampleBottomDepth, soilSamplingDevice, geneticSampleID, sccDataQF=dataQF)
+    keep_cols <- c("domainID", "siteID", "plotID", "namedLocation", "plotType", "nlcdClass", "coreCoordinateX", "coreCoordinateY", "geodeticDatum",
+                   "decimalLatitude", "decimalLongitude", "elevation", "samplingProtocolVersion", "collectDate", "sampleTiming", "standingWaterDepth",
+                   "nTransBoutType", "boutType", "samplingImpractical", "sampleID", "horizon", "soilTemp", "litterDepth", "sampleTopDepth",
+                   "sampleBottomDepth", "soilSamplingDevice", "geneticSampleID", "dataQF")
+    warnIfColsMissing(slsL1[["DP1.10086.001"]]$"sls_soilCoreCollection", keep_cols, "sls_soilCoreCollection")
+
+    dat_soil <- dplyr::select(slsL1[["DP1.10086.001"]]$"sls_soilCoreCollection", all_of(keep_cols)) %>%
+      dplyr::rename(sccSamplingProtocolVersion = samplingProtocolVersion,
+                    sccDataQF = dataQF)
+
+    # Remove records that were not actually sampled, if desired
+    if(rmSamplingImpractical) {
+      dat_soil <- dplyr::filter(dat_soil, samplingImpractical == "OK" | is.na(samplingImpractical) )
+    }
+    # Remove records that were only used to measure N transformations, if desired
+    if(rmNTransBouts) {
+      dat_soil <- dplyr::filter(dat_soil, boutType != "fieldOnly")
+    }
 
     # merge with soilMoisture data...
     if(!is.null(slsL1[["DP1.10086.001"]]$"sls_soilMoisture")) {
       tables_available$available[2] <- TRUE
-      dat_soil <- full_join(
+
+      keep_cols <- c("moistureSampleID", "samplingProtocolVersion", "soilMoisture", "smDataQF")
+      warnIfColsMissing(slsL1[["DP1.10086.001"]]$"sls_soilMoisture", keep_cols, "sls_soilMoisture")
+
+      dat_soil <- merge(
         dat_soil,
-        dplyr::select(slsL1[["DP1.10086.001"]]$"sls_soilMoisture", all_of(joining_cols), moistureSampleID, smSamplingProtocolVersion=samplingProtocolVersion,
-                      soilMoisture, smDataQF), by=joining_cols)
+        dplyr::select(slsL1[["DP1.10086.001"]]$"sls_soilMoisture", all_of(c(joining_cols, keep_cols))) %>%
+          dplyr::rename(smSamplingProtocolVersion = samplingProtocolVersion),
+        by = joining_cols,
+        all.x = TRUE
+      )
     }
 
     # merge with soilpH data...
     if(!is.null(slsL1[["DP1.10086.001"]]$"sls_soilpH")) {
       tables_available$available[3] <- TRUE
-      dat_soil <- full_join(
+
+      keep_cols <- c("pHSampleID", "samplingProtocolVersion", "soilInWaterpH", "soilInCaClpH", "pHDataQF")
+      warnIfColsMissing(slsL1[["DP1.10086.001"]]$"sls_soilpH", keep_cols, "sls_soilpH")
+
+      dat_soil <- merge(
         dat_soil,
-        dplyr::select(slsL1[["DP1.10086.001"]]$"sls_soilpH", all_of(joining_cols), pHSampleID, pHSamplingProtocolVersion=samplingProtocolVersion, soilInWaterpH,
-                      soilInCaClpH, pHDataQF), by=joining_cols)
+        dplyr::select(slsL1[["DP1.10086.001"]]$"sls_soilpH", all_of(c(joining_cols, keep_cols))) %>%
+          dplyr::rename(pHSamplingProtocolVersion=samplingProtocolVersion),
+        by = joining_cols,
+        all.x = TRUE
+      )
     }
 
     # if available, merge with soil chemistry data
     if(!is.null(slsL1[["DP1.10086.001"]]$"sls_soilChemistry")) {
       tables_available$available[4] <- TRUE
-      dat_soil <- full_join(
-        dat_soil,
-        dplyr::select(slsL1[["DP1.10086.001"]]$"sls_soilChemistry", all_of(joining_cols), cnSampleID, nitrogenPercent, organicCPercent, CNratio,
-                      cnTestMethod=testMethod, cnInstrument=instrument, cnDataQF=dataQF))
+
+      keep_cols <- c("cnSampleID", "nitrogenPercent", "organicCPercent", "CNratio",
+                     "testMethod", "instrument", "cnPercentQF")
+      warnIfColsMissing(slsL1[["DP1.10086.001"]]$"sls_soilChemistry", keep_cols, "sls_soilChemistry")
+
+      # Need to collapse nitrogenPercent and organicCPercent values into the same rows. (They come in separate rows.)
+      soilchem <- dplyr::select(slsL1[["DP1.10086.001"]]$"sls_soilChemistry", all_of(c(joining_cols, keep_cols))) %>%
+        dplyr::rename(cnTestMethod=testMethod, cnInstrument=instrument) %>%
+        pivot_longer(c(nitrogenPercent, organicCPercent)) %>%
+        dplyr::filter(!is.na(value))
+      if(rmFailedCNDataQF==TRUE) {
+        soilchem <- dplyr::filter(soilchem, cnPercentQF == "OK" | is.na(cnPercentQF))
+      }
+      # Aggregate measurements of analytical replicates
+      soilchem_measurements <- pivot_wider(soilchem, id_cols = domainID:cnSampleID, names_from = name, names_sort = TRUE,
+                                           values_from = value, values_fn = mean)
+      # Aggregation function to use for next pivot_wider calls
+      indicateIfMixedAggregation <- function(x, value_if_mixed) {
+        if(length(unique(x)) == 1) {
+          return(x[1])
+        } else {
+          return(value_if_mixed)
+        }
+      }
+      soilchem_methods <- pivot_wider(soilchem, id_cols = domainID:cnSampleID, names_from = name, names_sort = TRUE, names_glue="{name}TestMethod",
+                                      values_from = cnTestMethod, values_fn = function(x) indicateIfMixedAggregation(x, "Aggregated from mixed methods"))
+      soilchem_QF <- pivot_wider(soilchem, id_cols = domainID:cnSampleID, names_from = name, names_sort = TRUE, names_glue="{name}QF",
+                                 values_from = cnPercentQF, values_fn = function(x) indicateIfMixedAggregation(x, "Aggregated from mixed quality flags"))
+      soilchem <- merge(merge(soilchem_measurements, soilchem_methods, all.x=TRUE), soilchem_QF, all.x=TRUE)
+      # Collapsing complete
+      # Now merge with the rest of soil data
+      dat_soil <- merge(dat_soil, soilchem, by = joining_cols, all.x = TRUE
+      )
+
     }
+    # If DP1.10086.001 is not found
   } else {
     dat_soil <- NULL
   }
@@ -333,8 +411,8 @@ downloadRawSoilData <- function(sites='all', startYrMo = NA, endYrMo = NA,
     print(tables_available)
     message("Returning soil data. Note that this function does not return the entire data product(s);\n",
             "for specialized analyses, downloading directly from the NEON Data Portal, the NEON Data API,\n",
-            "or from neonUtilities may be necessary. Lastly, check the 'DataQF' columns to ensure you are\n",
-            "only keeping records of sufficient quality for your purposes.")
+            "or from neonUtilities may be necessary. Lastly, check the 'QF' (quality flag) columns to ensure\n",
+            "you are only keeping records of sufficient quality for your purposes.")
   } else {
     warning("No soil data available at the specified sites and dates. Returning NULL.")
   }
