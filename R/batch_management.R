@@ -17,10 +17,18 @@
 #' newBatch("abc", "data/sequence_metadata/mmg_soilMetadata_ITS_2021-03-08134134.csv")
 #' newBatch("xyz", "data/sequence_metadata/mmg_soilMetadata_ITS_2021-03-08134134.csv")
 #' }
-newBatch <- function(batch_id, seq_meta_file, batches_dir = file.path(PRESET_OUTDIR_OUTPUTS, "batches"), overwrite=FALSE, set_batch=TRUE) {
+newBatch <- function(seq_meta_file, batch_id = NULL, batches_dir = file.path(PRESET_OUTDIR_OUTPUTS, "batches"), overwrite=FALSE, set_batch=TRUE) {
   if(!dir.exists(batches_dir)) dir.create(batches_dir, recursive=TRUE)
 
-  metadata_load_err <- FALSE
+  # If batch_id is not provided, use the current time
+  if(is.null(batch_id)) {
+    batch_id <- gsub(" |:", "", Sys.time())
+    while(dir.exists(file.path(batches_dir, batch_id))) {
+      Sys.sleep(1)
+      batch_id <- gsub(" |:", "", Sys.time())
+    }
+  }
+
   if(!file.exists(seq_meta_file)) {
     warning("Processing batch could not be created: No sequence metadata found at specified file location.")
   } else {
@@ -174,7 +182,8 @@ listBatches <- function(batches_dir = file.path(PRESET_OUTDIR_OUTPUTS, "batches"
 #' take precedence. For example, rather than writing to the standard outputs directory, the
 #' parent function would write to the current batch's outputs directory. Rather than using
 #' quality filtering parameters defined on-the-fly, the parent function would use the quality
-#' filtering parameters associated with the current batch.
+#' filtering parameters associated with the current batch. Override does not apply to
+#' parameters that are inconsequential to the resulting outputs, like VERBOSE and MULTITHREAD.
 #'
 #' @return
 #'

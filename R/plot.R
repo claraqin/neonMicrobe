@@ -9,6 +9,7 @@
 #' @param include_quality_profile (Optional) Default FALSE. Whether to include the quality profile in the return value (see below).
 #'
 #' @return If include_quality_profile = FALSE (default), returns a ggplot of the expected errors. If include_quality_profile = TRUE, returns a length of list two: (1) a ggplot of the expected errors, and (2) a ggplot of the quality profile(s).
+#' @export
 #'
 #' @examples
 #' \dontrun{

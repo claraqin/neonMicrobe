@@ -7,7 +7,7 @@
 getTruncationLength(fl, qscore = 30, n = 5e+05, verbose = TRUE)
 }
 \arguments{
-\item{fl}{Full name(s) of fastq file(s).}
+\item{fl}{Full names of fastq files.}
 
 \item{qscore}{Default 30. Mean quality score threshold at which to truncate the remainder of the read.}
 
@@ -19,7 +19,7 @@ getTruncationLength(fl, qscore = 30, n = 5e+05, verbose = TRUE)
 Integer vector of truncation lengths to use for the set of fastq files.
 }
 \description{
-Decides on truncation length for trimmed reads based on quality score means. Default cutoff is a score of 30. Warns you if the beginning (first 10) bases are low-quality, but returns the first low-quality base after the 10th base. If no bases are below score, returns the last base. The truncation lengths can be aggregated (e.g. minimum) and used as an argument in \code{\link[dada2]{filterAndTrim}}.
+Decides on truncation length for trimmed 16S reads based on quality score means. Default cutoff is a score of 30. Warns you if the beginning (first 10) bases are low-quality, but returns the first low-quality base after the 10th base. If no bases are below score, returns the last base. The truncation lengths can be aggregated (e.g. minimum) and used as an argument in \code{\link[dada2]{filterAndTrim}}.
 }
 \examples{
 \dontrun{

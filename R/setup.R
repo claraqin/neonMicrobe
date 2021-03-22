@@ -3,6 +3,7 @@
 #' @param seq_dir,seqmeta_dir,soil_dir,taxref_dir,outputs_dir Absolute paths to directory where each type of data will be written (sequence data, sequence metadata, soil data, taxonomic reference data, processing outputs). Defaults to the following preset parameters, respectively: PRESET_OUTDIR_SEQUENCE, PRESET_OUTDIR_SEQMETA, PRESET_OUTDIR_SOIL, PRESET_OUTDIR_TAXREF, PRESET_OUTDIR_OUTPUTS.
 #'
 #' @return No value is returned.
+#' @export
 #'
 #' @examples
 #' \dontrun{
@@ -34,6 +35,12 @@ makeOutputDirectories <- function(seq_dir=PRESET_OUTDIR_SEQUENCE,
   createDirIfNotExist(soil_dir)
   createDirIfNotExist(taxref_dir)
   createDirIfNotExist(outputs_dir)
+
+  # If preset output directories for raw and QC'd sequence metadata do not exist, create them
+  raw_seqmeta_dir <- file.path(seqmeta_dir, "raw_metadata")
+  qc_seqmeta_dir <- file.path(seqmeta_dir, "qc_metadata")
+  createDirIfNotExist(raw_seqmeta_dir)
+  createDirIfNotExist(qc_seqmeta_dir)
 
   # If preset directories for ITS and 16S data do not exist, create them
   seq_its_dir <- file.path(seq_dir, "ITS")

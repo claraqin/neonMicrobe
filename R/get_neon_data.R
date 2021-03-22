@@ -9,10 +9,11 @@
 #' @param verbose If TRUE, prints status messages and progress bars associated with file downloads.
 #'
 #' @return Returns (invisibly) a list of integer codes: 0 indicates success of downloads and a non-zero integer indicates failure. See the help page for \code{\link[utils]{download.file}} for more details.
+#' @export
 downloadRawSequenceData <- function(metadata, outDir = PRESET_OUTDIR_SEQUENCE,
                                     ignore_tar_files=TRUE, checkSize=TRUE, verbose=FALSE) {
 
-  library(utils)
+  # library(utils)
   options(stringsAsFactors = FALSE)
 
   metadata_load_err <- FALSE
@@ -89,7 +90,7 @@ downloadRawSequenceData <- function(metadata, outDir = PRESET_OUTDIR_SEQUENCE,
   download_success <- list()
   for(i in 1:nrow(metadata.u)) {
     tryCatch({
-      download_success[[i]] <- download.file(
+      download_success[[i]] <- utils::download.file(
         url = metadata.u$rawDataFilePath[i],
         destfile = ifelse(dir.exists(outDir), paste(outDir, metadata.u$rawDataFileName[i], sep="/"), paste(getwd(), metadata.u$rawDataFileName[i], sep="/" ) ),
         quiet = !verbose)
@@ -127,8 +128,9 @@ downloadRawSequenceData <- function(metadata, outDir = PRESET_OUTDIR_SEQUENCE,
 #' @param verbose If TRUE, prints message each time a file is reorganized.
 #'
 #' @return Character vector of the files (including files within tarballs) that were successfully reorganized. If no files were successfully reorganized, returns no value.
+#' @export
 organizeRawSequenceData <- function(fn, metadata, outdir_sequence = PRESET_OUTDIR_SEQUENCE, verbose = TRUE) {
-  library(R.utils)
+  # library(R.utils)
 
   metadata_load_err <- FALSE
 
@@ -249,6 +251,7 @@ organizeRawSequenceData <- function(fn, metadata, outdir_sequence = PRESET_OUTDI
 #' @param rmFailedCNDataQF Default TRUE. Whether to remove soil data records where cnPercentQF indicates failure. While other QF fields exist and are simply passed to output, this particular check may be desirable because this function later aggregates nitrogenPercent and organicCPercent values for cnSampleIDs with analytical replicates.
 #'
 #' @return If return_data==TRUE, returns a dataframe consisting of joined soil data records from DP1.10086 ("Soil physical and chemical properties, periodic"). Otherwise, no value is returned.
+#' @export
 downloadRawSoilData <- function(sites='all', startYrMo = NA, endYrMo = NA,
                                 dpID = c("DP1.10086.001"), outDir=PRESET_OUTDIR_SOIL,
                                 rmSamplingImpractical=TRUE, rmNTransBouts=TRUE,
@@ -258,8 +261,8 @@ downloadRawSoilData <- function(sites='all', startYrMo = NA, endYrMo = NA,
     return(NULL)
   }
 
-  library(dplyr)
-  library(neonUtilities)
+  # library(dplyr)
+  # library(neonUtilities)
 
   # check valid data values entered
   ## validate dpID ##
@@ -444,16 +447,18 @@ downloadRawSoilData <- function(sites='all', startYrMo = NA, endYrMo = NA,
 #' @param targetGene '16S' or 'ITS'.
 #' @param sequencingRuns Either the string 'all', meaning all available sequencing runs, or a character vector of NEON sequencing run IDs, e.g. c('C25G9', 'B69PP').
 #' @param dpID NEON data product of interest. Default is soil marker gene sequences, and currently code only works for marker genes data products.
-#' @param outDir (Optional) If a local copy of the filtered metadata is desired, provide path to output directory.
+#' @param outDir Default file.path(PRESET_OUTDIR_SEQMETA, "raw_sequence"). To save a copy of the metadata to the local file system, provide the path to output directory. If this behavior is not desired, set outDir=FALSE.
 #'
 #' @return Data frame containing joined records from across the NEON soil marker gene sequence metadata, subsetted according to function arguments.
+#' @export
+#'
 #' @examples
 #' \dontrun{
-#' meta <- downloadSequenceMetadataRev('all', '2015-01', '2016-01', '16S') # metadata is not saved to local directory
-#' meta <- downloadSequenceMetadataRev('all', '2015-01', '2016-01', '16S', dir='./data/') # metadata is saved to local directory
+#' meta <- downloadSequenceMetadataRev('all', '2015-01', '2016-01', '16S', outDir=FALSE) # metadata is not saved to local directory
+#' meta <- downloadSequenceMetadataRev('all', '2015-01', '2016-01', '16S', outDir='./data/') # metadata is saved to local directory
 #' }
 downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targetGene= "all",
-                                     sequencingRuns = "", dpID = "DP1.10108.001", outDir=PRESET_OUTDIR_SEQMETA) {
+                                     sequencingRuns = "", dpID = "DP1.10108.001", outDir=file.path(PRESET_OUTDIR_SEQMETA, "raw_sequence")) {
   # author: Lee Stanish
   # date: 2020-08-13
   # function loads soil marker gene sequencing metadata for target gene, site(s) and date(s)
@@ -465,9 +470,9 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
   # dpID: NEON data product of interest. Default is soil marker gene sequences, and currently code only works for this dpID
   # outDir: directory for outputs. Defaults to output directory in parameters file
 
-  library(neonUtilities)
-  library(plyr)
-  library(dplyr)
+  # library(neonUtilities)
+  # library(plyr)
+  # library(dplyr)
 
   # check valid data values entered
   ## validate dpID ##
@@ -499,9 +504,6 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
   }
 
   # validate output directory
-  if(exists("PRESET_OUTDIR_SEQMETA")) {
-    outDir <- PRESET_OUTDIR_SEQMETA
-  }
   if(!dir.exists(outDir) ) {
     message("Output directory does not exist")
     return(NULL)
@@ -667,22 +669,26 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
   names(outPCR)[names(outPCR)=="internalLabID.y"] <- "internalLabID.pcr"
 
   # download local copy to output dir path
-  if(targetGene != "all") {
-    write.csv(outPCR, paste0(outDir, "/mmg_soilMetadata_", targetGene, "_", gsub(" |:", "", Sys.time()), ".csv"),
-              row.names=FALSE)
-  } else {
-    out16S <- outPCR[grep("16S", outPCR$targetGene), ]
-    outITS <- outPCR[grep("ITS", outPCR$targetGene), ]
-    write.csv(out16S, paste0(outDir, "/mmg_soilMetadata_16S_", gsub(" |:", "", Sys.time()), ".csv"),
-              row.names=FALSE)
-    write.csv(outITS, paste0(outDir, "/mmg_soilMetadata_ITS_", gsub(" |:", "", Sys.time()), ".csv"),
-              row.names=FALSE)
-  }
-  message(paste0("metadata downloaded to: ", outDir) )
+  # unless user provides outDir=FALSE
+  if(!identical(outDir, FALSE)) {
+    if(targetGene != "all") {
+      write.csv(outPCR, paste0(outDir, "/mmg_soilMetadata_", targetGene, "_", gsub(" |:", "", Sys.time()), ".csv"),
+                row.names=FALSE)
+    } else {
+      out16S <- outPCR[grep("16S", outPCR$targetGene), ]
+      outITS <- outPCR[grep("ITS", outPCR$targetGene), ]
+      write.csv(out16S, paste0(outDir, "/mmg_soilMetadata_16S_", gsub(" |:", "", Sys.time()), ".csv"),
+                row.names=FALSE)
+      write.csv(outITS, paste0(outDir, "/mmg_soilMetadata_ITS_", gsub(" |:", "", Sys.time()), ".csv"),
+                row.names=FALSE)
+    }
+    message(paste0("metadata downloaded to: ", outDir) )
 
-  # download variables file (required for zipsByUri)
-  write.csv(varfile, paste0(outDir, "/mmg_variables.csv") )
-  message(paste0("variables file downloaded to: ", outDir) )
+    # download variables file (required for zipsByUri)
+    write.csv(varfile, paste0(outDir, "/mmg_variables.csv") )
+    message(paste0("variables file downloaded to: ", outDir) )
+  }
+
 
   return(outPCR)
 }
@@ -693,13 +699,14 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
 #' Running this function will remove metadata records for samples that do not meet user specifications. This will reduce the number of sequence files that are downloaded to only those that will be used for analysis, thereby saving file space and reducing download times.
 #'
 #' @param metadata The output of downloadSequenceMetadata(). Must be provided as either the data.frame returned by downloadSequenceMetadata() or as a filepath to the csv file produced by downloadSequenceMetadata() when outdir is provided.
-#' @param outDir Default PRESET_OUTDIR_SEQMETA. Directory where raw sequence files can be found before reorganizing.
+#' @param outDir Default file.path(PRESET_OUTDIR_SEQMETA, "QC_metadata"). Directory where QC'd metadata will be written.
 #' @param pairedReads "Y" (default) or "N". Should the forward reads for a sample be removed if the corresponding reverse read is missing? If "Y", then only samples that have both the forward (R1) and reverse (R2) reads will be retained.
 #' @param rmDupes TRUE (default) or FALSE. Should records with duplicated dnaSampleIDs be removed? If TRUE, then only the first records encountered for a particular dnaSampleID will be retained.
 #'
 #' @return QC'd dataframe is returned as an object and saved as csv file.
-qcMetadata <- function(metadata, outDir=PRESET_OUTDIR_SEQMETA, pairedReads="Y", rmDupes=TRUE, rmFlagged="N", verbose=FALSE) {
-  library(plyr)
+#' @export
+qcMetadata <- function(metadata, outDir=file.path(PRESET_OUTDIR_SEQMETA, "QC_metadata"), pairedReads="Y", rmDupes=TRUE, rmFlagged="N", verbose=FALSE) {
+  # library(plyr)
   options(stringsAsFactors = FALSE)
 
   metadata_load_err <- FALSE
@@ -736,15 +743,15 @@ qcMetadata <- function(metadata, outDir=PRESET_OUTDIR_SEQMETA, pairedReads="Y", 
     stop("more than one targetGene in input data set. Only one targetGene can be QCed at a time.")
   }
 
-  # create output folder for QCed metadata #
-  qcDir <- paste0(outDir, '/QC_output/')
-  if(!dir.exists(qcDir) ) {
-    dir.create(qcDir)
+  # validate output folder for QCed metadata
+  if(!dir.exists(outDir) ) {
+    message("Output directory does not exist")
+    return(NULL)
+    # dir.create(outDir, recursive=TRUE)
   }
 
   # Print size of dataset
   print(paste("Input dataset contains", nrow(metadata), "rows.") )
-
 
   # Remove flagged records, if rmFlagged="Y"
   if(rmFlagged=="Y") {
@@ -850,8 +857,8 @@ qcMetadata <- function(metadata, outDir=PRESET_OUTDIR_SEQMETA, pairedReads="Y", 
   # Recombine original flagged records and remaining records post-initial flagging.
   out <- suppressMessages(plyr::join(metaNotFlagged, metaFlagged))
 
-  write.csv(out, paste0(qcDir, "mmg_metadata_", gsub("\\ ", "", targetGene), "_QCed_", gsub("-", "", Sys.Date()), '.csv'), row.names = FALSE)
-  cat(paste("Output QCed file contains", nrow(out), "rows. File saved to the following directory:", qcDir))
+  write.csv(out, paste0(outDir, "mmg_metadata_", gsub("\\ ", "", targetGene), "_QCed_", gsub("-", "", Sys.Date()), '.csv'), row.names = FALSE)
+  cat(paste("Output QCed file contains", nrow(out), "rows. File saved to the following directory:", outDir))
   cat("\nNOTE: Always review output before proceeding with analysis.")
   return(out)
 }

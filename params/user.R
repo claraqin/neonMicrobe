@@ -31,21 +31,20 @@ PRIMER_16S_FWD = "CCTACGGGNBGCASCAG" # Forward primer sequence
 PRIMER_16S_REV = "GACTACNVGGGTATCTAATCC" # Reverse primer sequence
 
 # Path to Cutadapt for ITS primer trimming, if necessary
-CUTADAPT_PATH <- "/afs/cats.ucsc.edu/users/b/claraqin/.local/bin/cutadapt"
+CUTADAPT_PATH = "/afs/cats.ucsc.edu/users/b/claraqin/.local/bin/cutadapt"
 
 # Quality filtering parameters (used as defaults in dada2::filterAndTrim)
 MAX_EE_FWD = 8 # max. allowable expected errors in forward reads that pass filter
 MAX_EE_REV = 8 # max. allowable expected errors in reverse reads that pass filter
-TRUNC_Q = 2 # base quality score after which to truncate sequence
-# NOTE: it may be desirable to set this higher than 2 if the goal
-# is to increase the proportion of reads passing the filter, as this
-# would allow fewer "expected errors" to appear in the sequence
-# (by virtue of having shorter reads)
+TRUNC_Q = 2 # base quality score after which to truncate the sequence
 MIN_LEN = 50 # min. allowable length of reads that pass filter
-# NOTE: it may be desirable to set this higher to increase the
-# likelihood of sufficient overlap between read pairs. However,
-# this is at odds with the incentive for setting TRUNC_Q higher
-# (see previous)
+
+TRUNC_Q_FWD = 2
+TRUNC_Q_REV = 2
+MIN_LEN_FWD = 50
+MIN_LEN_REV = 50
+TRUNC_LEN_FWD = 220
+TRUNC_LEN_REV = 220
 
 #################################################
 # PARAMETERS FOR TAXONOMY ASSIGNMENT
@@ -55,3 +54,6 @@ UNITE_REF_PATH = file.path(PRESET_OUTDIR_TAXREF, "sh_general_release_dynamic_04.
 
 # 16S: SILVA reference database (FASTA file) path
 SILVA_REF_PATH = file.path(PRESET_OUTDIR_TAXREF, "silva_training_set.fa.gz")
+
+##################################################
+# PARAMETERS FOR DADA2 HEURISTICS
