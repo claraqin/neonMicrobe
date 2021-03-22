@@ -39,6 +39,7 @@ loadParams <- function(user_params="params/user.R", system_params="params/system
 #' @param verbose Whether to print messages regarding which files are matched and which are unmatched.
 #'
 #' @return List of length 2. The first element is a vector of forward-read files that have reverse-read counterparts; the second element is a vector of reverse-read files that have forward-read counterparts.
+#' @export
 #'
 #' @examples
 #' matched_fn <- remove_unmatched_files(c("sample1_R1.fastq", "sample2_R1.fastq"), c("sample1_R2.fastq", "sample2_R2.fastq", "sample3_R2.fastq"))
@@ -83,6 +84,7 @@ remove_unmatched_files <- function(fnFs, fnRs, post_samplename_pattern = "_R(1|2
 #' @param verbose (Optional) Default TRUE. Whether to print warning messages when metadata does not contain records corresponding to all provided fastq files.
 #'
 #' @return List of length 2; first element contains matched R1 (forward) file names, and second element contains corresponding R2 (reverse) file names.
+#' @export
 #'
 #' @examples
 #' \dontrun{
@@ -138,6 +140,7 @@ getPairedFastqFiles <- function(fn, meta, value=TRUE, verbose=TRUE) {
 #' @param verbose (Optional) Default TRUE. Whether to print warning messages when metadata does not contain records corresponding to all provided fastq files.
 #'
 #' @return List of length 2; first element contains matched R1 (forward) file names, and second element contains corresponding R2 (reverse) file names.
+#' @export
 #'
 #' @examples
 #' \dontrun{
@@ -188,6 +191,7 @@ removeUnpairedFastqFiles <- function(fnFs, fnRs, meta, value=TRUE, verbose=TRUE)
 #' @param verbose (Optional) Default TRUE. Whether to print warning messages when metadata does not contain records corresponding to all provided fastq files.
 #'
 #' @return Data frame, in which the first column contains the fastq file names in the order received, and the remaining columns contain corresponding metadata records. Has as many rows as the number of input filenames.
+#' @export
 #'
 #' @examples
 #' \dontrun{
@@ -224,6 +228,7 @@ matchFastqToMetadata <- function(fn, meta, verbose=TRUE) {
 #' @param verbose Default TRUE. Whether to return message regarding truncation length for each file. Includes warning messages.
 #'
 #' @return Integer vector of truncation lengths to use for the set of fastq files.
+#' @export
 #'
 #' @examples
 #' \dontrun{
@@ -288,6 +293,7 @@ getN <- function(x) {
 #' @param post_samplename_pattern1,post_samplename_pattern2 Default "_R1.*\\.fastq" and "_R2.*\\.fastq". Regular expressions denoting the ends of the R1 and R2 filenames, respectively, which will be trimmed away, leaving identical names between corresponding R1 and R2 files.
 #'
 #' @return Character vector; sample names of the input fastq filenames.
+#' @export
 #'
 #' @examples
 getSampleName <- function(fn, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq") {
@@ -306,6 +312,7 @@ getSampleName <- function(fn, post_samplename_pattern1 = "_R1.*\\.fastq", post_s
 #' @param param1,param2 Parameter names embedded within the rownames of df.
 #'
 #' @return A data frame containing columns corresponding to the values of the parameters of interest, extracted from the rownames of the original data frame.
+#' @export
 #'
 #' @examples \dontrun{ trackReadsWithParamVals <- parseParamsFromRownames(trackReads, PARAM1, PARAM2) }
 parseParamsFromRownames <- function(df, param1, param2, keep_rownames=FALSE, keep_original_cols=TRUE) {

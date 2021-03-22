@@ -13,6 +13,7 @@
 #' @param post_samplename_pattern1,post_samplename_pattern2 (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).*\\.fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
 #'
 #' @return Integer matrix denoting the number of reads remaining after primer-trimming for each input file.
+#' @export
 #'
 #' @examples
 #' \dontrun{
@@ -60,6 +61,7 @@ trimPrimers16S <- function(fn, dir_in, dir_out, primer_16S_fwd, primer_16S_rev, 
 #' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
 #'
 #' @return Integer matrix denoting the number of reads remaining after primer-trimming for each input file.
+#' @export
 #'
 #' @examples
 #' \dontrun{
@@ -126,6 +128,7 @@ trimPrimers16S2 <- function(fn, dir_out, meta, primer_16S_fwd, primer_16S_rev, m
 #' @param discard_untrimmed Default FALSE. Whether to discard reads where a primer could not be found, leaving only those reads in which a primer has been trimmed.
 #'
 #' @return No value is returned.
+#' @export
 #'
 #' @examples
 #' \dontrun{
@@ -187,6 +190,7 @@ trimPrimersITS <- function(fn, dir_in, dir_out, primer_ITS_fwd, primer_ITS_rev, 
 #' @param discard_untrimmed Default FALSE. Whether to discard reads where a primer could not be found, leaving only those reads in which a primer has been trimmed.
 #'
 #' @return No value is returned.
+#' @export
 #'
 #' @examples
 #' \dontrun{
@@ -259,6 +263,7 @@ trimPrimersITS2 <- function(fn, dir_out, meta, primer_ITS_fwd, primer_ITS_rev, c
 #' @param ... Other arguments to be passed to \code{\link[dada2]{filterAndTrim}}, such as maxEE. See documentation for more details.
 #'
 #' @return Two-column matrix displaying the number of reads in input vs. output for each file.
+#' @export
 qualityFilter16S <- function(fn, dir_in, dir_out, trunc_qscore = 23, multithread = MULTITHREAD, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq", ...){
   fn_fullname <- file.path(dir_in, fn)
 
@@ -334,6 +339,7 @@ qualityFilter16S <- function(fn, dir_in, dir_out, trunc_qscore = 23, multithread
 #' @param ... Other arguments to be passed to \code{\link[dada2]{filterAndTrim}}, such as maxEE and truncLen. See documentation for more details.
 #'
 #' @return Two-column matrix displaying the number of reads in input vs. output for each file.
+#' @export
 qualityFilter16S2 <- function(fn, dir_out, meta, trunc_qscore = 23, multithread = MULTITHREAD, ...){
   dir.create(dir_out, recursive = TRUE)
   fn_out <- file.path(dir_out, basename(fn))
@@ -436,6 +442,7 @@ qualityFilter16S2 <- function(fn, dir_out, meta, trunc_qscore = 23, multithread 
 #' @param ... Other arguments to be passed to \code{\link[dada2]{filterAndTrim}}, such as maxEE. See documentation for more details.
 #'
 #' @return Two-column matrix displaying the number of reads in input vs. output for each file.
+#' @export
 qualityFilterITS <- function(fn, dir_in, dir_out, multithread = MULTITHREAD, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq", ...){
 
   fn_fullname <- file.path(dir_in, fn)
@@ -476,6 +483,7 @@ qualityFilterITS <- function(fn, dir_in, dir_out, multithread = MULTITHREAD, pos
 #' @param ... Other arguments to be passed to \code{\link[dada2]{filterAndTrim}}, such as maxEE. See documentation for more details.
 #'
 #' @return Two-column matrix displaying the number of reads in input vs. output for each file.
+#' @export
 qualityFilterITS2 <- function(fn, dir_out, meta, multithread = MULTITHREAD, ...){
   dir.create(dir_out, recursive = TRUE)
   fn_out <- file.path(dir_out, basename(fn))
@@ -529,6 +537,7 @@ qualityFilterITS2 <- function(fn, dir_out, meta, multithread = MULTITHREAD, ...)
 #' @param nbases (Optional) Number of bases to use for learning errors. Default 1e7.
 #'
 #' @return A list of three elements. \strong{seqtab} is the sequence table before removing chimeras, \strong{seqtab.nochim} is the sequence table after removing chimeras, and \strong{track} is a data frame displaying the number of reads remaining for each sample at various points throughout the processing pipeline.
+#' @export
 #'
 #' @examples
 #' \dontrun{
@@ -626,6 +635,7 @@ runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
 #' @param nbases (Optional) Number of bases to use for learning errors. Default 1e7.
 #'
 #' @return A list of two elements. \strong{seqtab} is the sequence table, with chimeras removed if remove_chimeras == TRUE, and \strong{track} is a data frame displaying the number of reads remaining for each sample at various points throughout the processing pipeline.
+#' @export
 #'
 #' @examples
 #' \dontrun{
@@ -780,6 +790,7 @@ runDada16S2 <- function(fn, meta, out_seqtab = "", out_track = "", remove_chimer
 #' @param nbases (Optional) Number of bases to use for learning errors. Default 1e7.
 #'
 #' @return A list of three elements. \strong{seqtab} is the sequence table before removing chimeras, \strong{seqtab.nochim} is the sequence table after removing chimeras, and \strong{track} is a data frame displaying the number of reads remaining for each sample at various points throughout the processing pipeline.
+#' @export
 #'
 #' @examples
 #' \dontrun{
@@ -862,6 +873,7 @@ runDadaITS <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
 #' @param nbases (Optional) Number of bases to use for learning errors. Default 1e7.
 #'
 #' @return A list of two elements. \strong{seqtab} is the sequence table, with chimeras removed if remove_chimeras == TRUE, and \strong{track} is a data frame displaying the number of reads remaining for each sample at various points throughout the processing pipeline.
+#' @export
 #'
 #' @examples
 #' \dontrun{
