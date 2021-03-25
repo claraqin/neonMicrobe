@@ -9,7 +9,7 @@
 #' @param dir_in Directory containing input fastq files.
 #' @param dir_out Output directory. If it does not exist, it will be created.
 #' @param primer_16S_fwd,primer_16S_rev DNA sequences of 16S forward and reverse primer, respectively
-#' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
+#' @param multithread Default FALSE. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
 #' @param post_samplename_pattern1,post_samplename_pattern2 (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).*\\.fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
 #'
 #' @return Integer matrix denoting the number of reads remaining after primer-trimming for each input file.
@@ -19,7 +19,7 @@
 #' \dontrun{
 #' trimPrimers16S(c("sample1_R1.fastq", "sample1_R2.fastq", "sample2_R1.fastq", "sample2_R2.fastq"), "path/to/input", "path/to/output", "CCTACGGGNBGCASCAG", "GACTACNVGGGTATCTAATCC", multithread = TRUE)
 #' }
-trimPrimers16S <- function(fn, dir_in, dir_out, primer_16S_fwd, primer_16S_rev, multithread = MULTITHREAD, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq"#, quiet=T
+trimPrimers16S <- function(fn, dir_in, dir_out, primer_16S_fwd, primer_16S_rev, multithread = FALSE, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq"#, quiet=T
 ){
   fn_fullname <- file.path(dir_in, fn)
 
@@ -58,7 +58,7 @@ trimPrimers16S <- function(fn, dir_in, dir_out, primer_16S_fwd, primer_16S_rev, 
 #' @param dir_out Directory where filtered fastq files will be written.
 #' @param meta Metadata downloaded using \code{\link{downloadSequenceMetadata}} that corresponds to the fastq files.
 #' @param primer_16S_fwd,primer_16S_rev DNA sequences of 16S forward and reverse primer, respectively
-#' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
+#' @param multithread Default FALSE. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
 #'
 #' @return Integer matrix denoting the number of reads remaining after primer-trimming for each input file.
 #' @export
@@ -67,7 +67,7 @@ trimPrimers16S <- function(fn, dir_in, dir_out, primer_16S_fwd, primer_16S_rev, 
 #' \dontrun{
 #' trimPrimers16S(c("sample1_R1.fastq", "sample1_R2.fastq", "sample2_R1.fastq", "sample2_R2.fastq"), "path/to/output", meta, "CCTACGGGNBGCASCAG", "GACTACNVGGGTATCTAATCC", multithread = TRUE)
 #' }
-trimPrimers16S2 <- function(fn, dir_out, meta, primer_16S_fwd = "CCTACGGGNBGCASCAG", primer_16S_rev = "GACTACNVGGGTATCTAATCC", multithread = MULTITHREAD) {
+trimPrimers16S2 <- function(fn, dir_out, meta, primer_16S_fwd = "CCTACGGGNBGCASCAG", primer_16S_rev = "GACTACNVGGGTATCTAATCC", multithread = FALSE) {
   dir.create(dir_out, recursive = TRUE)
   fn_out <- file.path(dir_out, basename(fn))
 
@@ -124,7 +124,7 @@ trimPrimers16S2 <- function(fn, dir_out, meta, primer_16S_fwd = "CCTACGGGNBGCASC
 #' @param primer_ITS_fwd,primer_ITS_rev DNA sequence of the ITS forward and reverse primer, respectively.
 #' @param cutadapt_path Default CUTADAPT_PATH in params.R. Path to cutadapt on your file system.
 #' @param post_samplename_pattern1,post_samplename_pattern2 (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).*\\.fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
-#' @param very_verbose Default FALSE. Whether to print output from cutadapt. Unlike some other "verbose" arguments associated with the functions in this package, this does not default to VERBOSE in params.R.
+#' @param very_verbose Default FALSE. Whether to print output from cutadapt.
 #' @param discard_untrimmed Default FALSE. Whether to discard reads where a primer could not be found, leaving only those reads in which a primer has been trimmed.
 #'
 #' @return No value is returned.
@@ -186,7 +186,7 @@ trimPrimersITS <- function(fn, dir_in, dir_out, primer_ITS_fwd, primer_ITS_rev, 
 #' @param meta Metadata downloaded using \code{\link{downloadSequenceMetadata}} that corresponds to the fastq files.
 #' @param cutadapt_path Default CUTADAPT_PATH in params.R. Path to cutadapt on your file system.
 #' @param primer_ITS_fwd,primer_ITS_rev DNA sequence of the ITS forward and reverse primer, respectively.
-#' @param very_verbose Default FALSE. Whether to print output from cutadapt. Unlike some other "verbose" arguments associated with the functions in this package, this does not default to VERBOSE in params.R.
+#' @param very_verbose Default FALSE. Whether to print output from cutadapt.
 #' @param discard_untrimmed Default FALSE. Whether to discard reads where a primer could not be found, leaving only those reads in which a primer has been trimmed.
 #'
 #' @return No value is returned.
@@ -258,13 +258,13 @@ trimPrimersITS2 <- function(fn, dir_out, meta, cutadapt_path, primer_ITS_fwd = "
 #' @param dir_in Directory containing input fastq files.
 #' @param dir_out Path to output directory where filtered fastq files will be written.
 #' @param trunc_qscore Default 23. Quality score at which point to truncate each read, if truncLen is NULL.
-#' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
+#' @param multithread Default FALSE. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
 #' @param post_samplename_pattern1,post_samplename_pattern2 (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).*\\.fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
 #' @param ... Other arguments to be passed to \code{\link[dada2]{filterAndTrim}}, such as maxEE. See documentation for more details.
 #'
 #' @return Two-column matrix displaying the number of reads in input vs. output for each file.
 #' @export
-qualityFilter16S <- function(fn, dir_in, dir_out, trunc_qscore = 23, multithread = MULTITHREAD, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq", ...){
+qualityFilter16S <- function(fn, dir_in, dir_out, trunc_qscore = 23, multithread = FALSE, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq", ...){
   fn_fullname <- file.path(dir_in, fn)
 
   fnFs <- fn_fullname[file.exists(fn_fullname) & grepl(post_samplename_pattern1, fn_fullname)]
@@ -284,9 +284,9 @@ qualityFilter16S <- function(fn, dir_in, dir_out, trunc_qscore = 23, multithread
 
     fwd.trunc.lengths <- list()
     rev.trunc.lengths <- list()
-    fwd.trunc.lengths[1:n_files] <- getTruncationLength(fnFs[1:n_files], verbose = VERBOSE,
+    fwd.trunc.lengths[1:n_files] <- getTruncationLength(fnFs[1:n_files], verbose = FALSE,
                                                         qscore = trunc_qscore)
-    rev.trunc.lengths[1:n_files] <- getTruncationLength(fnRs[1:n_files], verbose = VERBOSE,
+    rev.trunc.lengths[1:n_files] <- getTruncationLength(fnRs[1:n_files], verbose = FALSE,
                                                         qscore = trunc_qscore)
 
     # remove any samples that have low-quality reads early on, to avoid spoiling the whole run
@@ -335,12 +335,13 @@ qualityFilter16S <- function(fn, dir_in, dir_out, trunc_qscore = 23, multithread
 #' @param dir_out Directory where filtered fastq files will be written.
 #' @param meta Metadata downloaded using \code{\link{downloadSequenceMetadata}} that corresponds to the fastq files.
 #' @param trunc_qscore Default 23. Quality score at which point to truncate each read, if truncLen is NULL.
-#' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
+#' @param multithread Default FALSE. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
+#' @param verbose Default FALSE. Whether to print messages associated with automated selection of truncation length (truncLen).
 #' @param ... Other arguments to be passed to \code{\link[dada2]{filterAndTrim}}, such as maxEE and truncLen. See documentation for more details.
 #'
 #' @return Two-column matrix displaying the number of reads in input vs. output for each file.
 #' @export
-qualityFilter16S2 <- function(fn, dir_out, meta, trunc_qscore = 23, multithread = MULTITHREAD, ...){
+qualityFilter16S2 <- function(fn, dir_out, meta, trunc_qscore = 23, multithread = FALSE, verbose = FALSE, ...){
   dir.create(dir_out, recursive = TRUE)
   fn_out <- file.path(dir_out, basename(fn))
 
@@ -382,9 +383,9 @@ qualityFilter16S2 <- function(fn, dir_out, meta, trunc_qscore = 23, multithread 
 
     fwd.trunc.lengths <- list()
     rev.trunc.lengths <- list()
-    fwd.trunc.lengths[1:n_files] <- getTruncationLength(fnFs[1:n_files], verbose = VERBOSE,
+    fwd.trunc.lengths[1:n_files] <- getTruncationLength(fnFs[1:n_files], verbose = verbose,
                                                         qscore = trunc_qscore)
-    rev.trunc.lengths[1:n_files] <- getTruncationLength(fnRs[1:n_files], verbose = VERBOSE,
+    rev.trunc.lengths[1:n_files] <- getTruncationLength(fnRs[1:n_files], verbose = verbose,
                                                         qscore = trunc_qscore)
 
     # remove any samples that have low-quality reads early on, to avoid spoiling the whole run
@@ -437,13 +438,13 @@ qualityFilter16S2 <- function(fn, dir_out, meta, trunc_qscore = 23, multithread 
 #' @param fn Names of input fastq files, excluding directory path which is specified by dir_in. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning. It is assumed that these are R1 (forward-read) files only.
 #' @param dir_in Directory containing input fastq files.
 #' @param dir_out Path to output directory where filtered fastq files will be written.
-#' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
+#' @param multithread Default FALSE. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
 #' @param post_samplename_pattern1,post_samplename_pattern2 (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).*\\.fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
 #' @param ... Other arguments to be passed to \code{\link[dada2]{filterAndTrim}}, such as maxEE. See documentation for more details.
 #'
 #' @return Two-column matrix displaying the number of reads in input vs. output for each file.
 #' @export
-qualityFilterITS <- function(fn, dir_in, dir_out, multithread = MULTITHREAD, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq", ...){
+qualityFilterITS <- function(fn, dir_in, dir_out, multithread = FALSE, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq", ...){
 
   fn_fullname <- file.path(dir_in, fn)
 
@@ -479,12 +480,12 @@ qualityFilterITS <- function(fn, dir_in, dir_out, multithread = MULTITHREAD, pos
 #' @param fn Full names of input fastq files, including directory. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning. It is assumed that these are R1 (forward-read) files only.
 #' @param dir_out Directory where filtered fastq files will be written.
 #' @param meta Metadata downloaded using \code{\link{downloadSequenceMetadata}} that corresponds to the fastq files.
-#' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
+#' @param multithread Default FALSE. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
 #' @param ... Other arguments to be passed to \code{\link[dada2]{filterAndTrim}}, such as maxEE. See documentation for more details.
 #'
 #' @return Two-column matrix displaying the number of reads in input vs. output for each file.
 #' @export
-qualityFilterITS2 <- function(fn, dir_out, meta, multithread = MULTITHREAD, ...){
+qualityFilterITS2 <- function(fn, dir_out, meta, multithread = FALSE, ...){
   dir.create(dir_out, recursive = TRUE)
   fn_out <- file.path(dir_out, basename(fn))
 
@@ -531,8 +532,8 @@ qualityFilterITS2 <- function(fn, dir_out, meta, multithread = MULTITHREAD, ...)
 #' This implementation is based on Ben Callahan's vignette at \url{https://benjjneb.github.io/dada2/bigdata_paired.html}.
 #' @param fn Names of input fastq files, excluding directory path which is specified by dir_in. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning.
 #' @param dir_in Directory containing input fastq files.
-#' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading.
-#' @param VERBOSE Default FALSE. Whether to print messages regarding the dimensions of the resulting sequence table and the distribution of sequence lengths.
+#' @param multithread Default FALSE. Whether to use multithreading.
+#' @param verbose Default FALSE. Whether to print messages regarding the dimensions of the resulting sequence table and the distribution of sequence lengths.
 #' @param seed (Optional) Integer to use as random seed for reproducibility.
 #' @param nbases (Optional) Number of bases to use for learning errors. Default 1e7.
 #'
@@ -543,7 +544,7 @@ qualityFilterITS2 <- function(fn, dir_out, meta, multithread = MULTITHREAD, ...)
 #' \dontrun{
 #' seqtab.list <- runDada16S(c("sample1_R1.fastq", "sample1_R2.fastq", "sample2_R1.fastq", "sample2_R2.fastq"), seed=1010100)
 #' }
-runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, seed = NULL, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq", nbases=1e7){
+runDada16S <- function(fn, dir_in, multithread = FALSE, verbose = FALSE, seed = NULL, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq", nbases=1e7){
   if (!is.null(seed)) set.seed(seed)
 
   fn_fullname <- file.path(dir_in, fn)
@@ -629,7 +630,7 @@ runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
 #' @param meta Metadata downloaded using \code{\link{downloadSequenceMetadata}} that corresponds to the fastq files.
 #' @param out_seqtab,out_track (Optional) File locations where sequence table and read-tracking table (respectively) will be saved as csv files. If blank (default), will not save to file.
 #' @param remove_chimeras (Optional) Default TRUE. Whether to remove chimeras from the sequence table. Currently only supports removal using \code{\link[dada2]{removeBimeraDenovo}} with the consensus method.
-#' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading.
+#' @param multithread Default FALSE. Whether to use multithreading.
 #' @param verbose Default FALSE. Whether to print messages regarding the samples being processed, dimensions of the resulting sequence table, and the distribution of sequence lengths.
 #' @param seed (Optional) Integer to use as random seed for reproducibility.
 #' @param nbases (Optional) Number of bases to use for learning errors. Default 1e7.
@@ -641,7 +642,7 @@ runDada16S <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
 #' \dontrun{
 #' seqtab.list <- runDada16S(c("sample1_R1.fastq", "sample1_R2.fastq", "sample2_R1.fastq", "sample2_R2.fastq"), meta, seed=1010100)
 #' }
-runDada16S2 <- function(fn, meta, out_seqtab = "", out_track = "", remove_chimeras = TRUE, multithread = MULTITHREAD, verbose = FALSE, seed = NULL, nbases=1e7){
+runDada16S2 <- function(fn, meta, out_seqtab = "", out_track = "", remove_chimeras = TRUE, multithread = FALSE, verbose = FALSE, seed = NULL, nbases=1e7){
   if (!is.null(seed)) set.seed(seed)
 
   keep_fn <- file.exists(fn) & !duplicated(fn)
@@ -783,7 +784,7 @@ runDada16S2 <- function(fn, meta, out_seqtab = "", out_track = "", remove_chimer
 #'
 #' @param fn Names of input fastq files, excluding directory path which is specified by dir_in. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning. It is assumed that these are R1 (forward-read) files only.
 #' @param dir_in Directory containing input fastq files.
-#' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading.
+#' @param multithread Default FALSE. Whether to use multithreading.
 #' @param verbose Default FALSE. Whether to print messages regarding the dereplication step, the denoising step, and the dimensions of the resulting sequence table and the distribution of sequence lengths.
 #' @param seed (Optional) Integer to use as random seed for reproducibility.
 #' @param post_samplename_pattern1,post_samplename_pattern2 (Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).*\\.fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.
@@ -796,7 +797,7 @@ runDada16S2 <- function(fn, meta, out_seqtab = "", out_track = "", remove_chimer
 #' \dontrun{
 #' seqtab.list <- runDadaITS(c("sample1_R1.fastq", "sample1_R2.fastq", "sample2_R1.fastq", "sample2_R2.fastq"), './seq/filtered/', seed=1010100)
 #' }
-runDadaITS <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, seed = NULL, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq", nbases = 1e7){
+runDadaITS <- function(fn, dir_in, multithread = FALSE, verbose = FALSE, seed = NULL, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq", nbases = 1e7){
   if (!is.null(seed)) set.seed(seed)
 
   fn_fullname <- file.path(dir_in, fn)
@@ -867,7 +868,7 @@ runDadaITS <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
 #' @param meta Metadata downloaded using \code{\link{downloadSequenceMetadata}} that corresponds to the fastq files.
 #' @param out_seqtab,out_track (Optional) File locations where sequence table and read-tracking table (respectively) will be saved as csv files. If blank (default), will not save to file.
 #' @param remove_chimeras (Optional) Default TRUE. Whether to remove chimeras from the sequence table. Currently only supports removal using \code{\link[dada2]{removeBimeraDenovo}} with the consensus method.
-#' @param multithread Default MULTITHREAD in params.R. Whether to use multithreading.
+#' @param multithread Default FALSE. Whether to use multithreading.
 #' @param verbose Default FALSE. Whether to print messages regarding the samples being processed, dimensions of the resulting sequence table, and the distribution of sequence lengths.
 #' @param seed (Optional) Integer to use as random seed for reproducibility.
 #' @param nbases (Optional) Number of bases to use for learning errors. Default 1e7.
@@ -879,7 +880,7 @@ runDadaITS <- function(fn, dir_in, multithread = MULTITHREAD, verbose = FALSE, s
 #' \dontrun{
 #' seqtab.list <- runDada16S(c("sample1_R1.fastq", "sample1_R2.fastq", "sample2_R1.fastq", "sample2_R2.fastq"), meta, seed=1010100)
 #' }
-runDadaITS2 <- function(fn, meta, out_seqtab = "", out_track = "", remove_chimeras = TRUE, multithread = MULTITHREAD, verbose = FALSE, seed = NULL, nbases=1e7){
+runDadaITS2 <- function(fn, meta, out_seqtab = "", out_track = "", remove_chimeras = TRUE, multithread = FALSE, verbose = FALSE, seed = NULL, nbases=1e7){
   if (!is.null(seed)) set.seed(seed)
 
   keep_fn <- file.exists(fn) & !duplicated(fn)

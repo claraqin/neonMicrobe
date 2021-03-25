@@ -1,6 +1,9 @@
 #' Plot Expected Errors Profile
 #'
-#' Plots the cumulative expected errors of a fastq file or collection of fastq files over sequence positions. This function extends \code{\link[dada2]{plotQualityProfile}} and makes use of its code.
+#' Plots the cumulative expected errors of a fastq file or
+#' collection of fastq files over sequence positions. This
+#' function extends \code{\link[dada2]{plotQualityProfile}}
+#' as it appears in version 1.12.1 and makes use of its code.
 #'
 #' @param fn Full name(s) of input fastq file(s), including directory.
 #' @param n (Optional) Default 5e+5. The number of reads to sample when processing fastq files; passed to \code{\link[ShortRead]{qa}}.

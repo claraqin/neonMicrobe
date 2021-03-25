@@ -9,6 +9,8 @@
 #     └── batch_env3 ...
 
 
+valid_params <- c()
+
 #' Assign Final Value
 #'
 #' Helper function. Assigns an immutable value to a variable name within a specified
@@ -112,8 +114,12 @@ saveParameters <- function(params_file = NULL, env = NULL, verbose = TRUE) {
     }
   }
   params_con <- file(params_file)
-  writeLines(paste(names(params), "=", params),
-             params_con)
+  if(length(params) > 0) {
+    writeLines(paste(names(params), "=", params), params_con)
+  } else {
+    writeLines("", params_con)
+  }
+
   close(params_con)
   if(verbose) message("Processing parameters saved to ", params_file)
 }
@@ -121,13 +127,15 @@ saveParameters <- function(params_file = NULL, env = NULL, verbose = TRUE) {
 
 #' Create New Processing Batch
 #'
-#' Creates a new processing batch for enhancing the reproducibility of NEON soil microbe marker gene sequence workflows. Set batch processing parameters with \code{\link{setBatchParameter}}, or view them with \code{\link{getBatchParameter}}.
+#' Creates and switches to a new processing batch for enhancing the
+#' reproducibility of NEON soil microbe marker gene sequence workflows.
+#' Set batch processing parameters with \code{\link{setBatchParameter}}, or
+#' view them with \code{\link{getBatchParameter}}.
 #'
-#' @param seq_meta_file Character string. File path to the sequence metadata to associate with this processing batch. Once set, this cannot be changed except by overwriting this batch.
+#' @param seqmeta_file Character string. File path to the sequence metadata to associate with this processing batch. Once set, this cannot be changed except by overwriting this batch.
 #' @param batch_id Character string. Unique ID to use for the new processing batch.
 #' @param batches_dir Default file.path(NEONMICROBE_DIR_OUTPUTS(), "batches"). Directory where batch-specific directories are saved.
 #' @param overwrite Default FALSE. If processing batch already exists in the specified directory, whether to overwrite it.
-#' @param set_batch Default TRUE. Whether to switch to the new processing batch after creating it.
 #'
 #' @return No value returned
 #' @export
@@ -137,8 +145,9 @@ saveParameters <- function(params_file = NULL, env = NULL, verbose = TRUE) {
 #' newBatch("data/sequence_metadata/mmg_soilMetadata_ITS_2021-03-08134134.csv") # creates new batch based on timestamp
 #' newBatch("data/sequence_metadata/mmg_soilMetadata_ITS_2021-03-08134134.csv", batch_id="abc") # creates new batch based on user-specified name
 #' }
-newBatch <- function(seq_meta_file, batch_id = NULL, batches_dir = file.path(NEONMICROBE_DIR_OUTPUTS(), "batches"), overwrite=FALSE, set_batch=TRUE) {
+newBatch <- function(seqmeta_file, batch_id = NULL, batches_dir = file.path(NEONMICROBE_DIR_OUTPUTS(), "batches"), overwrite=FALSE) {
   if(!dir.exists(batches_dir)) dir.create(batches_dir, recursive=TRUE)
+  if(is.numeric(batch_id)) batch_id <- as.character(batch_id)
 
   # If batch_id is not provided, use the current time
   if(is.null(batch_id)) {
@@ -150,10 +159,11 @@ newBatch <- function(seq_meta_file, batch_id = NULL, batches_dir = file.path(NEO
   }
 
   # Create batch
-  if(!file.exists(seq_meta_file)) {
+  if(!file.exists(seqmeta_file)) {
     warning("Processing batch could not be created: No sequence metadata found at specified file location.")
   } else {
     new_batch_dir <- file.path(batches_dir, batch_id)
+
     if(dir.exists(new_batch_dir) & !identical(overwrite, TRUE)) {
       warning("Directory for processing batch ID ", batch_id, " already exists: ", new_batch_dir, ". To really overwrite, set overwrite=TRUE.")
     } else {
@@ -161,15 +171,14 @@ newBatch <- function(seq_meta_file, batch_id = NULL, batches_dir = file.path(NEO
       # Overwrite if batch already exists and overwrite==TRUE
       if(dir.exists(new_batch_dir) & identical(overwrite, TRUE)) unlink(new_batch_dir, recursive=TRUE)
 
-      # Create new batch dir and reset parameters in batch_env
+      # Create new batch dir
       dir.create(new_batch_dir)
-      rm(list=ls(envir=batch_env), envir=batch_env)
 
       # Make ABOUT file in batch directory
       about_file <- file(file.path(new_batch_dir, "ABOUT"))
       writeLines(c(paste0("Batch created: ", Sys.time()),
                    paste0("neonMicrobe version: ", packageVersion("neonMicrobe")),
-                   paste0("Sequence metadata: ", normalizePath(seq_meta_file))),
+                   paste0("Sequence metadata: ", normalizePath(seqmeta_file))),
                  about_file)
       close(about_file)
 
@@ -196,69 +205,17 @@ newBatch <- function(seq_meta_file, batch_id = NULL, batches_dir = file.path(NEO
       createDirIfNotExist(read_tracking_its_dir)
       createDirIfNotExist(read_tracking_16s_dir)
 
-      # Save parameters to local params.R
-      saveParameters(file.path(new_batch_dir, "params.R"), neonmicrobe_env)
-
       message("Created new batch directory at ", new_batch_dir)
-      if(set_batch==TRUE) {
-        setBatch(batch_id, batches_dir)
-      }
-    }
-  }
-}
 
-#' Switch to Existing Processing Batch
-#'
-#' @param batch_id Character string. Unique ID of an existing processing batch.
-#' @param batches_dir Default file.path(NEONMICROBE_DIR_OUTPUTS(), "batches"). Directory where batch-specific directories are saved.
-#'
-#' @return
-#' @export
-#'
-#' @examples
-setBatch <- function(batch_id = NULL, batches_dir = file.path(NEONMICROBE_DIR_OUTPUTS(), "batches")) {
-  if(!is.null(batch_id) & !identical("character", class(batch_id))) {
-    stop("Batch ID provided was not a character string. Unable to set batch.")
-  }
-  # If no batch_id is provided, clear the WORKING_BATCH_ID variable and delete the batch-specific env
-  if(is.null(batch_id) | missing(batch_id)) {
-    if ("WORKING_BATCH_ID" %in% ls(envir = neonmicrobe_env)) {
-      # Save and reset batch environment
-      saveParameters()
-      rm(list=ls(envir=batch_env), envir=batch_env)
+      # Switch to the new batch
+      setBatch(batch_id, batches_dir, suppress_load_parameters = TRUE)
 
-      # Remove batch indicator variables
-      prev_batch_id <- get("WORKING_BATCH_ID", envir = neonmicrobe_env)
-      rm("WORKING_BATCH_ID", envir = neonmicrobe_env)
-      rm("WORKING_BATCH_DIR", envir = neonmicrobe_env)
+      # Set the parameter for the batch-specific outputs directory
+      setBatchParameter(DIR_OUTPUTS = normalizePath(new_batch_dir), verbose=FALSE)
+      setBatchParameter(SEQMETA_FILE = normalizePath(seqmeta_file), verbose=FALSE)
 
-      message("Stepped outside of processing batch structure. No working batch ID is currently set. To undo this, run setBatch('", prev_batch_id, "')")
-    }
-
-  # If batch_id is provided, set WORKING_BATCH_ID to batch_id and load batch-specific parameters
-  } else {
-    # If already in a batch, save and reset batch environment (unless batch ID is the same)
-    if ("WORKING_BATCH_ID" %in% ls(envir = neonmicrobe_env)) {
-      if(identical(get("WORKING_BATCH_ID", envir=neonmicrobe_env), batch_id)) {
-        message("Already in batch ID '", batch_id, "'.")
-        return(invisible(NULL))
-      }
-      # Save and reset batch environment
-      saveParameters()
-      rm(list=ls(envir=batch_env), envir=batch_env)
-    }
-    if(!dir.exists(batches_dir)) dir.create(batches_dir, recursive=TRUE)
-    this_batch_dir <- file.path(batches_dir, batch_id)
-    if(!dir.exists(this_batch_dir)) {
-      message("Batch does not exist. Create a new batch using newBatch().")
-      return(invisible(NULL))
-    } else {
-      assign("WORKING_BATCH_ID", batch_id, env=neonmicrobe_env)
-      assign("WORKING_BATCH_DIR", normalizePath(this_batch_dir), env=neonmicrobe_env)
-
-      # Load new batch_environment
-      loadParameters(file.path(this_batch_dir, "params.R"), batch_env)
-      message("Switched to batch at ", this_batch_dir, ". Now working with processing batch ID '", batch_id, "'.")
+      # Save parameters to local params.R
+      saveParameters(file.path(new_batch_dir, "params.R"), batch_env, verbose=FALSE)
     }
   }
 }
@@ -291,6 +248,68 @@ getBatch <- function(verbose=FALSE) {
   }
 }
 
+#' Switch to Existing Processing Batch
+#'
+#' @param batch_id Character string. Unique ID of an existing processing batch.
+#' @param batches_dir Default file.path(NEONMICROBE_DIR_OUTPUTS(), "batches"). Directory where batch-specific directories are saved.
+#' @param suppress_load_parameters Default FALSE. If TRUE, does not attempt to load parameters into the batch environment. Intended for use in newBatch()
+#' @param verbose Default TRUE. Whether to print message confirming that batch has been set.
+#'
+#' @return
+#' @export
+#'
+#' @examples
+setBatch <- function(batch_id = NULL, batches_dir = file.path(NEONMICROBE_DIR_OUTPUTS(), "batches"),
+                     suppress_load_parameters = FALSE, verbose = TRUE) {
+  if(!is.null(batch_id) & !identical("character", class(batch_id))) {
+    stop("Batch ID provided was not a character string. Unable to set batch.")
+  }
+  # If batch_id is NOT provided, clear the WORKING_BATCH_ID variable and delete the batch-specific env
+  if(is.null(batch_id) | missing(batch_id)) {
+    if ("WORKING_BATCH_ID" %in% ls(envir = neonmicrobe_env)) {
+      # Save and reset batch environment
+      saveParameters(verbose=FALSE)
+      rm(list=ls(envir=batch_env), envir=batch_env)
+
+      # Remove batch indicator variables
+      prev_batch_id <- get("WORKING_BATCH_ID", envir = neonmicrobe_env)
+      rm("WORKING_BATCH_ID", envir = neonmicrobe_env)
+      rm("WORKING_BATCH_DIR", envir = neonmicrobe_env)
+
+      if(verbose) message("Stepped outside of processing batch structure. No working batch ID is currently set. To undo this, run setBatch('", prev_batch_id, "')")
+    }
+
+    # If batch_id is provided, set WORKING_BATCH_ID to batch_id and load batch-specific parameters
+  } else {
+    # If already in a batch, save and reset batch environment (unless batch ID is the same)
+    if ("WORKING_BATCH_ID" %in% ls(envir = neonmicrobe_env)) {
+      if(identical(get("WORKING_BATCH_ID", envir=neonmicrobe_env), batch_id)) {
+        if(verbose) message("Already in batch ID '", batch_id, "'.")
+        return(invisible(NULL))
+      }
+      # Save and reset batch environment
+      saveParameters(verbose=FALSE)
+      rm(list=ls(envir=batch_env), envir=batch_env)
+    }
+    if(!dir.exists(batches_dir)) dir.create(batches_dir, recursive=TRUE)
+    this_batch_dir <- file.path(batches_dir, batch_id)
+    if(!dir.exists(this_batch_dir)) {
+      message("Batch does not exist. Create a new batch using newBatch().")
+      return(invisible(NULL))
+    } else {
+      assign("WORKING_BATCH_ID", batch_id, env=neonmicrobe_env)
+      assign("WORKING_BATCH_DIR", normalizePath(this_batch_dir), env=neonmicrobe_env)
+
+      # Load new batch_environment
+      if(!identical(suppress_load_parameters, TRUE)) {
+        loadParameters(file.path(this_batch_dir, "params.R"), batch_env, verbose=FALSE)
+      }
+      if(verbose) message("Switched to batch at ", this_batch_dir, ". Now working with processing batch ID '", batch_id, "'.")
+    }
+  }
+}
+
+
 #' Get Processing Batch Parameter(s)
 #'
 #' Gets parameter(s) associated with the currently loaded processing batch. Based on \code{\link[dada2]{getDadaOpt}}.
@@ -320,11 +339,13 @@ getBatchParameter <- function(params = NULL) {
   }
 }
 
+
 #' Set Processing Batch Parameter(s)
 #'
 #' Sets parameter(s) associated with the currently loaded processing batch. Based on \code{\link[dada2]{setDadaOpt}}.
 #'
 #' @param ... The processing parameters to set, along with their new value.
+#' @param verbose Default TRUE. Whether to print a message confirming the assignment of a parameter.
 #'
 #' @return No value is returned.
 #' @export
@@ -341,7 +362,7 @@ getBatchParameter <- function(params = NULL) {
 #' TRUNC_LEN_FWD, TRUNC_LEN_REV: length of read after which to truncate the sequence in forward/reverse reads. Reads shorter than this value are discarded.
 #'
 #' Parameters for DADA options, including heuristics: see \code{\link[dada2]{setDadaOpt}}
-setBatchParameter <- function(...) {
+setBatchParameter <- function(..., verbose=TRUE) {
   if ("WORKING_BATCH_ID" %in% ls(envir = neonmicrobe_env)) {
     params <- getBatchParameter()
     args <- list(...)
@@ -352,7 +373,7 @@ setBatchParameter <- function(...) {
       # if(p_nm %in% names(params)) {
           # if(class(getBatchParameter(p_nm)) == class(args[[p_nm]])) {
             assign(p_nm, args[[p_nm]], envir = batch_env)
-            message("Assigned parameter '", p_nm, "' to ", args[[p_nm]])
+            if(verbose) message("Assigned to parameter '", p_nm, "': ", args[[p_nm]])
 
           # }
       # } else {
@@ -360,7 +381,7 @@ setBatchParameter <- function(...) {
       # }
     }
     # Save parameter changes to params file
-    saveParameters()
+    saveParameters(verbose=FALSE)
   } else {
     warning("Processing batch is not currently set. Use setBatch() to do so.")
     return(invisible(NULL))
@@ -406,17 +427,22 @@ listBatches <- function(batches_dir = file.path(NEONMICROBE_DIR_OUTPUTS, "batche
 #' with the current processing batch. If priority = "batch", the current batch's parameters would
 #' take precedence.
 #'
-#' For example, if priority = "batch", then rather than using quality filtering parameters defined on-the-fly,
-#' the parent function would use the quality filtering parameters associated with the current batch.
+#' @details
+#' If priority = "batch", then rather than using quality filtering parameters
+#' defined on-the-fly as function arguments, the parent function would instead
+#' use the quality filtering parameters associated with the current batch.
+#' If priority = "batch", then rather than using the default output directory,
+#' the parent function would instead use the batch-specific outputs.
 #'
 #' @param priority Must be "batch" or "arguments". Whether to defer to batch-specific processing parameters or function arguments when they conflict.
 #' @param ... Format [function argument (string)] = [batch parameter (string)]. Arguments with a corresponding batch parameter, set to whatever the name of that batch parameter is, e.g. `"maxEE" = "MAX_EE_FWD`. The arguments will be checked against the batch parameters.
-#' @param warn_no_batch Default TRUE Whether to print a warning if there is no current processing batch.
+#' @param verbose Default TRUE. Whether to print a warning if the function argument and batch parameter do not match.
+#' @param warn_no_batch Default FALSE. Whether to print a warning if there is no current processing batch.
 #'
 #' @return No value is returned
 #'
 #' @examples
-checkArgsAgainstBatchParams <- function(priority = c("batch", "arguments"), ..., warn_no_batch=TRUE) {
+checkArgsAgainstBatchParams <- function(priority = c("batch", "arguments"), ... , verbose = TRUE, warn_no_batch = FALSE) {
   priority <- match.arg(priority)
   dots <- list(...)
   if ("WORKING_BATCH_ID" %in% ls(envir = neonmicrobe_env)) {
@@ -427,13 +453,17 @@ checkArgsAgainstBatchParams <- function(priority = c("batch", "arguments"), ...,
       if(!identical(par_val, arg_val)) {
         if(identical(priority, "batch")) {
           par_val_print <- ifelse(is.character(par_val), shQuote(par_val), par_val)
-          warning("Argument '", arg_nm, "' does not match with batch parameter '", dots[[arg_nm]],
-                  "'. Using batch parameter value: ", par_val_print, ". (Change behavior with 'priority' arg.)")
+          if(verbose) {
+            warning("Argument '", arg_nm, "' does not match with batch parameter '", dots[[arg_nm]],
+                    "'. Using batch parameter value: ", par_val_print, ". (Change behavior with 'priority' arg.)")
+          }
           assign(arg_nm, par_val, envir=parent.frame())
         } else {
           arg_val_print <- ifelse(is.character(arg_val), shQuote(arg_val), arg_val)
-          warning("Argument '", arg_nm, "' does not match with batch parameter '", dots[[arg_nm]],
-                  "'. Keeping function argument value: ", arg_val_print, ". (Change behavior with 'priority' arg.)")
+          if(verbose) {
+            warning("Argument '", arg_nm, "' does not match with batch parameter '", dots[[arg_nm]],
+                    "'. Keeping function argument value: ", arg_val_print, ". (Change behavior with 'priority' arg.)")
+          }
         }
       # If the function argument and the batch parameter DO match...
       } else {
