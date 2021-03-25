@@ -7,7 +7,7 @@
 newBatch(
   seq_meta_file,
   batch_id = NULL,
-  batches_dir = file.path(PRESET_OUTDIR_OUTPUTS, "batches"),
+  batches_dir = file.path(NEONMICROBE_DIR_OUTPUTS(), "batches"),
   overwrite = FALSE,
   set_batch = TRUE
 )
@@ -17,7 +17,7 @@ newBatch(
 
 \item{batch_id}{Character string. Unique ID to use for the new processing batch.}
 
-\item{batches_dir}{Default file.path(PRESET_OUTDIR_OUTPUS, "batches"). Directory where batch-specific directories are saved.}
+\item{batches_dir}{Default file.path(NEONMICROBE_DIR_OUTPUTS(), "batches"). Directory where batch-specific directories are saved.}
 
 \item{overwrite}{Default FALSE. If processing batch already exists in the specified directory, whether to overwrite it.}
 
@@ -27,11 +27,11 @@ newBatch(
 No value returned
 }
 \description{
-Create New Processing Batch
+Creates a new processing batch for enhancing the reproducibility of NEON soil microbe marker gene sequence workflows. Set batch processing parameters with \code{\link{setBatchParameter}}, or view them with \code{\link{getBatchParameter}}.
 }
 \examples{
 \dontrun{
-newBatch("abc", "data/sequence_metadata/mmg_soilMetadata_ITS_2021-03-08134134.csv")
-newBatch("xyz", "data/sequence_metadata/mmg_soilMetadata_ITS_2021-03-08134134.csv")
+newBatch("data/sequence_metadata/mmg_soilMetadata_ITS_2021-03-08134134.csv") # creates new batch based on timestamp
+newBatch("data/sequence_metadata/mmg_soilMetadata_ITS_2021-03-08134134.csv", batch_id="abc") # creates new batch based on user-specified name
 }
 }

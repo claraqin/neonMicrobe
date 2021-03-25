@@ -2,7 +2,7 @@
 % Please edit documentation in R/batch_management.R
 \name{getBatch}
 \alias{getBatch}
-\title{Get Current Batch ID}
+\title{Get Current Processing Batch ID}
 \usage{
 getBatch(verbose = FALSE)
 }

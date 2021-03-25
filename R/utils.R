@@ -338,5 +338,22 @@ parseParamsFromRownames <- function(df, param1, param2, keep_rownames=FALSE, kee
 }
 
 
-
+#' Read Sequence Metadata into Function
+#'
+#' Helper function to accept two formats of metadata into various functions in this package: data.frame and filepath to a csv
+#'
+#' @param metadata Either a data.frame returned from \code{\link{downloadSequenceMetadata}} or the filepath to a local csv copy of the output from \code{\link{downloadSequenceMetadata}}.
+#'
+#' @return data.frame of the metadata.
+readSequenceMetadata <- function(metadata) {
+  metadata_load_err <- FALSE
+  if(class(metadata) == "data.frame") return(metadata)
+  if(class(metadata) == "character") {
+    if(file.exists(metadata)) {
+      return(read.csv(metadata))
+    }
+  }
+  stop("'metadata' must be the data.frame output from downloadSequenceMetadata() or ",
+       "the filepath to a local csv copy of the output from downloadSequenceMetadata()")
+}
 

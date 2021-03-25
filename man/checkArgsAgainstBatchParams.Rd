@@ -4,18 +4,23 @@
 \alias{checkArgsAgainstBatchParams}
 \title{Check Function Arguments against Batch-Specific Parameters}
 \usage{
-checkArgsAgainstBatchParams(override = FALSE, ...)
+checkArgsAgainstBatchParams(priority = c("batch", "arguments"), ...)
+}
+\arguments{
+\item{priority}{Must be "batch" or "arguments". Whether to defer to batch-specific processing parameters or function arguments when they conflict.}
+
+\item{...}{Arguments that have values defined in parameters, set equal to whatever value they have in the parent function, e.g. \code{MAX_EE_FWD = maxEE} These arguments will be the ones checked against the batch parameters.}
 }
 \value{
-
+No value is returned
 }
 \description{
 If a processing batch is currently set, inserting this function into another function from
 neonMicrobe will check the parent function's arguments against the parameters associated
-with the current processing batch. If override=TRUE, the current batch's parameters would
-take precedence. For example, rather than writing to the standard outputs directory, the
-parent function would write to the current batch's outputs directory. Rather than using
-quality filtering parameters defined on-the-fly, the parent function would use the quality
-filtering parameters associated with the current batch. Override does not apply to
-parameters that are inconsequential to the resulting outputs, like VERBOSE and MULTITHREAD.
+with the current processing batch. If priority = "batch", the current batch's parameters would
+take precedence.
+}
+\details{
+For example, if priority = "batch", then rather than using quality filtering parameters defined on-the-fly,
+the parent function would use the quality filtering parameters associated with the current batch.
 }

@@ -16,23 +16,7 @@ downloadRawSequenceData <- function(metadata, outDir = PRESET_OUTDIR_SEQUENCE,
   # library(utils)
   options(stringsAsFactors = FALSE)
 
-  metadata_load_err <- FALSE
-
-  if(class(metadata) == "data.frame") {
-    metadata <- metadata
-  } else if(class(metadata) == "character") {
-    if(file.exists(metadata)) {
-      metadata <- read.csv(metadata)
-    } else {
-      metadata_load_err <- TRUE
-    }
-  } else {
-    metadata_load_err <- TRUE
-  }
-
-  if(metadata_load_err) {
-    stop("'metadata' must be the data.frame output from downloadSequenceMetadata() or a filepath to the local copy of the output from downloadSequenceMetadata()")
-  }
+  metadata <- readSequenceMetadata(metadata)
 
   if(ignore_tar_files) {
     tar_ind <- grep('\\.tar\\.gz', metadata$rawDataFileName)
@@ -132,23 +116,7 @@ downloadRawSequenceData <- function(metadata, outDir = PRESET_OUTDIR_SEQUENCE,
 organizeRawSequenceData <- function(fn, metadata, outdir_sequence = PRESET_OUTDIR_SEQUENCE, verbose = TRUE) {
   # library(R.utils)
 
-  metadata_load_err <- FALSE
-
-  if(class(metadata) == "data.frame") {
-    metadata <- metadata
-  } else if(class(metadata) == "character") {
-    if(file.exists(metadata)) {
-      metadata <- read.csv(metadata)
-    } else {
-      metadata_load_err <- TRUE
-    }
-  } else {
-    metadata_load_err <- TRUE
-  }
-
-  if(metadata_load_err) {
-    stop("'metadata' must be the data.frame output from downloadSequenceMetadata() or a filepath to the local copy of the output from downloadSequenceMetadata()")
-  }
+  metadata <- readSequenceMetadata(metadata)
 
   # Using metadata, look up the sequencing run ID and target gene for each file
   match_fn_to_meta <- match(basename(fn), metadata$rawDataFileName)
@@ -672,14 +640,14 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
   # unless user provides outDir=FALSE
   if(!identical(outDir, FALSE)) {
     if(targetGene != "all") {
-      write.csv(outPCR, paste0(outDir, "/mmg_soilMetadata_", targetGene, "_", gsub(" |:", "", Sys.time()), ".csv"),
+      write.csv(outPCR, paste0(outDir, "/mmg_soilMetadata_", targetGene, "_", sub(" ", "_", gsub(":", "", Sys.time())), ".csv"),
                 row.names=FALSE)
     } else {
       out16S <- outPCR[grep("16S", outPCR$targetGene), ]
       outITS <- outPCR[grep("ITS", outPCR$targetGene), ]
-      write.csv(out16S, paste0(outDir, "/mmg_soilMetadata_16S_", gsub(" |:", "", Sys.time()), ".csv"),
+      write.csv(out16S, paste0(outDir, "/mmg_soilMetadata_16S_", sub(" ", "_", gsub(":", "", Sys.time())), ".csv"),
                 row.names=FALSE)
-      write.csv(outITS, paste0(outDir, "/mmg_soilMetadata_ITS_", gsub(" |:", "", Sys.time()), ".csv"),
+      write.csv(outITS, paste0(outDir, "/mmg_soilMetadata_ITS_", sub(" ", "_", gsub(":", "", Sys.time())), ".csv"),
                 row.names=FALSE)
     }
     message(paste0("metadata downloaded to: ", outDir) )
@@ -709,23 +677,7 @@ qcMetadata <- function(metadata, outDir=file.path(PRESET_OUTDIR_SEQMETA, "QC_met
   # library(plyr)
   options(stringsAsFactors = FALSE)
 
-  metadata_load_err <- FALSE
-
-  if(class(metadata) == "data.frame") {
-    metadata <- metadata
-  } else if(class(metadata) == "character") {
-    if(file.exists(metadata)) {
-      metadata <- read.csv(metadata)
-    } else {
-      metadata_load_err <- TRUE
-    }
-  } else {
-    metadata_load_err <- TRUE
-  }
-
-  if(metadata_load_err) {
-    stop("'metadata' must be the data.frame output from downloadSequenceMetadata() or a filepath to the local copy of the output from downloadSequenceMetadata()")
-  }
+  metadata <- readSequenceMetadata(metadata)
 
   # validate pairedReads
   if(!(pairedReads %in% c("Y", "N")) ) {

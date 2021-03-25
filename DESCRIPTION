@@ -5,7 +5,9 @@ Authors@R: c(
           person(given = "Clara", family = "Qin", role = c("cre", "aut"), email = "claraqin@ucsc.edu", comment = c(ORCID = "0000-0002-9561-4704")),
           person(given = "Lee", family = "Stanish", role = "aut", email = "lstanish@gmail.com"),
           person(given = "Zoey", family = "Werbin", role = "aut", email = "zrwerbin@bu.edu"),
-          person(given = "Ryan", family = "Bartelme", role = "ctb", email = "rbartelme@arizona.edu")
+          person(given = "Ryan", family = "Bartelme", role = "ctb", email = "rbartelme@arizona.edu"),
+          person(given = "Peter", family = "Pellitier", role = "ctb", email = "ptpell@stanford.edu"),
+          person(given = "Ayanna", family = "St. Rose", role = "ctb", email = "astrose@uark.edu")
           )
 Description: neonMicrobe is a suite of functions for downloading, pre-processing, and assembling heterogeneous data around the NEON soil microbe marker gene sequence data. To do so, neonMicrobe downloads NEON data products from the NEON Data API and processes sequences using the DADA2 workflow. In addition, neonMicrobe offers a processing-batch infrastructure to encourage explicit versioning of processed data.
 License: `use_mit_license()`
@@ -15,7 +17,6 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
 biocViews:
 Imports:
-        dada2 (>= 1.12.1),
         neonUtilities (>= 2.0.1),
         phyloseq (>= 1.28.0),
         plyr (>= 1.8.6),
@@ -23,6 +24,11 @@ Imports:
         tibble (>= 3.1.0),
         ggplot2 (>= 3.3.3),
         ShortRead (>= 1.42.0),
-        Biostrings (>= 2.52.0)
+        Biostrings (>= 2.52.0),
+        rprojroot (>= 2.0.2)
 Depends: 
-    R (>= 2.10)
+    R (>= 2.10),
+    dada2 (>= 1.12.1)
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3

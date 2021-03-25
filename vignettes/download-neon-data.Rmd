@@ -80,7 +80,7 @@ This will generate (recursively) the following output directories:
 ```
 
 ```{r}
-makeOutputDirectories()
+makeDataDirectories()
 ```
 
 # Download data

@@ -6,13 +6,13 @@
 \usage{
 setBatch(
   batch_id = NULL,
-  batches_dir = file.path(PRESET_OUTDIR_OUTPUTS, "batches")
+  batches_dir = file.path(NEONMICROBE_DIR_OUTPUTS(), "batches")
 )
 }
 \arguments{
 \item{batch_id}{Character string. Unique ID of an existing processing batch.}
 
-\item{batches_dir}{Default file.path(PRESET_OUTDIR_OUTPUS, "batches"). Directory where batch-specific directories are saved.}
+\item{batches_dir}{Default file.path(NEONMICROBE_DIR_OUTPUTS(), "batches"). Directory where batch-specific directories are saved.}
 }
 \value{
 

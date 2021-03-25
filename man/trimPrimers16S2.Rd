@@ -8,8 +8,8 @@ trimPrimers16S2(
   fn,
   dir_out,
   meta,
-  primer_16S_fwd,
-  primer_16S_rev,
+  primer_16S_fwd = "CCTACGGGNBGCASCAG",
+  primer_16S_rev = "GACTACNVGGGTATCTAATCC",
   multithread = MULTITHREAD
 )
 }

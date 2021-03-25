@@ -4,7 +4,7 @@
 \alias{listBatches}
 \title{List Processing Batches}
 \usage{
-listBatches(batches_dir = file.path(PRESET_OUTDIR_OUTPUTS, "batches"))
+listBatches(batches_dir = file.path(NEONMICROBE_DIR_OUTPUTS, "batches"))
 }
 \arguments{
 \item{batches_dir}{}
@@ -13,5 +13,5 @@ listBatches(batches_dir = file.path(PRESET_OUTDIR_OUTPUTS, "batches"))
 
 }
 \description{
-List Processing Batches
+Lists all processing batches available in the specified batches directory, along with basic information about them.
 }

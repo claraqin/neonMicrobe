@@ -67,7 +67,7 @@ trimPrimers16S <- function(fn, dir_in, dir_out, primer_16S_fwd, primer_16S_rev, 
 #' \dontrun{
 #' trimPrimers16S(c("sample1_R1.fastq", "sample1_R2.fastq", "sample2_R1.fastq", "sample2_R2.fastq"), "path/to/output", meta, "CCTACGGGNBGCASCAG", "GACTACNVGGGTATCTAATCC", multithread = TRUE)
 #' }
-trimPrimers16S2 <- function(fn, dir_out, meta, primer_16S_fwd, primer_16S_rev, multithread = MULTITHREAD) {
+trimPrimers16S2 <- function(fn, dir_out, meta, primer_16S_fwd = "CCTACGGGNBGCASCAG", primer_16S_rev = "GACTACNVGGGTATCTAATCC", multithread = MULTITHREAD) {
   dir.create(dir_out, recursive = TRUE)
   fn_out <- file.path(dir_out, basename(fn))
 
@@ -184,8 +184,8 @@ trimPrimersITS <- function(fn, dir_in, dir_out, primer_ITS_fwd, primer_ITS_rev, 
 #' @param fn Full names of input fastq files, including directory. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning. It is assumed that these are R1 (forward-read) files only.
 #' @param dir_out Directory where filtered fastq files will be written.
 #' @param meta Metadata downloaded using \code{\link{downloadSequenceMetadata}} that corresponds to the fastq files.
-#' @param primer_ITS_fwd,primer_ITS_rev DNA sequence of the ITS forward and reverse primer, respectively.
 #' @param cutadapt_path Default CUTADAPT_PATH in params.R. Path to cutadapt on your file system.
+#' @param primer_ITS_fwd,primer_ITS_rev DNA sequence of the ITS forward and reverse primer, respectively.
 #' @param very_verbose Default FALSE. Whether to print output from cutadapt. Unlike some other "verbose" arguments associated with the functions in this package, this does not default to VERBOSE in params.R.
 #' @param discard_untrimmed Default FALSE. Whether to discard reads where a primer could not be found, leaving only those reads in which a primer has been trimmed.
 #'
@@ -196,7 +196,7 @@ trimPrimersITS <- function(fn, dir_in, dir_out, primer_ITS_fwd, primer_ITS_rev, 
 #' \dontrun{
 #' trimPrimersITS(c("sample1_ITS_R1.fastq", "sample2_ITS_R1.fastq"), "path/to/input", "path/to/output", "CTTGGTCATTTAGAGGAAGTAA")
 #' }
-trimPrimersITS2 <- function(fn, dir_out, meta, primer_ITS_fwd, primer_ITS_rev, cutadapt_path = CUTADAPT_PATH, very_verbose=FALSE, discard_untrimmed=FALSE) {
+trimPrimersITS2 <- function(fn, dir_out, meta, cutadapt_path, primer_ITS_fwd = "CTTGGTCATTTAGAGGAAGTAA", primer_ITS_rev = "GCTGCGTTCTTCATCGATGC", very_verbose=FALSE, discard_untrimmed=FALSE) {
   dir.create(dir_out, recursive = TRUE)
   fn_out <- file.path(dir_out, basename(fn))
 

@@ -8,9 +8,9 @@ trimPrimersITS2(
   fn,
   dir_out,
   meta,
-  primer_ITS_fwd,
-  primer_ITS_rev,
-  cutadapt_path = CUTADAPT_PATH,
+  cutadapt_path,
+  primer_ITS_fwd = "CTTGGTCATTTAGAGGAAGTAA",
+  primer_ITS_rev = "GCTGCGTTCTTCATCGATGC",
   very_verbose = FALSE,
   discard_untrimmed = FALSE
 )
@@ -22,9 +22,9 @@ trimPrimersITS2(
 
 \item{meta}{Metadata downloaded using \code{\link{downloadSequenceMetadata}} that corresponds to the fastq files.}
 
-\item{primer_ITS_fwd, primer_ITS_rev}{DNA sequence of the ITS forward and reverse primer, respectively.}
-
 \item{cutadapt_path}{Default CUTADAPT_PATH in params.R. Path to cutadapt on your file system.}
+
+\item{primer_ITS_fwd, primer_ITS_rev}{DNA sequence of the ITS forward and reverse primer, respectively.}
 
 \item{very_verbose}{Default FALSE. Whether to print output from cutadapt. Unlike some other "verbose" arguments associated with the functions in this package, this does not default to VERBOSE in params.R.}
 
