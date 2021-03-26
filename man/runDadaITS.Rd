@@ -7,7 +7,7 @@
 runDadaITS(
   fn,
   dir_in,
-  multithread = MULTITHREAD,
+  multithread = FALSE,
   verbose = FALSE,
   seed = NULL,
   post_samplename_pattern1 = "_R1.*\\\\.fastq",
@@ -20,7 +20,7 @@ runDadaITS(
 
 \item{dir_in}{Directory containing input fastq files.}
 
-\item{multithread}{Default MULTITHREAD in params.R. Whether to use multithreading.}
+\item{multithread}{Default FALSE. Whether to use multithreading.}
 
 \item{verbose}{Default FALSE. Whether to print messages regarding the dereplication step, the denoising step, and the dimensions of the resulting sequence table and the distribution of sequence lengths.}
 

@@ -10,7 +10,7 @@ runDadaITS2(
   out_seqtab = "",
   out_track = "",
   remove_chimeras = TRUE,
-  multithread = MULTITHREAD,
+  multithread = FALSE,
   verbose = FALSE,
   seed = NULL,
   nbases = 1e+07
@@ -25,7 +25,7 @@ runDadaITS2(
 
 \item{remove_chimeras}{(Optional) Default TRUE. Whether to remove chimeras from the sequence table. Currently only supports removal using \code{\link[dada2]{removeBimeraDenovo}} with the consensus method.}
 
-\item{multithread}{Default MULTITHREAD in params.R. Whether to use multithreading.}
+\item{multithread}{Default FALSE. Whether to use multithreading.}
 
 \item{verbose}{Default FALSE. Whether to print messages regarding the samples being processed, dimensions of the resulting sequence table, and the distribution of sequence lengths.}
 

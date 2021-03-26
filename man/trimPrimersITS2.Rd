@@ -26,7 +26,7 @@ trimPrimersITS2(
 
 \item{primer_ITS_fwd, primer_ITS_rev}{DNA sequence of the ITS forward and reverse primer, respectively.}
 
-\item{very_verbose}{Default FALSE. Whether to print output from cutadapt. Unlike some other "verbose" arguments associated with the functions in this package, this does not default to VERBOSE in params.R.}
+\item{very_verbose}{Default FALSE. Whether to print output from cutadapt.}
 
 \item{discard_untrimmed}{Default FALSE. Whether to discard reads where a primer could not be found, leaving only those reads in which a primer has been trimmed.}
 }

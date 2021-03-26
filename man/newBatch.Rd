@@ -4,30 +4,25 @@
 \alias{newBatch}
 \title{Create New Processing Batch}
 \usage{
-newBatch(
-  seq_meta_file,
-  batch_id = NULL,
-  batches_dir = file.path(NEONMICROBE_DIR_OUTPUTS(), "batches"),
-  overwrite = FALSE,
-  set_batch = TRUE
-)
+newBatch(seqmeta_file, batch_id = NULL, batches_dir = NULL, overwrite = FALSE)
 }
 \arguments{
-\item{seq_meta_file}{Character string. File path to the sequence metadata to associate with this processing batch. Once set, this cannot be changed except by overwriting this batch.}
+\item{seqmeta_file}{Character string. File path to the sequence metadata to associate with this processing batch. Once set, this cannot be changed except by overwriting this batch.}
 
 \item{batch_id}{Character string. Unique ID to use for the new processing batch.}
 
-\item{batches_dir}{Default file.path(NEONMICROBE_DIR_OUTPUTS(), "batches"). Directory where batch-specific directories are saved.}
+\item{batches_dir}{Directory where batch-specific directories are saved. By default (NULL), saves in NEONMICROBE_DIR_OUTPUTS(), ignoring batch modifications.}
 
 \item{overwrite}{Default FALSE. If processing batch already exists in the specified directory, whether to overwrite it.}
-
-\item{set_batch}{Default TRUE. Whether to switch to the new processing batch after creating it.}
 }
 \value{
 No value returned
 }
 \description{
-Creates a new processing batch for enhancing the reproducibility of NEON soil microbe marker gene sequence workflows. Set batch processing parameters with \code{\link{setBatchParameter}}, or view them with \code{\link{getBatchParameter}}.
+Creates and switches to a new processing batch for enhancing the
+reproducibility of NEON soil microbe marker gene sequence workflows.
+Set batch processing parameters with \code{\link{setBatchParam}}, or
+view them with \code{\link{getBatchParam}}.
 }
 \examples{
 \dontrun{

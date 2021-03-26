@@ -1,22 +1,449 @@
+#' Download Sequence Metadata
+#'
+#' Loads soil marker gene sequencing metadata for specified target gene, site(s) and date(s),
+#' with an option to download output by providing a valid output directory. This function uses
+#' \code{\link[neonUtilities]{loadByProduct}} to conduct the downloads.
+#'
+#' Function by Lee F. Stanish and Clara Qin (2020). Currently available for testing only.
+#'
+#' @param sites Either the string 'all', meaning all available sites, or a character vector of 4-letter NEON site codes, e.g. c('ONAQ','RMNP'). Defaults to PRESET_SITES parameter in params.R.
+#' @param startYrMo,endYrMo Either NA (default), meaning all available dates, or a character vector in the form YYYY-MM, e.g. 2017-01.
+#' @param targetGene '16S' or 'ITS'.
+#' @param sequencingRuns Either the string 'all', meaning all available sequencing runs, or a character vector of NEON sequencing run IDs, e.g. c('C25G9', 'B69PP').
+#' @param dpID NEON data product of interest. Default is soil marker gene sequences, and currently code only works for marker genes data products.
+#' @param outDir Directory where a copy of the downloaded data will be saved. By default (NULL), this is file.path(NEONMICROBE_DIR_SEQMETA(), "raw_metadata"). If no copy should be saved, set outDir=FALSE.
+#'
+#' @return Data frame containing joined records from across the NEON soil marker gene sequence metadata, subsetted according to function arguments.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' meta <- downloadSequenceMetadataRev('all', '2015-01', '2016-01', '16S', outDir=FALSE) # metadata is not saved to local directory
+#' meta <- downloadSequenceMetadataRev('all', '2015-01', '2016-01', '16S', outDir='./data/') # metadata is saved to local directory
+#' }
+downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targetGene= "all",
+                                     sequencingRuns = "", dpID = "DP1.10108.001", outDir = NULL) {
+  # author: Lee Stanish
+  # date: 2020-08-13
+  # function loads soil marker gene sequencing metadata for target gene, site(s) and date(s)
+  # option to download output by providing a valid output directory
+  # sites: character vector of valid site ID's, or 'all' for all sites
+  # targetGene: '16S',  'ITS', 'all'
+  # startYrMo: start date, format YYYY-MM
+  # endYrMo: end date, format YYYY-MM
+  # dpID: NEON data product of interest. Default is soil marker gene sequences, and currently code only works for this dpID
+  # outDir: directory for outputs. Defaults to output directory in parameters file
+
+  # library(neonUtilities)
+  # library(plyr)
+  # library(dplyr)
+
+  # check valid data values entered
+  ## validate dpID ##
+  if(!grepl("DP1", dpID) | !grepl('\\.001', dpID) | !grepl('10108|20280|20282', dpID)) {
+    message("Invalid Data Product ID: must follow convention 'DP1.[5-digit value].001' and must be a marker genes data product ID")
+    return(NULL)
+  } else {
+    dpID <- dpID
+  }
+
+  # validate target gene
+  if(!grepl("16S|ITS|all", targetGene)) {
+    message("Invalid targetGene: must be either '16S', 'ITS', 'all' ")
+    return(NULL)
+  } else {
+    targetGene <- targetGene
+  }
+
+  # validate site(s)
+  terrSiteList <- c("all","HARV","SCBI","OSBS","GUAN","UNDE","KONZ","ORNL","TALL","WOOD","CPER","CLBJ","YELL","NIWO",
+                    "SRER","ONAQ","WREF","SJER","TOOL","BONA","PUUM","BART","BLAN","SERC","SCBI","DSNY","JERC","LAJA",
+                    "TREE","STEI","KONA","UKFS","MLBS","GRSM","LENO","DELA","NOGP","DCFS","STER","RMNP","OAES","MOAB",
+                    "JORN","ABBY","TEAK","SOAP","BARR","DEJU","HEAL")
+  if(!any(sites %in% terrSiteList)){
+    message("Invalid site(s): must be a valid NEON site or 'all'")
+    return(NULL)
+  } else {
+    sites <- sites
+  }
+
+  # validate output directory
+  if(is.null(outDir)) {
+    outDir <- file.path(NEONMICROBE_DIR_SEQMETA(), "raw_metadata")
+  }
+  if(!identical(outDir, FALSE)) {
+    if(!dir.exists(outDir) ) {
+      message("Output directory does not exist")
+      return(NULL)
+    }
+  }
+
+
+  message("loading metadata...")
+  mmgL1 <- loadByProduct(dpID, sites, package = 'expanded', check.size = F, startdate = startYrMo, enddate = endYrMo) # output is a list of each metadata file
+
+
+  # for target data product and targetGene: extract lists into data.frames
+  if(grepl("10108", dpID)) {
+    seq16S <- mmgL1$mmg_soilMarkerGeneSequencing_16S
+    seq16S$targetGene <-"16S rRNA"
+    seqITS <- mmgL1$mmg_soilMarkerGeneSequencing_ITS
+    seqITS$targetGene <- "ITS"
+    pcr16S <- mmgL1$mmg_soilPcrAmplification_16S
+    pcrITS <- mmgL1$mmg_soilPcrAmplification_ITS
+    raw <- mmgL1$mmg_soilRawDataFiles
+    dna <- mmgL1$mmg_soilDnaExtraction
+    seq <- rbind(seq16S, seqITS)
+    pcr <- rbind(pcr16S, pcrITS)
+    varfile <- mmgL1$variables_10108
+
+    if(targetGene=="16S") {
+      message("filtering to 16S data")
+      seq <- seq16S
+      pcr <- pcr16S
+    }
+    if(targetGene=="ITS") {
+      message("filtering to ITS data")
+      seq <- seqITS
+      pcr <- pcrITS
+    }
+  }
+
+  if(grepl("20280", dpID)) {
+    seq16S <- mmgL1$mmg_benthicMarkerGeneSequencing_16S
+    seq16S$targetGene <-"16S rRNA"
+    seqITS <- mmgL1$mmg_benthicMarkerGeneSequencing_ITS
+    seqITS$targetGene <- "ITS"
+    pcr16S <- mmgL1$mmg_benthicPcrAmplification_16S
+    pcrITS <- mmgL1$mmg_benthicPcrAmplification_ITS
+    raw <- mmgL1$mmg_benthicRawDataFiles
+    dna <- mmgL1$mmg_benthicDnaExtraction
+    seq <- rbind(seq16S, seqITS)
+    pcr <- rbind(pcr16S, pcrITS)
+    varfile <- mmgL1$variables_20280
+
+    if(targetGene=="16S") {
+      message("filtering to 16S data")
+      seq <- seq16S
+      pcr <- pcr16S
+    }
+    if(targetGene=="ITS") {
+      message("filtering to ITS data")
+      seq <- seqITS
+      pcr <- pcrITS
+    }
+  }
+
+  if(grepl("20282", dpID)) {
+    seq16S <- mmgL1$mmg_swMarkerGeneSequencing_16S
+    seq16S$targetGene <-"16S rRNA"
+    seqITS <- mmgL1$mmg_swMarkerGeneSequencing_ITS
+    seqITS$targetGene <- "ITS"
+    pcr16S <- mmgL1$mmg_swPcrAmplification_16S
+    pcrITS <- mmgL1$mmg_swPcrAmplification_ITS
+    raw <- mmgL1$mmg_swRawDataFiles
+    dna <- mmgL1$mmg_swDnaExtraction
+    seq <- rbind(seq16S, seqITS)
+    pcr <- rbind(pcr16S, pcrITS)
+    varfile <- mmgL1$variables_20282
+
+    if(targetGene=="16S") {
+      message("filtering to 16S data")
+      seq <- seq16S
+      pcr <- pcr16S
+    }
+    if(targetGene=="ITS") {
+      message("filtering to ITS data")
+      seq <- seqITS
+      pcr <- pcrITS
+    }
+  }
+
+  # remove unnecessary/redundant columns from tables
+  raw <- dplyr::select(raw, -domainID, -siteID, -namedLocation, -laboratoryName, -sequencingFacilityID, -collectDate, -dnaSampleCode)
+  dna <- dplyr::select(dna, -domainID, -siteID, -namedLocation, -laboratoryName, -collectDate)
+  pcr <- dplyr::select(pcr, -domainID, -siteID, -namedLocation, -laboratoryName, -collectDate)
+
+  # convert factors to characters (bug in output of loadByProduct)
+  i <- sapply(seq, is.factor)
+  seq[i] <- lapply(seq[i], as.character)
+  j <- sapply(raw, is.factor)
+  raw[j] <- lapply(raw[j], as.character)
+  j <- sapply(dna, is.factor)
+  dna[j] <- lapply(dna[j], as.character)
+
+
+  # If specified, filter by sequencing run ID
+  if(sequencingRuns[1] != "") {
+    raw <- raw[which(raw$sequencerRunID %in% sequencingRuns), ]
+    # Validate sequencing run ID argument
+    if(nrow(raw) == 0) {
+      warning("After filtering by specified sequencing run ID(s), no records remain. Double-check your sequencing run  ID(s).")
+      return(NULL)
+    }
+  }
+
+  # Join sequencing metadata with raw data files metadata
+  if(targetGene=="16S") {
+    if(any(grepl("ITS", raw$rawDataFileName))) {
+      rawCleaned <- raw[-grep("ITS", raw$rawDataFileName), ]
+    } else {
+      rawCleaned <- raw
+    }
+    joinedTarget <- left_join(rawCleaned, seq, by=c('dnaSampleID', 'sequencerRunID'))
+    out <- joinedTarget[!is.na(joinedTarget$uid.y), ]
+  }
+  if(targetGene=="ITS") {
+    if(any(grepl("16S", raw$rawDataFileName))) {
+      rawCleaned <- raw[-grep("16S", raw$rawDataFileName), ]
+    } else {
+      rawCleaned <- raw
+    }
+    joinedTarget <- left_join(rawCleaned, seq, by=c('dnaSampleID', 'sequencerRunID'))
+    out <- joinedTarget[!is.na(joinedTarget$uid.y), ]
+  }
+  if(targetGene=="all") {
+    joinedTarget <- left_join(raw, seq, by=c('dnaSampleID', 'sequencerRunID'))
+    out <- joinedTarget[!is.na(joinedTarget$uid.y), ]
+    message(paste0(length(grep("16S", out$rawDataFileName)), " 16S records and ", length(grep("ITS", out$rawDataFileName)), " ITS records found."))
+  }
+
+  # clean up redundant column names
+  names(out) <- gsub("\\.x", ".rawFiles", names(out))
+  names(out) <- gsub("\\.y", ".seq", names(out))
+
+  # join with DNA extraction metadata
+  outDNA <- left_join(out, dna, by=c('plotID', 'dnaSampleID'))
+  # clean up redundant column names
+  names(outDNA) <- gsub("\\.x", ".seq", names(outDNA))
+  names(outDNA) <- gsub("\\.y", ".dna", names(outDNA))
+  names(outDNA)[names(outDNA)=="uid"] <- 'uid.dna'
+  names(outDNA)[names(outDNA)=="remarks"] <- 'remarks.dna'
+  names(outDNA)[names(outDNA)=="dataQF"] <- 'dataQF.dna'
+  names(outDNA)[names(outDNA)=="processedBy"] <- 'processedBy.seq'
+  names(outDNA)[names(outDNA)=="processedDate"] <- 'processedDate.dna'
+  names(outDNA)[names(outDNA)=="publicationDate"] <- 'publicationDate.dna'
+  names(outDNA)[names(outDNA)=="dnaProcessedBy"] <- 'processedBy.dna'
+
+  # join with PCR amplification metadata
+  outPCR <- left_join(outDNA, pcr, by=c('plotID', 'dnaSampleID', 'targetGene'))
+  names(outPCR)[names(outPCR)=="uid"] <- "uid.pcr"
+  names(outPCR)[names(outPCR)=="processedDate"] <- "processedDate.pcr"
+  names(outPCR)[names(outPCR)=="testProtocolVersion"] <- "testProtocolVersion.pcr"
+  names(outPCR)[names(outPCR)=="qaqcStatus"] <- "qaqcStatus.pcr"
+  names(outPCR)[names(outPCR)=="processedBy"] <- "processedBy.pcr"
+  names(outPCR)[names(outPCR)=="remarks"] <- "remarks.pcr"
+  names(outPCR)[names(outPCR)=="dataQF"] <- "dataQF.pcr"
+  names(outPCR)[names(outPCR)=="publicationDate"] <- "publicationDate.pcr"
+  names(outPCR)[names(outPCR)=="internalLabID.y"] <- "internalLabID.pcr"
+
+  # download local copy to output dir path
+  # unless user provides outDir=FALSE
+  if(!identical(outDir, FALSE)) {
+    if(targetGene != "all") {
+      write.csv(outPCR, paste0(outDir, "/mmg_soilMetadata_", targetGene, "_", sub(" ", "_", gsub(":", "", Sys.time())), ".csv"),
+                row.names=FALSE)
+    } else {
+      out16S <- outPCR[grep("16S", outPCR$targetGene), ]
+      outITS <- outPCR[grep("ITS", outPCR$targetGene), ]
+      write.csv(out16S, paste0(outDir, "/mmg_soilMetadata_16S_", sub(" ", "_", gsub(":", "", Sys.time())), ".csv"),
+                row.names=FALSE)
+      write.csv(outITS, paste0(outDir, "/mmg_soilMetadata_ITS_", sub(" ", "_", gsub(":", "", Sys.time())), ".csv"),
+                row.names=FALSE)
+    }
+    message(paste0("metadata downloaded to: ", outDir) )
+
+    # download variables file (required for zipsByUri)
+    write.csv(varfile, paste0(outDir, "/mmg_variables.csv") )
+    message(paste0("variables file downloaded to: ", outDir) )
+  }
+
+
+  return(outPCR)
+}
+
+#' QC Sequence Metadata
+#'
+#' Performs basic QAQC checks on sequence metadata prior to downloading sequence data and performing bioinformatics processing.
+#' Running this function will remove metadata records for samples that do not meet user specifications. This will reduce the number of sequence files that are downloaded to only those that will be used for analysis, thereby saving file space and reducing download times.
+#'
+#' @param metadata The output of downloadSequenceMetadata(). Must be provided as either the data.frame returned by downloadSequenceMetadata() or as a filepath to the csv file produced by downloadSequenceMetadata() when outdir is provided.
+#' @param outDir Directory where QC'd metadata will be saved By default (NULL), QC'd metadata will be saved to file.path(NEONMICROBE_DIR_SEQMETA(), "qc_metadata")
+#' @param pairedReads "Y" (default) or "N". Should the forward reads for a sample be removed if the corresponding reverse read is missing? If "Y", then only samples that have both the forward (R1) and reverse (R2) reads will be retained.
+#' @param rmDupes TRUE (default) or FALSE. Should records with duplicated dnaSampleIDs be removed? If TRUE, then only the first records encountered for a particular dnaSampleID will be retained.
+#'
+#' @return QC'd dataframe is returned as an object and saved as csv file.
+#' @export
+qcMetadata <- function(metadata, outDir=NULL, pairedReads="Y", rmDupes=TRUE, rmFlagged="N", verbose=FALSE) {
+  # library(plyr)
+  options(stringsAsFactors = FALSE)
+
+  metadata <- readSequenceMetadata(metadata)
+
+  # validate pairedReads
+  if(!(pairedReads %in% c("Y", "N")) ) {
+    stop("value for argument pairedReads invalid. Must be 'Y' or 'N'.")
+  }
+
+  # validate rmFlagged
+  if(!(rmFlagged %in% c("Y", "N")) ) {
+    stop("value for argument rmFlagged invalid. Must be 'Y' or 'N'.")
+  }
+
+  # get targetGene and confirm that only one targetGene is in input data set
+  targetGene <- unique(metadata$targetGene)
+  if(length(targetGene) > 1) {
+    stop("more than one targetGene in input data set. Only one targetGene can be QCed at a time.")
+  }
+
+  # validate output folder for QCed metadata
+  if(is.null(outDir)) {
+    outDir <- file.path(NEONMICROBE_DIR_SEQMETA(), "qc_metadata")
+  }
+  if(!dir.exists(outDir) ) {
+    message("Output directory does not exist")
+    return(NULL)
+    # dir.create(outDir, recursive=TRUE)
+  }
+
+  # Print size of dataset
+  message(paste("Input dataset contains", nrow(metadata), "rows.") )
+
+  # Remove flagged records, if rmFlagged="Y"
+  if(rmFlagged=="Y") {
+    message("Removing records with existing quality flag...")
+    # Define flag values for removal based on LOV values #
+    flagVals <- "Fail|legacyData"
+    # Remove NA values #
+    metadata[is.na(metadata)] <- ""
+    flagFields <- grep("qaqcStatus|dataQF", names(metadata))
+    ind <- vector()
+    for(i in flagFields) {
+      flagged <- grep(flagVals, metadata[,i])
+      ind <- c(ind,flagged)
+    }
+    if(length(ind)==0) {
+      message("No flagged records found.")
+    } else {
+      ind <- unique(ind)
+      numDupes <- length(ind)
+      message(paste0(length(ind), " flagged records found. Removing flagged record(s).") )
+      metadata <- metadata[-ind, ]
+    }
+    Sys.sleep(3)
+  }
+
+  # check for and remove duplicate sequence file names
+  message("QC check for duplicate sequence file names...")
+  # Add pause #
+  Sys.sleep(1)
+  dupeSeqIDs <- as.character(metadata$rawDataFileName[duplicated(metadata$rawDataFileName)] )
+  if(length(dupeSeqIDs)==0) {
+    message("QC check Pass. No duplicate sequence file names.")
+  } else {
+    numDupes <- length(dupeSeqIDs)
+    message(paste0("QC check Fail. ", numDupes, " duplicate sequence file names found. Removing duplicated file(s).") )
+    if(verbose) message(paste0("Removing duplicated row: ", which(duplicated(metadata$rawDataFileName)) ) )
+    metadata <- metadata[!duplicated(metadata$rawDataFileName), ]
+  }
+
+
+  # check for and flag duplicate dnaSampleIDs
+  message("QC checking duplicate dnaSampleIDs...")
+  # Add pause #
+  Sys.sleep(2)
+  metadata$runDir <- ""
+  metadata$runDir[grep("R1", metadata$rawDataFileDescription)] <- "R1"
+  metadata$runDir[grep("R2", metadata$rawDataFileDescription)] <- "R2"
+  dnaIDsPerRunDir <- paste(metadata$dnaSampleID, metadata$sequencerRunID, metadata$runDir, sep="-")
+  metadata$duplicateDnaSampleIDFlag <- "0"
+  if(any(duplicated(dnaIDsPerRunDir)) ) {
+    ind <- which(duplicated(dnaIDsPerRunDir))
+    metadata$duplicateDnaSampleIDFlag[ind] <- "1"
+    if(rmDupes==TRUE) {
+      metadata <- metadata[-ind,]
+      message("Duplicated dnaSampleID record(s) found and removed.")
+    } else {
+      message("Duplicated dnaSampleID(s) found. Flagging affected record(s).")
+    }
+  } else {
+    message("No duplicated dnaSampleID records found.")
+  }
+
+  # Subset qced data to un-flagged records
+  metaFlagged <- metadata[metadata$duplicateDnaSampleIDFlag=="1", ]
+  metaNotFlagged <- metadata[metadata$duplicateDnaSampleIDFlag=="0", ]
+
+  metaNotFlagged$dnaSampleID <- as.character(metaNotFlagged$dnaSampleID)
+
+  # Check existence of R1 (and R2 based on user input) #
+  dnaSampTab <- data.frame(with(metaNotFlagged, table(dnaSampleID, runDir)) )
+
+  # convert factors to characters
+  dfType <- sapply(dnaSampTab, class)
+  colsToFix <- names(dnaSampTab[which(dfType=='factor')])
+  dnaSampTab[colsToFix] <- sapply(dnaSampTab[colsToFix], as.character)
+
+  # Handle sequence data with missing run direction
+  missingR1 <- dnaSampTab$dnaSampleID[which(dnaSampTab$Freq[dnaSampTab$runDir=="R1"]==0)]
+  missingR2 <- dnaSampTab$dnaSampleID[which(dnaSampTab$Freq[dnaSampTab$runDir=="R2"]==0)]
+  metaNotFlagged$runDirFlag <- "0"
+  message("Check for missing forward or reverse read...")
+  # Add pause #
+  Sys.sleep(2)
+  # Handle sequence data with missing R2 data
+  if(length(missingR2)>0) {
+    message(paste0("Reverse read missing from ", length(missingR2), " records") )
+    # If specified, remove R1 file
+    if(pairedReads=="Y") {
+      message("Removing R1 files lacking a matching R2 file (default action when pairedReads='Y')" )
+      metaNotFlagged <- metaNotFlagged[-intersect(which(metaNotFlagged$runDir=="R1"), which(metaNotFlagged$dnaSampleID %in% missingR2) ), ]
+    } else {
+      metaNotFlagged$runDirFlag[intersect(which(metaNotFlagged$runDir=="R1"), which(metaNotFlagged$dnaSampleID %in% missingR2) )] <- "1"
+      message("Flagging R1 files lacking a matching R2 file (default action when pairedReads='N')" )
+    }
+  }
+  # Handle sequence data with missing R1 data
+  if(length(missingR1)>0) {
+    message(paste0("Forward read missing from ", length(missingR1), " record(s). Removing R2 file for affected sequence data set(s).") )
+    # remove R2 file
+    metaNotFlagged <- metaNotFlagged[-intersect(which(metaNotFlagged$runDir=="R2"), which(metaNotFlagged$dnaSampleID %in% missingR1) ), ]
+  }
+
+  # Recombine original flagged records and remaining records post-initial flagging.
+  out <- suppressMessages(plyr::join(metaNotFlagged, metaFlagged))
+
+  write.csv(out, file.path(outDir, paste0("mmg_metadata_", gsub("\\ ", "", targetGene), "_QCd_", gsub("-", "", Sys.Date()), '.csv')), row.names = FALSE)
+  cat(paste("Output QCed file contains", nrow(out), "rows. File saved to the following directory:", outDir))
+  cat("\nNOTE: Always review output before proceeding with analysis.")
+  return(out)
+}
+
+
 #' Download NEON Marker Gene Sequencing Raw Data
 #'
 #' Downloads NEON raw sequence data files to the specified filepath, by referencing
 #' URLs in the metadata output from \code{\link{downloadSequenceMetadata}}.
 #'
 #' @param metadata The output of downloadSequenceMetadata(). Must be provided as either the data.frame returned by downloadSequenceMetadata() or as a filepath to the csv file produced by downloadSequenceMetadata() when outdir is provided.
-#' @param outdir Location where output files are saved. Defaults to NEONMICROBE_DIR_SEQUENCE() in params.R.
+#' @param outDir Location where output files are saved and sorted into target gene-specific subdirectories. By default (NULL), this is NEONMICROBE_DIR_SEQUENCE().
+#' @param overwrite Default FALSE. If TRUE, overwrites existing files.
 #' @param ignore_tar_files If TRUE (default), does not download tar files. Each tar file is a batch containing an entire sequence run of fastq files. The tar file structure will soon be deprecated.
 #' @param verbose If TRUE, prints status messages and progress bars associated with file downloads.
 #'
 #' @return Returns (invisibly) a list of integer codes: 0 indicates success of downloads and a non-zero integer indicates failure. See the help page for \code{\link[utils]{download.file}} for more details.
 #' @export
-downloadRawSequenceData <- function(metadata, outDir = NEONMICROBE_DIR_SEQUENCE(),
+downloadRawSequenceData <- function(metadata, outDir = NULL, overwrite=FALSE,
                                     ignore_tar_files=TRUE, checkSize=TRUE, verbose=FALSE) {
 
   # library(utils)
   options(stringsAsFactors = FALSE)
 
   metadata <- readSequenceMetadata(metadata)
+
+  if(is.null(outDir)) {
+    outDir <- NEONMICROBE_DIR_SEQUENCE()
+  }
 
   if(!dir.exists(outDir)) {
     warning("Specified output directory does not exist.")
@@ -39,12 +466,12 @@ downloadRawSequenceData <- function(metadata, outDir = NEONMICROBE_DIR_SEQUENCE(
 
   # Get unique file names
   metadata.u <- metadata[!duplicated(metadata$rawDataFilePath), ]
-  print(paste("There are", nrow(metadata.u), "unique raw sequence files to download."))
+  message(paste("There are", nrow(metadata.u), "unique raw sequence files to download."))
 
   #Loop to check existence and cumulative size of files
   cat("checking file sizes...\n")
   fileSize <- 0
-  idx <- 1
+  n_goodfiles <- 0
   idxrem <- vector()
   for(i in 1:nrow(metadata.u)) {
     # get file metadata
@@ -52,11 +479,11 @@ downloadRawSequenceData <- function(metadata, outDir = NEONMICROBE_DIR_SEQUENCE(
     # check for file found
     if(is.null(httr::headers(response)[["Content-Length"]])) {
       cat(paste('No file found for url ', metadata.u$rawDataFilePath[i], '. Skipping\n', sep=''))
-      idxrem[idx] <- c(idxrem, i)
-      idx <- idx + 1
+      idxrem <- c(idxrem, i)
     } else {
       # grab file size
       fileSize <- fileSize + as.numeric(httr::headers(response)[["Content-Length"]])
+      n_goodfiles <- n_goodfiles + 1
     }
   }
   #  Sum up file sizes and convert bytes to MB
@@ -72,32 +499,52 @@ downloadRawSequenceData <- function(metadata, outDir = NEONMICROBE_DIR_SEQUENCE(
                            totalFileSize, "MB. Do you want to proceed? y/n: ", sep=" "))
     if(!(resp %in% c("y","Y"))) stop("Stopping")
   }else{
-    cat("Downloading",length(idx), "files totaling approximately",totalFileSize," MB.\n")
+    cat("Downloading", n_goodfiles, "files totaling approximately", totalFileSize," MB.\n")
   }
 
+  # Get target gene to know which directory within outDir to sort into
+  targetGene <- metadata.u$targetGene
+  targetGene <- sub("16SrRNA", "16S", targetGene)
+  if(!all(targetGene %in% c("ITS", "16S"))) {
+    warning("Target gene is missing from at least one fastq file. These files will not be sorted ",
+            "into a subdirectory within the specified outDir.")
+  }
 
+  # Download files
   download_success <- list()
   for(i in 1:nrow(metadata.u)) {
-    tryCatch({
-      download_success[[i]] <- utils::download.file(
-        url = metadata.u$rawDataFilePath[i],
-        destfile = paste(outDir, metadata.u$rawDataFileName[i], sep="/"),
-        quiet = !verbose)
-    }, error = function(e) { # Occasionally an error arises because _fastq should be replaced by .fastq
+    if(is.na(targetGene[i])) {
+      destfile <- file.path(outDir, metadata.u$rawDataFileName[i])
+    } else {
+      destfile <- file.path(outDir, targetGene[i], metadata.u$rawDataFileName[i])
+    }
+    if(file.exists(destfile) & !identical(overwrite, TRUE)) {
+      if(verbose) message(destfile, " already exists and 'overwrite' is FALSE. Skipping.")
+      download_success[[i]] <- "already_existed"
+      next
+    } else {
       tryCatch({
-        revised_url <- sub("_fastq", ".fastq", as.character(metadata.u$rawDataFilePath[i]))
-        download_success[[i]] <- download.file(
-          url = revised_url,
-          destfile = paste(outDir, metadata.u$rawDataFileName[i], sep="/"),
+        download_success[[i]] <- utils::download.file(
+          url = metadata.u$rawDataFilePath[i],
+          destfile = destfile,
           quiet = !verbose)
-      }, error = function(f) {
-        message("Could not download from URL: ", metadata.u$rawDataFilePath[i])
-        download_success[[i]] <- 2
+      }, error = function(e) { # Occasionally an error arises because _fastq should be replaced by .fastq
+        tryCatch({
+          revised_url <- sub("_fastq", ".fastq", as.character(metadata.u$rawDataFilePath[i]))
+          download_success[[i]] <- download.file(
+            url = revised_url,
+            destfile = destfile,
+            quiet = !verbose)
+        }, error = function(f) {
+          message("Could not download from URL: ", metadata.u$rawDataFilePath[i])
+          download_success[[i]] <- 2
+        })
       })
-    })
-    if(verbose) message("Finished downloading ", paste(outDir, metadata.u$rawDataFileName[i], sep="/"), ".\n")
+    }
+    if(verbose) message("Finished downloading ", destfile, ".\n")
   }
 
+  message("Finished download raw sequence files to ", outDir)
   return(invisible(download_success))
 }
 
@@ -402,418 +849,3 @@ downloadRawSoilData <- function(sites='all', startYrMo = NA, endYrMo = NA,
   return(dat_soil)
 }
 
-
-#' Download Sequence Metadata
-#'
-#' Loads soil marker gene sequencing metadata for specified target gene, site(s) and date(s),
-#' with an option to download output by providing a valid output directory. This function uses
-#' \code{\link[neonUtilities]{loadByProduct}} to conduct the downloads.
-#'
-#' Function by Lee F. Stanish and Clara Qin (2020). Currently available for testing only.
-#'
-#' @param sites Either the string 'all', meaning all available sites, or a character vector of 4-letter NEON site codes, e.g. c('ONAQ','RMNP'). Defaults to PRESET_SITES parameter in params.R.
-#' @param startYrMo,endYrMo Either NA (default), meaning all available dates, or a character vector in the form YYYY-MM, e.g. 2017-01.
-#' @param targetGene '16S' or 'ITS'.
-#' @param sequencingRuns Either the string 'all', meaning all available sequencing runs, or a character vector of NEON sequencing run IDs, e.g. c('C25G9', 'B69PP').
-#' @param dpID NEON data product of interest. Default is soil marker gene sequences, and currently code only works for marker genes data products.
-#' @param outDir Default file.path(NEONMICROBE_DIR_SEQMETA(), "raw_sequence"). To save a copy of the metadata to the local file system, provide the path to output directory. If this behavior is not desired, set outDir=FALSE.
-#'
-#' @return Data frame containing joined records from across the NEON soil marker gene sequence metadata, subsetted according to function arguments.
-#' @export
-#'
-#' @examples
-#' \dontrun{
-#' meta <- downloadSequenceMetadataRev('all', '2015-01', '2016-01', '16S', outDir=FALSE) # metadata is not saved to local directory
-#' meta <- downloadSequenceMetadataRev('all', '2015-01', '2016-01', '16S', outDir='./data/') # metadata is saved to local directory
-#' }
-downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targetGene= "all",
-                                     sequencingRuns = "", dpID = "DP1.10108.001", outDir=file.path(NEONMICROBE_DIR_SEQMETA(), "raw_sequence")) {
-  # author: Lee Stanish
-  # date: 2020-08-13
-  # function loads soil marker gene sequencing metadata for target gene, site(s) and date(s)
-  # option to download output by providing a valid output directory
-  # sites: character vector of valid site ID's, or 'all' for all sites
-  # targetGene: '16S',  'ITS', 'all'
-  # startYrMo: start date, format YYYY-MM
-  # endYrMo: end date, format YYYY-MM
-  # dpID: NEON data product of interest. Default is soil marker gene sequences, and currently code only works for this dpID
-  # outDir: directory for outputs. Defaults to output directory in parameters file
-
-  # library(neonUtilities)
-  # library(plyr)
-  # library(dplyr)
-
-  # check valid data values entered
-  ## validate dpID ##
-  if(!grepl("DP1", dpID) | !grepl('\\.001', dpID) | !grepl('10108|20280|20282', dpID)) {
-    message("Invalid Data Product ID: must follow convention 'DP1.[5-digit value].001' and must be a marker genes data product ID")
-    return(NULL)
-  } else {
-    dpID <- dpID
-  }
-
-  # validate target gene
-  if(!grepl("16S|ITS|all", targetGene)) {
-    message("Invalid targetGene: must be either '16S', 'ITS', 'all' ")
-    return(NULL)
-  } else {
-    targetGene <- targetGene
-  }
-
-  # validate site(s)
-  terrSiteList <- c("all","HARV","SCBI","OSBS","GUAN","UNDE","KONZ","ORNL","TALL","WOOD","CPER","CLBJ","YELL","NIWO",
-                    "SRER","ONAQ","WREF","SJER","TOOL","BONA","PUUM","BART","BLAN","SERC","SCBI","DSNY","JERC","LAJA",
-                    "TREE","STEI","KONA","UKFS","MLBS","GRSM","LENO","DELA","NOGP","DCFS","STER","RMNP","OAES","MOAB",
-                    "JORN","ABBY","TEAK","SOAP","BARR","DEJU","HEAL")
-  if(!any(sites %in% terrSiteList)){
-    message("Invalid site(s): must be a valid NEON site or 'all'")
-    return(NULL)
-  } else {
-    sites <- sites
-  }
-
-  # validate output directory
-  if(!identical(outDir, FALSE)) {
-    if(!dir.exists(outDir) ) {
-      message("Output directory does not exist")
-      return(NULL)
-    }
-  }
-
-
-  message("loading metadata...")
-  mmgL1 <- loadByProduct(dpID, sites, package = 'expanded', check.size = F, startdate = startYrMo, enddate = endYrMo) # output is a list of each metadata file
-
-
-  # for target data product and targetGene: extract lists into data.frames
-  if(grepl("10108", dpID)) {
-    seq16S <- mmgL1$mmg_soilMarkerGeneSequencing_16S
-    seq16S$targetGene <-"16S rRNA"
-    seqITS <- mmgL1$mmg_soilMarkerGeneSequencing_ITS
-    seqITS$targetGene <- "ITS"
-    pcr16S <- mmgL1$mmg_soilPcrAmplification_16S
-    pcrITS <- mmgL1$mmg_soilPcrAmplification_ITS
-    raw <- mmgL1$mmg_soilRawDataFiles
-    dna <- mmgL1$mmg_soilDnaExtraction
-    seq <- rbind(seq16S, seqITS)
-    pcr <- rbind(pcr16S, pcrITS)
-    varfile <- mmgL1$variables_10108
-
-    if(targetGene=="16S") {
-      message("filtering to 16S data")
-      seq <- seq16S
-      pcr <- pcr16S
-    }
-    if(targetGene=="ITS") {
-      message("filtering to ITS data")
-      seq <- seqITS
-      pcr <- pcrITS
-    }
-  }
-
-  if(grepl("20280", dpID)) {
-    seq16S <- mmgL1$mmg_benthicMarkerGeneSequencing_16S
-    seq16S$targetGene <-"16S rRNA"
-    seqITS <- mmgL1$mmg_benthicMarkerGeneSequencing_ITS
-    seqITS$targetGene <- "ITS"
-    pcr16S <- mmgL1$mmg_benthicPcrAmplification_16S
-    pcrITS <- mmgL1$mmg_benthicPcrAmplification_ITS
-    raw <- mmgL1$mmg_benthicRawDataFiles
-    dna <- mmgL1$mmg_benthicDnaExtraction
-    seq <- rbind(seq16S, seqITS)
-    pcr <- rbind(pcr16S, pcrITS)
-    varfile <- mmgL1$variables_20280
-
-    if(targetGene=="16S") {
-      message("filtering to 16S data")
-      seq <- seq16S
-      pcr <- pcr16S
-    }
-    if(targetGene=="ITS") {
-      message("filtering to ITS data")
-      seq <- seqITS
-      pcr <- pcrITS
-    }
-  }
-
-  if(grepl("20282", dpID)) {
-    seq16S <- mmgL1$mmg_swMarkerGeneSequencing_16S
-    seq16S$targetGene <-"16S rRNA"
-    seqITS <- mmgL1$mmg_swMarkerGeneSequencing_ITS
-    seqITS$targetGene <- "ITS"
-    pcr16S <- mmgL1$mmg_swPcrAmplification_16S
-    pcrITS <- mmgL1$mmg_swPcrAmplification_ITS
-    raw <- mmgL1$mmg_swRawDataFiles
-    dna <- mmgL1$mmg_swDnaExtraction
-    seq <- rbind(seq16S, seqITS)
-    pcr <- rbind(pcr16S, pcrITS)
-    varfile <- mmgL1$variables_20282
-
-    if(targetGene=="16S") {
-      message("filtering to 16S data")
-      seq <- seq16S
-      pcr <- pcr16S
-    }
-    if(targetGene=="ITS") {
-      message("filtering to ITS data")
-      seq <- seqITS
-      pcr <- pcrITS
-    }
-  }
-
-  # remove unnecessary/redundant columns from tables
-  raw <- dplyr::select(raw, -domainID, -siteID, -namedLocation, -laboratoryName, -sequencingFacilityID, -collectDate, -dnaSampleCode)
-  dna <- dplyr::select(dna, -domainID, -siteID, -namedLocation, -laboratoryName, -collectDate)
-  pcr <- dplyr::select(pcr, -domainID, -siteID, -namedLocation, -laboratoryName, -collectDate)
-
-  # convert factors to characters (bug in output of loadByProduct)
-  i <- sapply(seq, is.factor)
-  seq[i] <- lapply(seq[i], as.character)
-  j <- sapply(raw, is.factor)
-  raw[j] <- lapply(raw[j], as.character)
-  j <- sapply(dna, is.factor)
-  dna[j] <- lapply(dna[j], as.character)
-
-
-  # If specified, filter by sequencing run ID
-  if(sequencingRuns[1] != "") {
-    raw <- raw[which(raw$sequencerRunID %in% sequencingRuns), ]
-    # Validate sequencing run ID argument
-    if(nrow(raw) == 0) {
-      warning("After filtering by specified sequencing run ID(s), no records remain. Double-check your sequencing run  ID(s).")
-      return(NULL)
-    }
-  }
-
-  # Join sequencing metadata with raw data files metadata
-  if(targetGene=="16S") {
-    if(any(grepl("ITS", raw$rawDataFileName))) {
-      rawCleaned <- raw[-grep("ITS", raw$rawDataFileName), ]
-    } else {
-      rawCleaned <- raw
-    }
-    joinedTarget <- left_join(rawCleaned, seq, by=c('dnaSampleID', 'sequencerRunID'))
-    out <- joinedTarget[!is.na(joinedTarget$uid.y), ]
-  }
-  if(targetGene=="ITS") {
-    if(any(grepl("16S", raw$rawDataFileName))) {
-      rawCleaned <- raw[-grep("16S", raw$rawDataFileName), ]
-    } else {
-      rawCleaned <- raw
-    }
-    joinedTarget <- left_join(rawCleaned, seq, by=c('dnaSampleID', 'sequencerRunID'))
-    out <- joinedTarget[!is.na(joinedTarget$uid.y), ]
-  }
-  if(targetGene=="all") {
-    joinedTarget <- left_join(raw, seq, by=c('dnaSampleID', 'sequencerRunID'))
-    out <- joinedTarget[!is.na(joinedTarget$uid.y), ]
-    message(paste0(length(grep("16S", out$rawDataFileName)), " 16S records and ", length(grep("ITS", out$rawDataFileName)), " ITS records found."))
-  }
-
-  # clean up redundant column names
-  names(out) <- gsub("\\.x", ".rawFiles", names(out))
-  names(out) <- gsub("\\.y", ".seq", names(out))
-
-  # join with DNA extraction metadata
-  outDNA <- left_join(out, dna, by=c('plotID', 'dnaSampleID'))
-  # clean up redundant column names
-  names(outDNA) <- gsub("\\.x", ".seq", names(outDNA))
-  names(outDNA) <- gsub("\\.y", ".dna", names(outDNA))
-  names(outDNA)[names(outDNA)=="uid"] <- 'uid.dna'
-  names(outDNA)[names(outDNA)=="remarks"] <- 'remarks.dna'
-  names(outDNA)[names(outDNA)=="dataQF"] <- 'dataQF.dna'
-  names(outDNA)[names(outDNA)=="processedBy"] <- 'processedBy.seq'
-  names(outDNA)[names(outDNA)=="processedDate"] <- 'processedDate.dna'
-  names(outDNA)[names(outDNA)=="publicationDate"] <- 'publicationDate.dna'
-  names(outDNA)[names(outDNA)=="dnaProcessedBy"] <- 'processedBy.dna'
-
-  # join with PCR amplification metadata
-  outPCR <- left_join(outDNA, pcr, by=c('plotID', 'dnaSampleID', 'targetGene'))
-  names(outPCR)[names(outPCR)=="uid"] <- "uid.pcr"
-  names(outPCR)[names(outPCR)=="processedDate"] <- "processedDate.pcr"
-  names(outPCR)[names(outPCR)=="testProtocolVersion"] <- "testProtocolVersion.pcr"
-  names(outPCR)[names(outPCR)=="qaqcStatus"] <- "qaqcStatus.pcr"
-  names(outPCR)[names(outPCR)=="processedBy"] <- "processedBy.pcr"
-  names(outPCR)[names(outPCR)=="remarks"] <- "remarks.pcr"
-  names(outPCR)[names(outPCR)=="dataQF"] <- "dataQF.pcr"
-  names(outPCR)[names(outPCR)=="publicationDate"] <- "publicationDate.pcr"
-  names(outPCR)[names(outPCR)=="internalLabID.y"] <- "internalLabID.pcr"
-
-  # download local copy to output dir path
-  # unless user provides outDir=FALSE
-  if(!identical(outDir, FALSE)) {
-    if(targetGene != "all") {
-      write.csv(outPCR, paste0(outDir, "/mmg_soilMetadata_", targetGene, "_", sub(" ", "_", gsub(":", "", Sys.time())), ".csv"),
-                row.names=FALSE)
-    } else {
-      out16S <- outPCR[grep("16S", outPCR$targetGene), ]
-      outITS <- outPCR[grep("ITS", outPCR$targetGene), ]
-      write.csv(out16S, paste0(outDir, "/mmg_soilMetadata_16S_", sub(" ", "_", gsub(":", "", Sys.time())), ".csv"),
-                row.names=FALSE)
-      write.csv(outITS, paste0(outDir, "/mmg_soilMetadata_ITS_", sub(" ", "_", gsub(":", "", Sys.time())), ".csv"),
-                row.names=FALSE)
-    }
-    message(paste0("metadata downloaded to: ", outDir) )
-
-    # download variables file (required for zipsByUri)
-    write.csv(varfile, paste0(outDir, "/mmg_variables.csv") )
-    message(paste0("variables file downloaded to: ", outDir) )
-  }
-
-
-  return(outPCR)
-}
-
-#' QC Sequence Metadata
-#'
-#' Performs basic QAQC checks on sequence metadata prior to downloading sequence data and performing bioinformatics processing.
-#' Running this function will remove metadata records for samples that do not meet user specifications. This will reduce the number of sequence files that are downloaded to only those that will be used for analysis, thereby saving file space and reducing download times.
-#'
-#' @param metadata The output of downloadSequenceMetadata(). Must be provided as either the data.frame returned by downloadSequenceMetadata() or as a filepath to the csv file produced by downloadSequenceMetadata() when outdir is provided.
-#' @param outDir Default file.path(NEONMICROBE_DIR_SEQMETA(), "QC_metadata"). Directory where QC'd metadata will be written.
-#' @param pairedReads "Y" (default) or "N". Should the forward reads for a sample be removed if the corresponding reverse read is missing? If "Y", then only samples that have both the forward (R1) and reverse (R2) reads will be retained.
-#' @param rmDupes TRUE (default) or FALSE. Should records with duplicated dnaSampleIDs be removed? If TRUE, then only the first records encountered for a particular dnaSampleID will be retained.
-#'
-#' @return QC'd dataframe is returned as an object and saved as csv file.
-#' @export
-qcMetadata <- function(metadata, outDir=file.path(NEONMICROBE_DIR_SEQMETA(), "QC_metadata"), pairedReads="Y", rmDupes=TRUE, rmFlagged="N", verbose=FALSE) {
-  # library(plyr)
-  options(stringsAsFactors = FALSE)
-
-  metadata <- readSequenceMetadata(metadata)
-
-  # validate pairedReads
-  if(!(pairedReads %in% c("Y", "N")) ) {
-    stop("value for argument pairedReads invalid. Must be 'Y' or 'N'.")
-  }
-
-  # validate rmFlagged
-  if(!(rmFlagged %in% c("Y", "N")) ) {
-    stop("value for argument rmFlagged invalid. Must be 'Y' or 'N'.")
-  }
-
-  # get targetGene and confirm that only one targetGene is in input data set
-  targetGene <- unique(metadata$targetGene)
-  if(length(targetGene) > 1) {
-    stop("more than one targetGene in input data set. Only one targetGene can be QCed at a time.")
-  }
-
-  # validate output folder for QCed metadata
-  if(!dir.exists(outDir) ) {
-    message("Output directory does not exist")
-    return(NULL)
-    # dir.create(outDir, recursive=TRUE)
-  }
-
-  # Print size of dataset
-  print(paste("Input dataset contains", nrow(metadata), "rows.") )
-
-  # Remove flagged records, if rmFlagged="Y"
-  if(rmFlagged=="Y") {
-    print("Removing records with existing quality flag...")
-    # Define flag values for removal based on LOV values #
-    flagVals <- "Fail|legacyData"
-    # Remove NA values #
-    metadata[is.na(metadata)] <- ""
-    flagFields <- grep("qaqcStatus|dataQF", names(metadata))
-    ind <- vector()
-    for(i in flagFields) {
-      flagged <- grep(flagVals, metadata[,i])
-      ind <- c(ind,flagged)
-    }
-    if(length(ind)==0) {
-      print("No flagged records found.")
-    } else {
-      ind <- unique(ind)
-      numDupes <- length(ind)
-      print(paste0(length(ind), " flagged records found. Removing flagged record(s).") )
-      metadata <- metadata[-ind, ]
-    }
-    Sys.sleep(3)
-  }
-
-  # check for and remove duplicate sequence file names
-  print("QC check for duplicate sequence file names...")
-  # Add pause #
-  Sys.sleep(1)
-  dupeSeqIDs <- as.character(metadata$rawDataFileName[duplicated(metadata$rawDataFileName)] )
-  if(length(dupeSeqIDs)==0) {
-    print("QC check Pass. No duplicate sequence file names.")
-  } else {
-    numDupes <- length(dupeSeqIDs)
-    print(paste0("QC check Fail. ", numDupes, " duplicate sequence file names found. Removing duplicated file(s).") )
-    if(verbose) print(paste0("Removing duplicated row: ", which(duplicated(metadata$rawDataFileName)) ) )
-    metadata <- metadata[!duplicated(metadata$rawDataFileName), ]
-  }
-
-
-  # check for and flag duplicate dnaSampleIDs
-  print("QC checking duplicate dnaSampleIDs...")
-  # Add pause #
-  Sys.sleep(2)
-  metadata$runDir <- ""
-  metadata$runDir[grep("R1", metadata$rawDataFileDescription)] <- "R1"
-  metadata$runDir[grep("R2", metadata$rawDataFileDescription)] <- "R2"
-  dnaIDsPerRunDir <- paste(metadata$dnaSampleID, metadata$sequencerRunID, metadata$runDir, sep="-")
-  metadata$duplicateDnaSampleIDFlag <- "0"
-  if(any(duplicated(dnaIDsPerRunDir)) ) {
-    ind <- which(duplicated(dnaIDsPerRunDir))
-    metadata$duplicateDnaSampleIDFlag[ind] <- "1"
-    if(rmDupes==TRUE) {
-      metadata <- metadata[-ind,]
-      print("Duplicated dnaSampleID record(s) found and removed.")
-    } else {
-      print("Duplicated dnaSampleID(s) found. Flagging affected record(s).")
-    }
-  } else {
-    print("No duplicated dnaSampleID records found.")
-  }
-
-  # Subset qced data to un-flagged records
-  metaFlagged <- metadata[metadata$duplicateDnaSampleIDFlag=="1", ]
-  metaNotFlagged <- metadata[metadata$duplicateDnaSampleIDFlag=="0", ]
-
-  metaNotFlagged$dnaSampleID <- as.character(metaNotFlagged$dnaSampleID)
-
-  # Check existence of R1 (and R2 based on user input) #
-  dnaSampTab <- data.frame(with(metaNotFlagged, table(dnaSampleID, runDir)) )
-
-  # convert factors to characters
-  dfType <- sapply(dnaSampTab, class)
-  colsToFix <- names(dnaSampTab[which(dfType=='factor')])
-  dnaSampTab[colsToFix] <- sapply(dnaSampTab[colsToFix], as.character)
-
-  # Handle sequence data with missing run direction
-  missingR1 <- dnaSampTab$dnaSampleID[which(dnaSampTab$Freq[dnaSampTab$runDir=="R1"]==0)]
-  missingR2 <- dnaSampTab$dnaSampleID[which(dnaSampTab$Freq[dnaSampTab$runDir=="R2"]==0)]
-  metaNotFlagged$runDirFlag <- "0"
-  print("Check for missing forward or reverse read...")
-  # Add pause #
-  Sys.sleep(2)
-  # Handle sequence data with missing R2 data
-  if(length(missingR2)>0) {
-    print(paste0("Reverse read missing from ", length(missingR2), " records") )
-    # If specified, remove R1 file
-    if(pairedReads=="Y") {
-      print("Removing R1 files lacking a matching R2 file (default action when pairedReads='Y')" )
-      metaNotFlagged <- metaNotFlagged[-intersect(which(metaNotFlagged$runDir=="R1"), which(metaNotFlagged$dnaSampleID %in% missingR2) ), ]
-    } else {
-      metaNotFlagged$runDirFlag[intersect(which(metaNotFlagged$runDir=="R1"), which(metaNotFlagged$dnaSampleID %in% missingR2) )] <- "1"
-      print("Flagging R1 files lacking a matching R2 file (default action when pairedReads='N')" )
-    }
-  }
-  # Handle sequence data with missing R1 data
-  if(length(missingR1)>0) {
-    print(paste0("Forward read missing from ", length(missingR1), " record(s). Removing R2 file for affected sequence data set(s).") )
-    # remove R2 file
-    metaNotFlagged <- metaNotFlagged[-intersect(which(metaNotFlagged$runDir=="R2"), which(metaNotFlagged$dnaSampleID %in% missingR1) ), ]
-  }
-
-  # Recombine original flagged records and remaining records post-initial flagging.
-  out <- suppressMessages(plyr::join(metaNotFlagged, metaFlagged))
-
-  write.csv(out, paste0(outDir, "mmg_metadata_", gsub("\\ ", "", targetGene), "_QCed_", gsub("-", "", Sys.Date()), '.csv'), row.names = FALSE)
-  cat(paste("Output QCed file contains", nrow(out), "rows. File saved to the following directory:", outDir))
-  cat("\nNOTE: Always review output before proceeding with analysis.")
-  return(out)
-}

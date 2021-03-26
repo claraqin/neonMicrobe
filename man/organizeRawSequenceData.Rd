@@ -7,7 +7,7 @@
 organizeRawSequenceData(
   fn,
   metadata,
-  outdir_sequence = PRESET_OUTDIR_SEQUENCE,
+  outdir_sequence = NEONMICROBE_DIR_SEQUENCE(),
   verbose = TRUE
 )
 }
@@ -16,7 +16,7 @@ organizeRawSequenceData(
 
 \item{metadata}{The output of downloadSequenceMetadata(). Must be provided as either the data.frame returned by downloadSequenceMetadata() or as a filepath to the csv file produced by downloadSequenceMetadata() when outDir is provided.}
 
-\item{outdir_sequence}{Default PRESET_OUTDIR_SEQUENCE. Directory where raw sequence files can be found before reorganizing.}
+\item{outdir_sequence}{Default NEONMICROBE_DIR_SEQUENCE(). Directory where raw sequence files can be found before reorganizing.}
 
 \item{verbose}{If TRUE, prints message each time a file is reorganized.}
 }

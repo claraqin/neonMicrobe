@@ -1,5 +1,5 @@
 ---
-title: "Download NEON Data"
+title: "1. Download NEON Data"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{download-neon-data}
@@ -12,74 +12,40 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
-if(dir.exists("~/zhulab/")) {
-  knitr::opts_knit$set(
-    root.dir = "~/zhulab/neonSoilMicrobeProcessing/" # Update as necessary. Should refer to the absolute filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
-  )
-}
-if(dir.exists("/Users/lstanish/Github/")) {
-  knitr::opts_knit$set(
-    root.dir = "/Users/lstanish/Github/NEON_soil_microbe_processing/" # LFS directory file path. 
-  )
-}
-
-
+knitr::opts_knit$set(
+  root.dir = NEONMICROBE_DIR_BASE()
+)
 ```
 
 This vignette demonstrates how to use the functions and parameters in this package to download the specific scope NEON soil microbe marker gene sequence data and associated data relevant to your analysis. 
 
-**Note:** If you are using this vignette as a reference, rather than running it as an RMarkdown script, be aware that you will need to manually set the working directory to the project root directory, e.g. `setwd(".../neonSoilMicrobeProcessing")`.
-
-# Dependencies
-
-To begin, ensure that you have installed all dependencies.
-
-From CRAN:
-```{r, eval=FALSE, message=FALSE}
-## First specify the packages of interest
-packages = c("plyr", "dplyr",
-             "neonUtilities", "R.utils")
-
-## Now load or install&load all
-package.check <- lapply(
-  packages,
-  FUN = function(x) {
-    if (!require(x, character.only = TRUE)) {
-      install.packages(x, dependencies = TRUE)
-      library(x, character.only = TRUE)
-    }
-  }
-)
-```
-
-
-In addition, source files associated with this package:
-
-```{r}
-source("./R/utils.R")
-source("./code/params.R")
-```
 
 # Set up directories
 
-Set up the directory structure associated with the various NEON data products. The structure will depend on what you have written in `params.R`. For example:
-
-```
-PRESET_OUTDIR = "/data/NEON"
-PRESET_OUTDIR_SEQUENCE = "raw_sequence"
-PRESET_OUTDIR_SEQMETA = "sequence_metadata"
-PRESET_OUTDIR_SOIL = "soil"
-```
-
-This will generate (recursively) the following output directories:
-
-```
-/data/NEON/raw_sequence
-/data/NEON/sequence_metadata
-/data/NEON/soil
-```
+First, set your working directory to be the location where you want `neonMicrobe`'s directory structure to take root. Then, run `setBaseDirectory()`.
 
 ```{r}
+setBaseDirectory()
+```
+
+Set up the directory structure associated with the various NEON data products. This will generate (recursively) the following directory structure
+
+```
+[base directory]
+├── data
+│   ├── raw_sequence
+│   ├── sequence_metadata
+│   ├── soil
+│   └── tax_ref
+├── outputs
+│   ├── mid_process
+│   └── track_reads
+└── batch_outputs
+```
+
+Each of these directories may contain yet more subdirectories, but let's not worry about them yet. We'll explore them more in future vignettes.
+
+```{r, eval=FALSE}
 makeDataDirectories()
 ```
 
@@ -87,79 +53,58 @@ makeDataDirectories()
 
 ## Download metadata
 
-We begin by downloading the metadata associated with the collection and analysis of NEON soil microbial samples, using the `downloadSequenceMetadata()` function.
+`neonMicrobe` is a *metadata-first* processing pipeline. What this means is that:
 
-The `downloadSequenceMetadata()` function downloads NEON data product "Soil microbe marker gene sequences" (NEON.DP1.10108.001) using the `neonUtilities` package. This data product contains data tables related to the processing and generation of raw sequence data. The function returns a data.frame object with the data tables for the marker gene sequencing data product joined together, in the following order:
+1. Before downloading any raw sequence data, you must first download its metadata.
+2. You can subset the raw sequence data before you even download it, by subsetting the sequence metadata.
+3. Many of the functions in `neonMicrobe` (especially the DADA2 wrappers and the batch constructor) taken in metadata as a primary argument.
+
+To download the metadata associated with the collection and analysis of NEON soil microbial marker gene sequences, use the `downloadSequenceMetadata()` function. The `downloadSequenceMetadata()` function downloads NEON data product "Soil microbe marker gene sequences" (NEON.DP1.10108.001) using the `neonUtilities` package. This data product contains data tables related to the processing and generation of raw sequence data. The function returns a data.frame object with the data tables for the marker gene sequencing data product joined together, in the following order:
 
     - mmg_soilRawDataFiles
-    - mmg_soilMarkerGeneSequencing_[16S and/or ITS]
+    - mmg_soilDnaExtraction [16S and/or ITS]
+    - mmg_soilMarkerGeneSequencing [16S and/or ITS]
     - mmg_soilPcrAmplification [16S and/or ITS]
 
-When 'all' is selected as the targetGene, both the 16S and ITS metadata are downloaded in the same R object/file. For downstream analysis, limit the metadata to just the 16S or ITS records by filtering to either '16S rRNA' or 'ITS' in the data field 'targetGene'.
+When 'all' is passed to the `targetGene` argument, both the 16S and ITS metadata are downloaded in the same R object/file. For downstream analysis, limit the metadata to just the 16S or ITS records by filtering to either '16S rRNA' or 'ITS' in the data field 'targetGene'.
 
-If time and space limitations are not issues for you, you can download the entire sequence dataset over the course of a few hours (depending on the user's download speed). Alternatively, `downloadSequenceMetadata()` accepts arguments that can be used to specify the subset of the data you are interested in for your analysis.
+If time and space limitations are not issues for you, you can download the entire sequence dataset over the course of a few hours (depending on your download speed). Alternatively, `downloadSequenceMetadata()` accepts arguments that can be used to specify the subset of the data you are interested in for your analysis.
 
-In the following example, we run `downloadSequenceMetadata()` with a number of arguments to narrow the range of data to be downloaded. Note that the output metadata file by default is placed in the metadata output directory defined in your params.R file.
+In the following example, we run `downloadSequenceMetadata()` with a number of arguments to narrow the range of data to be downloaded. Note that a copy of the output metadata file by default is automatically saved to the raw metadata directory `/data/sequence_metadata/raw_metadata/`, but this can be changed using the `outDir` argument.
 
 ```{r}
-meta_16s <- downloadSequenceMetadata(startYrMo = "2018-02", endYrMo = "2018-03", 
-                                     sites = c("CLBJ"),
-                                     targetGene = "16S")
-meta_its <- downloadSequenceMetadata(startYrMo = "2018-02", endYrMo = "2018-03", 
-                                     sites = c("CLBJ"),
-                                     targetGene = "ITS")
+meta_16s <- downloadSequenceMetadata(startYrMo = "2017-07", endYrMo = "2017-07", 
+                                     sites = c("CPER", "KONZ", "NOGP"), targetGene = "16S")
+meta_its <- downloadSequenceMetadata(startYrMo = "2017-07", endYrMo = "2017-07", 
+                                     sites = c("CPER", "KONZ", "NOGP"), targetGene = "ITS")
 ```
 
 ## Quality control sequence metadata
 
 The following function performs basic QAQC checks on sequence metadata prior to downloading sequence data. This will reduce the number of sequence files that are downloaded to only those that will be used for analysis, thereby saving file space and reducing download times.
 
-Specifically, this function will remove duplicates and, optionally, will also remove any R1 fastq files without corresponding R2 files.
+Specifically, this function will remove duplicates, quality-flagged samples, and (optionally) any R1 fastq files without corresponding R2 files.
 
 ```{r}
-meta_16s_qc <- qcMetadata(meta_16s)
+meta_16s_qc <- qcMetadata(meta_16s, pairedReads = "Y")
 ```
 
 ```{r}
-meta_its_qc <- qcMetadata(meta_its)
+meta_its_qc <- qcMetadata(meta_its, pairedReads = "N")
 ```
 
 
 ## Download raw sequence data
 
-Now that we have the metadata table loaded into memory, we retrieve a table of unique raw data files and their sequencing run IDs. 
+Now that we have the metadata table loaded into memory, we retrieve a table of unique raw data files and their sequencing run IDs. (Note that these chunks are not actually run in the .Rmd file, due to their relatively long runtime.)
 
-```{r, message=1:5}
-download_success_16s <- downloadRawSequenceData(meta_16s_qc)
+```{r, message=1:5, eval=FALSE}
+downloadRawSequenceData(meta_16s_qc)
 ```
 
-
-```{r, message=1:5}
-download_success_its <- downloadRawSequenceData(meta_its_qc)
+```{r, message=1:5, eval=FALSE}
+downloadRawSequenceData(meta_its_qc)
 ```
 
-## Reorganize and rename the downloaded files
-
-Get the names of all downloaded files.
-
-```{r}
-outdir_sequence <- PRESET_OUTDIR_SEQUENCE
-fn0_16s <- file.path(outdir_sequence, meta_16s_qc$rawDataFileName)
-fn0_its <- file.path(outdir_sequence, meta_its_qc$rawDataFileName)
-fn_16s <- unique(fn0_16s[file.exists(fn0_16s)])
-fn_its <- unique(fn0_its[file.exists(fn0_its)])
-```
-
-The following function untars each file (if necessary), appends the sequencer run ID to the beginning of each filename, and moves files to subfolders within your sequence directory according to their target gene. The terminal directory name for either target gene will be `0_raw`.
-
-```{r}
-reorganized_files_16s <- organizeRawSequenceData(fn_16s, meta_16s_qc)
-head(reorganized_files_16s)
-```
-
-```{r}
-reorganized_files_its <- organizeRawSequenceData(fn_its, meta_its_qc)
-head(reorganized_files_its)
-```
-
+And with that, you've downloaded some fastq files! To learn how to process these fastq files into ASV tables using the DADA2 pipeline, while taking advantage of `neonMicrobe`'s organizational structure, see the vignette "Process 16S Sequences" or "Process ITS Sequences".
 

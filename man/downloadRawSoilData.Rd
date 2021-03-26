@@ -9,7 +9,7 @@ downloadRawSoilData(
   startYrMo = NA,
   endYrMo = NA,
   dpID = c("DP1.10086.001"),
-  outDir = PRESET_OUTDIR_SOIL,
+  outDir = NEONMICROBE_DIR_SOIL(),
   rmSamplingImpractical = TRUE,
   rmNTransBouts = TRUE,
   rmFailedCNDataQF = TRUE
@@ -22,7 +22,7 @@ downloadRawSoilData(
 
 \item{dpID}{NEON data product(s) of interest. Default is DP1.10086.001 ("Soil physical and chemical properties, periodic").}
 
-\item{outDir}{Default PRESET_OUTDIR_SOIL If a local copy of the filtered metadata is desired, provide path to output directory.}
+\item{outDir}{Default NEONMICROBE_DIR_SOIL() If a local copy of the filtered metadata is desired, provide path to output directory.}
 
 \item{rmSamplingImpractical}{Default TRUE. Whether to remove soil data records when sampling did not actually occur.}
 
