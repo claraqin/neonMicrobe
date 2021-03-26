@@ -4,12 +4,21 @@
 \alias{checkArgsAgainstBatchParams}
 \title{Check Function Arguments against Batch-Specific Parameters}
 \usage{
-checkArgsAgainstBatchParams(priority = c("batch", "arguments"), ...)
+checkArgsAgainstBatchParams(
+  priority = c("batch", "arguments"),
+  ...,
+  verbose = TRUE,
+  warn_no_batch = FALSE
+)
 }
 \arguments{
 \item{priority}{Must be "batch" or "arguments". Whether to defer to batch-specific processing parameters or function arguments when they conflict.}
 
-\item{...}{Arguments that have values defined in parameters, set equal to whatever value they have in the parent function, e.g. \code{MAX_EE_FWD = maxEE} These arguments will be the ones checked against the batch parameters.}
+\item{...}{Format \link{function argument (string)} = \link{batch parameter (string)}. Arguments with a corresponding batch parameter, set to whatever the name of that batch parameter is, e.g. \verb{"maxEE" = "MAX_EE_FWD}. The arguments will be checked against the batch parameters.}
+
+\item{verbose}{Default TRUE. Whether to print a warning if the function argument and batch parameter do not match.}
+
+\item{warn_no_batch}{Default FALSE. Whether to print a warning if there is no current processing batch.}
 }
 \value{
 No value is returned
@@ -21,6 +30,9 @@ with the current processing batch. If priority = "batch", the current batch's pa
 take precedence.
 }
 \details{
-For example, if priority = "batch", then rather than using quality filtering parameters defined on-the-fly,
-the parent function would use the quality filtering parameters associated with the current batch.
+If priority = "batch", then rather than using quality filtering parameters
+defined on-the-fly as function arguments, the parent function would instead
+use the quality filtering parameters associated with the current batch.
+If priority = "batch", then rather than using the default output directory,
+the parent function would instead use the batch-specific outputs.
 }

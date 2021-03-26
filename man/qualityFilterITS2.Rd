@@ -4,7 +4,7 @@
 \alias{qualityFilterITS2}
 \title{Filter ITS Sequences (with metadata)}
 \usage{
-qualityFilterITS2(fn, dir_out, meta, multithread = MULTITHREAD, ...)
+qualityFilterITS2(fn, dir_out, meta, multithread = FALSE, ...)
 }
 \arguments{
 \item{fn}{Full names of input fastq files, including directory. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning. It is assumed that these are R1 (forward-read) files only.}
@@ -13,7 +13,7 @@ qualityFilterITS2(fn, dir_out, meta, multithread = MULTITHREAD, ...)
 
 \item{meta}{Metadata downloaded using \code{\link{downloadSequenceMetadata}} that corresponds to the fastq files.}
 
-\item{multithread}{Default MULTITHREAD in params.R. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.}
+\item{multithread}{Default FALSE. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.}
 
 \item{...}{Other arguments to be passed to \code{\link[dada2]{filterAndTrim}}, such as maxEE. See documentation for more details.}
 }

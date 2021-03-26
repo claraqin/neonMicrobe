@@ -9,7 +9,8 @@ qualityFilter16S2(
   dir_out,
   meta,
   trunc_qscore = 23,
-  multithread = MULTITHREAD,
+  multithread = FALSE,
+  verbose = FALSE,
   ...
 )
 }
@@ -22,7 +23,9 @@ qualityFilter16S2(
 
 \item{trunc_qscore}{Default 23. Quality score at which point to truncate each read, if truncLen is NULL.}
 
-\item{multithread}{Default MULTITHREAD in params.R. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.}
+\item{multithread}{Default FALSE. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.}
+
+\item{verbose}{Default FALSE. Whether to print messages associated with automated selection of truncation length (truncLen).}
 
 \item{...}{Other arguments to be passed to \code{\link[dada2]{filterAndTrim}}, such as maxEE and truncLen. See documentation for more details.}
 }

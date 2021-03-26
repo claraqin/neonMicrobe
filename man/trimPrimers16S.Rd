@@ -10,7 +10,7 @@ trimPrimers16S(
   dir_out,
   primer_16S_fwd,
   primer_16S_rev,
-  multithread = MULTITHREAD,
+  multithread = FALSE,
   post_samplename_pattern1 = "_R1.*\\\\.fastq",
   post_samplename_pattern2 = "_R2.*\\\\.fastq"
 )
@@ -24,7 +24,7 @@ trimPrimers16S(
 
 \item{primer_16S_fwd, primer_16S_rev}{DNA sequences of 16S forward and reverse primer, respectively}
 
-\item{multithread}{Default MULTITHREAD in params.R. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.}
+\item{multithread}{Default FALSE. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.}
 
 \item{post_samplename_pattern1, post_samplename_pattern2}{(Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).*\\.fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.}
 }

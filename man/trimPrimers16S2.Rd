@@ -10,7 +10,7 @@ trimPrimers16S2(
   meta,
   primer_16S_fwd = "CCTACGGGNBGCASCAG",
   primer_16S_rev = "GACTACNVGGGTATCTAATCC",
-  multithread = MULTITHREAD
+  multithread = FALSE
 )
 }
 \arguments{
@@ -22,7 +22,7 @@ trimPrimers16S2(
 
 \item{primer_16S_fwd, primer_16S_rev}{DNA sequences of 16S forward and reverse primer, respectively}
 
-\item{multithread}{Default MULTITHREAD in params.R. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.}
+\item{multithread}{Default FALSE. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.}
 }
 \value{
 Integer matrix denoting the number of reads remaining after primer-trimming for each input file.

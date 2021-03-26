@@ -6,7 +6,7 @@
 \usage{
 downloadRawSequenceData(
   metadata,
-  outDir = PRESET_OUTDIR_SEQUENCE,
+  outDir = NEONMICROBE_DIR_SEQUENCE(),
   ignore_tar_files = TRUE,
   checkSize = TRUE,
   verbose = FALSE
@@ -19,7 +19,7 @@ downloadRawSequenceData(
 
 \item{verbose}{If TRUE, prints status messages and progress bars associated with file downloads.}
 
-\item{outdir}{Location where output files are saved. Defaults to PRESET_OUTDIR_SEQUENCE in params.R.}
+\item{outdir}{Location where output files are saved. Defaults to NEONMICROBE_DIR_SEQUENCE() in params.R.}
 }
 \value{
 Returns (invisibly) a list of integer codes: 0 indicates success of downloads and a non-zero integer indicates failure. See the help page for \code{\link[utils]{download.file}} for more details.

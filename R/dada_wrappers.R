@@ -68,6 +68,7 @@ trimPrimers16S <- function(fn, dir_in, dir_out, primer_16S_fwd, primer_16S_rev, 
 #' trimPrimers16S(c("sample1_R1.fastq", "sample1_R2.fastq", "sample2_R1.fastq", "sample2_R2.fastq"), "path/to/output", meta, "CCTACGGGNBGCASCAG", "GACTACNVGGGTATCTAATCC", multithread = TRUE)
 #' }
 trimPrimers16S2 <- function(fn, dir_out, meta, primer_16S_fwd = "CCTACGGGNBGCASCAG", primer_16S_rev = "GACTACNVGGGTATCTAATCC", multithread = FALSE) {
+  checkArgsAgainstParams("meta" = "SEQMETA_FILE")
   dir.create(dir_out, recursive = TRUE)
   fn_out <- file.path(dir_out, basename(fn))
 
@@ -197,6 +198,7 @@ trimPrimersITS <- function(fn, dir_in, dir_out, primer_ITS_fwd, primer_ITS_rev, 
 #' trimPrimersITS(c("sample1_ITS_R1.fastq", "sample2_ITS_R1.fastq"), "path/to/input", "path/to/output", "CTTGGTCATTTAGAGGAAGTAA")
 #' }
 trimPrimersITS2 <- function(fn, dir_out, meta, cutadapt_path, primer_ITS_fwd = "CTTGGTCATTTAGAGGAAGTAA", primer_ITS_rev = "GCTGCGTTCTTCATCGATGC", very_verbose=FALSE, discard_untrimmed=FALSE) {
+  checkArgsAgainstParams("meta" = "SEQMETA_FILE")
   dir.create(dir_out, recursive = TRUE)
   fn_out <- file.path(dir_out, basename(fn))
 

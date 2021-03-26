@@ -7,7 +7,7 @@
 runDada16S(
   fn,
   dir_in,
-  multithread = MULTITHREAD,
+  multithread = FALSE,
   verbose = FALSE,
   seed = NULL,
   post_samplename_pattern1 = "_R1.*\\\\.fastq",
@@ -20,13 +20,13 @@ runDada16S(
 
 \item{dir_in}{Directory containing input fastq files.}
 
-\item{multithread}{Default MULTITHREAD in params.R. Whether to use multithreading.}
+\item{multithread}{Default FALSE. Whether to use multithreading.}
+
+\item{verbose}{Default FALSE. Whether to print messages regarding the dimensions of the resulting sequence table and the distribution of sequence lengths.}
 
 \item{seed}{(Optional) Integer to use as random seed for reproducibility.}
 
 \item{nbases}{(Optional) Number of bases to use for learning errors. Default 1e7.}
-
-\item{VERBOSE}{Default FALSE. Whether to print messages regarding the dimensions of the resulting sequence table and the distribution of sequence lengths.}
 }
 \value{
 A list of three elements. \strong{seqtab} is the sequence table before removing chimeras, \strong{seqtab.nochim} is the sequence table after removing chimeras, and \strong{track} is a data frame displaying the number of reads remaining for each sample at various points throughout the processing pipeline.

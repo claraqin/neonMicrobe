@@ -6,7 +6,7 @@
 \usage{
 qcMetadata(
   metadata,
-  outDir = file.path(PRESET_OUTDIR_SEQMETA, "QC_metadata"),
+  outDir = file.path(NEONMICROBE_DIR_SEQMETA(), "QC_metadata"),
   pairedReads = "Y",
   rmDupes = TRUE,
   rmFlagged = "N",
@@ -16,7 +16,7 @@ qcMetadata(
 \arguments{
 \item{metadata}{The output of downloadSequenceMetadata(). Must be provided as either the data.frame returned by downloadSequenceMetadata() or as a filepath to the csv file produced by downloadSequenceMetadata() when outdir is provided.}
 
-\item{outDir}{Default file.path(PRESET_OUTDIR_SEQMETA, "QC_metadata"). Directory where QC'd metadata will be written.}
+\item{outDir}{Default file.path(NEONMICROBE_DIR_SEQMETA(), "QC_metadata"). Directory where QC'd metadata will be written.}
 
 \item{pairedReads}{"Y" (default) or "N". Should the forward reads for a sample be removed if the corresponding reverse read is missing? If "Y", then only samples that have both the forward (R1) and reverse (R2) reads will be retained.}
 

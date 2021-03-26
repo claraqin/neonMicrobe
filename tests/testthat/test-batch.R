@@ -25,18 +25,18 @@ test_that("batch indicator variables work", {
 
 test_that("params cannot be set outside a batch", {
   setBatch()
-  expect_warning(setBatchParameter(TEST="test"))
+  expect_warning(setBatchParam(TEST="test"))
 })
 
 test_that("params can be set within a batch", {
   newBatch(system.file("extdata", "seqmeta_greatplains.csv", package="neonMicrobe"), batch_id="z", overwrite = TRUE)
-  setBatchParameter(TEST="test")
-  expect_true("TEST" %in% names(getBatchParameter()))
+  setBatchParam(TEST="test")
+  expect_true("TEST" %in% names(getBatchParam()))
 })
 
 test_that("setting param within a batch does not affect params outside batch", {
   newBatch(system.file("extdata", "seqmeta_greatplains.csv", package="neonMicrobe"), batch_id="z", overwrite = TRUE)
-  setBatchParameter(TEST="test")
+  setBatchParam(TEST="test")
   expect_false("TEST" %in% ls(neonmicrobe_env))
   expect_true(exists("TEST", batch_env))
   setBatch()
@@ -46,20 +46,20 @@ test_that("setting param within a batch does not affect params outside batch", {
 
 test_that("batch params can be saved to file", {
   setBatch() # Ensures that we start outside of a batch
-  expect_warning(saveParameters(verbose=FALSE))
+  expect_warning(saveParams(verbose=FALSE))
   batch_id1 <- paste0("test_", rnorm(1))
   batch_id2 <- paste0("test_", rnorm(1))
   newBatch(system.file("extdata", "seqmeta_greatplains.csv", package="neonMicrobe"), batch_id=batch_id1, overwrite = TRUE)
-  setBatchParameter(TEST="test")
+  setBatchParam(TEST="test")
   newBatch(system.file("extdata", "seqmeta_greatplains.csv", package="neonMicrobe"), batch_id=batch_id2, overwrite = TRUE)
   expect_false(exists("TEST", batch_env))
-  loadParameters(file.path(NEONMICROBE_DIR_OUTPUTS(), "batches", batch_id1, "params.R"), verbose=FALSE)
+  loadParams(file.path(NEONMICROBE_DIR_BATCHES(), batch_id1, "params.R"), verbose=FALSE)
   expect_true(exists("TEST", batch_env))
 })
 
-test_that("checkArgsAgainstBatchParams works", {
+test_that("checkArgsAgainstBatchParams can change function args", {
   newBatch(system.file("extdata", "seqmeta_greatplains.csv", package="neonMicrobe"), batch_id="test", overwrite = TRUE)
-  setBatchParameter(TEST = "parameter_value")
+  setBatchParam(TEST = "parameter_value")
   test_fn <- function(x, prioritize_params=TRUE) {
     original_val <- x
     if(prioritize_params) {
@@ -78,15 +78,16 @@ test_that("checkArgsAgainstBatchParams works", {
   expect_identical(out_warnonly[2], "original_value")
 })
 
-test_that("mid_process and track_reads dirs change with batch", {
+test_that("checkArgsAgainstBatchParams is tolerant to nonexistent arg", {
+
+})
+
+test_that("outputs directory changes with batch", {
   setBatch()
-  mp1 <- NEONMICROBE_DIR_MIDPROCESS()
-  tr1 <- NEONMICROBE_DIR_TRACKREADS()
+  dir1 <- NEONMICROBE_DIR_OUTPUTS()
   newBatch(system.file("extdata", "seqmeta_greatplains.csv", package="neonMicrobe"), batch_id="test", overwrite=TRUE)
-  mp2 <- NEONMICROBE_DIR_MIDPROCESS()
-  tr2 <- NEONMICROBE_DIR_TRACKREADS()
-  expect_false(identical(mp1, mp2))
-  expect_false(identical(tr1, tr2))
+  dir2 <- NEONMICROBE_DIR_OUTPUTS()
+  expect_false(identical(dir1, dir2))
 })
 
 test_that("first new batch does not throw error", {

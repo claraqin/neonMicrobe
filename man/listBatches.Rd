@@ -4,10 +4,10 @@
 \alias{listBatches}
 \title{List Processing Batches}
 \usage{
-listBatches(batches_dir = file.path(NEONMICROBE_DIR_OUTPUTS, "batches"))
+listBatches(batches_dir = NULL)
 }
 \arguments{
-\item{batches_dir}{}
+\item{batches_dir}{Directory where batch-specific directories are saved. By default (NULL), looks in NEONMICROBE_DIR_OUTPUTS(), ignoring batch modifications.}
 }
 \value{
 

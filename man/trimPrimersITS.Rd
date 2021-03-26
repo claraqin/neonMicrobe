@@ -30,7 +30,7 @@ trimPrimersITS(
 
 \item{post_samplename_pattern1, post_samplename_pattern2}{(Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).*\\.fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.}
 
-\item{very_verbose}{Default FALSE. Whether to print output from cutadapt. Unlike some other "verbose" arguments associated with the functions in this package, this does not default to VERBOSE in params.R.}
+\item{very_verbose}{Default FALSE. Whether to print output from cutadapt.}
 
 \item{discard_untrimmed}{Default FALSE. Whether to discard reads where a primer could not be found, leaving only those reads in which a primer has been trimmed.}
 }

@@ -27,7 +27,10 @@ plotEEProfile(
 If include_quality_profile = FALSE (default), returns a ggplot of the expected errors. If include_quality_profile = TRUE, returns a length of list two: (1) a ggplot of the expected errors, and (2) a ggplot of the quality profile(s).
 }
 \description{
-Plots the cumulative expected errors of a fastq file or collection of fastq files over sequence positions. This function extends \code{\link[dada2]{plotQualityProfile}} and makes use of its code.
+Plots the cumulative expected errors of a fastq file or
+collection of fastq files over sequence positions. This
+function extends \code{\link[dada2]{plotQualityProfile}}
+as it appears in version 1.12.1 and makes use of its code.
 }
 \examples{
 \dontrun{
