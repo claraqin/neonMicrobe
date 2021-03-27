@@ -14,7 +14,7 @@ setBatch(
 \arguments{
 \item{batch_id}{Character string. Unique ID of an existing processing batch.}
 
-\item{batches_dir}{Directory where batch-specific directories are saved. By default (NULL), looks in NEONMICROBE_DIR_OUTPUTS(), ignoring batch modifications.}
+\item{batches_dir}{Directory where batch-specific directories are saved. By default (NULL), looks in NEONMICROBE_DIR_BATCHES().}
 
 \item{suppress_load_parameters}{Default FALSE. If TRUE, does not attempt to load parameters into the batch environment. Intended for use in newBatch()}
 

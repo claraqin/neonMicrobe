@@ -2,43 +2,46 @@
 % Please edit documentation in R/dada_wrappers.R
 \name{trimPrimers16S}
 \alias{trimPrimers16S}
-\title{Trim Primers from 16S Sequences}
+\title{Trim Primers from 16S Sequences (with metadata)}
 \usage{
 trimPrimers16S(
   fn,
-  dir_in,
-  dir_out,
-  primer_16S_fwd,
-  primer_16S_rev,
-  multithread = FALSE,
-  post_samplename_pattern1 = "_R1.*\\\\.fastq",
-  post_samplename_pattern2 = "_R2.*\\\\.fastq"
+  in_subdir,
+  out_subdir,
+  meta,
+  in_explicitdir = NULL,
+  out_explicitdir = NULL,
+  primer_16S_fwd = "CCTACGGGNBGCASCAG",
+  primer_16S_rev = "GACTACNVGGGTATCTAATCC",
+  multithread = FALSE
 )
 }
 \arguments{
-\item{fn}{Names of input fastq files, excluding directory path which is specified by dir_in. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning.}
+\item{fn}{Base names of input fastq files. If inputs are not base names (i.e. if they include directory paths), the directory paths will be removed. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning.}
 
-\item{dir_in}{Directory containing input fastq files.}
+\item{in_subdir}{Subdirectory name from which to retrieve input fastq files. Enter "raw" for raw sequence files, or any other character string to specify a subdirectory within \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S. To specify a directory outside \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S, use the 'in_explicitdir' argument.}
 
-\item{dir_out}{Output directory. If it does not exist, it will be created.}
+\item{out_subdir}{Subdirectory name where output fastq files will be written. Enter any character string to specify a subdirectory within \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S. If the directory does not exist, it will be created. To specify a directory outside \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S, use the 'out_explicitdir' argument.}
+
+\item{meta}{The output of \code{\link{downloadSequenceMetadata}}. Must be provided as either the data.frame returned by \code{\link{downloadSequenceMetadata}} or as a filepath to the csv file produced by \code{\link{downloadSequenceMetadata}}.}
+
+\item{in_explicitdir, out_explicitdir}{Directory names to use instead of 'in_subdir' and 'out_subdir', if static directory names or directories outside of \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S are desired. Not recommended for use within processing batches.}
 
 \item{primer_16S_fwd, primer_16S_rev}{DNA sequences of 16S forward and reverse primer, respectively}
 
 \item{multithread}{Default FALSE. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.}
-
-\item{post_samplename_pattern1, post_samplename_pattern2}{(Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).*\\.fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.}
 }
 \value{
-Integer matrix denoting the number of reads remaining after primer-trimming for each input file.
+(Invisibly) Integer matrix denoting the number of reads remaining after primer-trimming for each input file.
 }
 \description{
-Trims primers from 16S sequences using \code{\link[dada2]{filterAndTrim}}. This function
-assumes that each read begins with its full primer sequence and operates
-by truncating the beginning of each read by the length of its primer
-sequence.
+Trims primers from 16S sequences using \code{\link[dada2]{filterAndTrim}}.
+This function assumes that each read begins with its full primer sequence
+and operates by truncating the beginning of each read by the length of its
+primer sequence.
 }
 \examples{
 \dontrun{
-trimPrimers16S(c("sample1_R1.fastq", "sample1_R2.fastq", "sample2_R1.fastq", "sample2_R2.fastq"), "path/to/input", "path/to/output", "CCTACGGGNBGCASCAG", "GACTACNVGGGTATCTAATCC", multithread = TRUE)
+trimPrimers16S(c("sample1_R1.fastq", "sample1_R2.fastq", "sample2_R1.fastq", "sample2_R2.fastq"), "path/to/output", meta, "CCTACGGGNBGCASCAG", "GACTACNVGGGTATCTAATCC", multithread = TRUE)
 }
 }

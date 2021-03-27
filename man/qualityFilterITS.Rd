@@ -2,35 +2,25 @@
 % Please edit documentation in R/dada_wrappers.R
 \name{qualityFilterITS}
 \alias{qualityFilterITS}
-\title{Filter ITS Sequences}
+\title{Filter ITS Sequences (with metadata)}
 \usage{
-qualityFilterITS(
-  fn,
-  dir_in,
-  dir_out,
-  multithread = FALSE,
-  post_samplename_pattern1 = "_R1.*\\\\.fastq",
-  post_samplename_pattern2 = "_R2.*\\\\.fastq",
-  ...
-)
+qualityFilterITS(fn, dir_out, meta, multithread = FALSE, ...)
 }
 \arguments{
-\item{fn}{Names of input fastq files, excluding directory path which is specified by dir_in. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning. It is assumed that these are R1 (forward-read) files only.}
+\item{fn}{Full names of input fastq files, including directory. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning. It is assumed that these are R1 (forward-read) files only.}
 
-\item{dir_in}{Directory containing input fastq files.}
+\item{dir_out}{Directory where filtered fastq files will be written.}
 
-\item{dir_out}{Path to output directory where filtered fastq files will be written.}
+\item{meta}{The output of \code{\link{downloadSequenceMetadata}}. Must be provided as either the data.frame returned by \code{\link{downloadSequenceMetadata}} or as a filepath to the csv file produced by \code{\link{downloadSequenceMetadata}}.}
 
 \item{multithread}{Default FALSE. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.}
 
-\item{post_samplename_pattern1, post_samplename_pattern2}{(Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).*\\.fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.}
-
-\item{...}{Other arguments to be passed to \code{\link[dada2]{filterAndTrim}}, such as maxEE. See documentation for more details.}
+\item{...}{Other arguments to be passed to \code{\link[dada2]{filterAndTrim}}, such as maxEE, truncLen, and minLen. By default, uses \code{\link[dada2]{filterAndTrim}}'s default values. See documentation for \code{\link[dada2]{filterAndTrim}} for more details.}
 }
 \value{
-Two-column matrix displaying the number of reads in input vs. output for each file.
+(Invisibly) Two-column matrix displaying the number of reads in input vs. output for each file.
 }
 \description{
 Applies a quality filter to ITS sequence fastq files via the \code{\link[dada2]{filterAndTrim}} function.
-Currently only supports filtering forward-read sequences.
+Currently only supports filtering forward-read (R1) sequences. If reverse reads are included, they will be ignored.
 }

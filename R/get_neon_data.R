@@ -267,7 +267,7 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
 #' Performs basic QAQC checks on sequence metadata prior to downloading sequence data and performing bioinformatics processing.
 #' Running this function will remove metadata records for samples that do not meet user specifications. This will reduce the number of sequence files that are downloaded to only those that will be used for analysis, thereby saving file space and reducing download times.
 #'
-#' @param metadata The output of downloadSequenceMetadata(). Must be provided as either the data.frame returned by downloadSequenceMetadata() or as a filepath to the csv file produced by downloadSequenceMetadata() when outdir is provided.
+#' @param metadata The output of \code{\link{downloadSequenceMetadata}}. Must be provided as either the data.frame returned by \code{\link{downloadSequenceMetadata}} or as a filepath to the csv file produced by \code{\link{downloadSequenceMetadata}}.
 #' @param outDir Directory where QC'd metadata will be saved By default (NULL), QC'd metadata will be saved to file.path(NEONMICROBE_DIR_SEQMETA(), "qc_metadata")
 #' @param pairedReads "Y" (default) or "N". Should the forward reads for a sample be removed if the corresponding reverse read is missing? If "Y", then only samples that have both the forward (R1) and reverse (R2) reads will be retained.
 #' @param rmDupes TRUE (default) or FALSE. Should records with duplicated dnaSampleIDs be removed? If TRUE, then only the first records encountered for a particular dnaSampleID will be retained.
@@ -425,7 +425,7 @@ qcMetadata <- function(metadata, outDir=NULL, pairedReads="Y", rmDupes=TRUE, rmF
 #' Downloads NEON raw sequence data files to the specified filepath, by referencing
 #' URLs in the metadata output from \code{\link{downloadSequenceMetadata}}.
 #'
-#' @param metadata The output of downloadSequenceMetadata(). Must be provided as either the data.frame returned by downloadSequenceMetadata() or as a filepath to the csv file produced by downloadSequenceMetadata() when outdir is provided.
+#' @param metadata The output of \code{\link{downloadSequenceMetadata}}. Must be provided as either the data.frame returned by \code{\link{downloadSequenceMetadata}} or as a filepath to the csv file produced by \code{\link{downloadSequenceMetadata}}.
 #' @param outDir Location where output files are saved and sorted into target gene-specific subdirectories. By default (NULL), this is NEONMICROBE_DIR_SEQUENCE().
 #' @param overwrite Default FALSE. If TRUE, overwrites existing files.
 #' @param ignore_tar_files If TRUE (default), does not download tar files. Each tar file is a batch containing an entire sequence run of fastq files. The tar file structure will soon be deprecated.
@@ -555,7 +555,7 @@ downloadRawSequenceData <- function(metadata, outDir = NULL, overwrite=FALSE,
 #' renames files to include sequencer run ID, and untars sequence data if necessary.
 #'
 #' @param fn Character vector of full names (including path) of raw sequence files. Can include tarballs.
-#' @param metadata The output of downloadSequenceMetadata(). Must be provided as either the data.frame returned by downloadSequenceMetadata() or as a filepath to the csv file produced by downloadSequenceMetadata() when outDir is provided.
+#' @param metadata The output of \code{\link{downloadSequenceMetadata}}. Must be provided as either the data.frame returned by \code{\link{downloadSequenceMetadata}} or as a filepath to the csv file produced by \code{\link{downloadSequenceMetadata}}.
 #' @param outdir_sequence Default NEONMICROBE_DIR_SEQUENCE(). Directory where raw sequence files can be found before reorganizing.
 #' @param verbose If TRUE, prints message each time a file is reorganized.
 #'

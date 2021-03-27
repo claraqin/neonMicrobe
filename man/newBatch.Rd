@@ -11,7 +11,7 @@ newBatch(seqmeta_file, batch_id = NULL, batches_dir = NULL, overwrite = FALSE)
 
 \item{batch_id}{Character string. Unique ID to use for the new processing batch.}
 
-\item{batches_dir}{Directory where batch-specific directories are saved. By default (NULL), saves in NEONMICROBE_DIR_OUTPUTS(), ignoring batch modifications.}
+\item{batches_dir}{Directory where batch-specific directories are saved. By default (NULL), saves in NEONMICROBE_DIR_BATCHES().}
 
 \item{overwrite}{Default FALSE. If processing batch already exists in the specified directory, whether to overwrite it.}
 }

@@ -1,8 +1,8 @@
 ---
-title: "1. Download NEON Data"
+title: "Download NEON Data"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{download-neon-data}
+  %\VignetteIndexEntry{Download NEON Data}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -12,12 +12,26 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
+devtools::load_all() # TODO: Switch this to library(neonMicrobe) before publishing
 knitr::opts_knit$set(
   root.dir = NEONMICROBE_DIR_BASE()
 )
 ```
 
+
 This vignette demonstrates how to use the functions and parameters in this package to download the specific scope NEON soil microbe marker gene sequence data and associated data relevant to your analysis. 
+
+# Load libraries
+
+```{r, eval=FALSE}
+library(neonMicrobe)
+```
+
+```{r, message=FALSE}
+library(plyr)
+library(dplyr)
+library(neonUtilities)
+```
 
 
 # Set up directories
@@ -25,7 +39,11 @@ This vignette demonstrates how to use the functions and parameters in this packa
 First, set your working directory to be the location where you want `neonMicrobe`'s directory structure to take root. Then, run `setBaseDirectory()`.
 
 ```{r}
-setBaseDirectory()
+dirname(getwd())
+```
+
+```{r}
+setBaseDirectory(dirname(getwd()))
 ```
 
 Set up the directory structure associated with the various NEON data products. This will generate (recursively) the following directory structure

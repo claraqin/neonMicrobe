@@ -6,20 +6,23 @@
 \usage{
 downloadRawSequenceData(
   metadata,
-  outDir = NEONMICROBE_DIR_SEQUENCE(),
+  outDir = NULL,
+  overwrite = FALSE,
   ignore_tar_files = TRUE,
   checkSize = TRUE,
   verbose = FALSE
 )
 }
 \arguments{
-\item{metadata}{The output of downloadSequenceMetadata(). Must be provided as either the data.frame returned by downloadSequenceMetadata() or as a filepath to the csv file produced by downloadSequenceMetadata() when outdir is provided.}
+\item{metadata}{The output of \code{\link{downloadSequenceMetadata}}. Must be provided as either the data.frame returned by \code{\link{downloadSequenceMetadata}} or as a filepath to the csv file produced by \code{\link{downloadSequenceMetadata}}.}
+
+\item{outDir}{Location where output files are saved and sorted into target gene-specific subdirectories. By default (NULL), this is NEONMICROBE_DIR_SEQUENCE().}
+
+\item{overwrite}{Default FALSE. If TRUE, overwrites existing files.}
 
 \item{ignore_tar_files}{If TRUE (default), does not download tar files. Each tar file is a batch containing an entire sequence run of fastq files. The tar file structure will soon be deprecated.}
 
 \item{verbose}{If TRUE, prints status messages and progress bars associated with file downloads.}
-
-\item{outdir}{Location where output files are saved. Defaults to NEONMICROBE_DIR_SEQUENCE() in params.R.}
 }
 \value{
 Returns (invisibly) a list of integer codes: 0 indicates success of downloads and a non-zero integer indicates failure. See the help page for \code{\link[utils]{download.file}} for more details.

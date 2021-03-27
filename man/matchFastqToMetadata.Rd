@@ -27,6 +27,6 @@ Used in \code{\link{getPairedFastqFiles}} and \code{\link{removeUnpairedFastqFil
 }
 \examples{
 \dontrun{
-meta_ext <- matchFastqToMetadata(c("sample1_R1.fastq", "sample1_R2.fastq"), )
+meta_ext <- matchFastqToMetadata(c("sample1_R1.fastq", "sample1_R2.fastq"), meta)
 }
 }

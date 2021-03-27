@@ -2,7 +2,7 @@
 title: "Process ITS Sequences"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{process-its-sequences}
+  %\VignetteIndexEntry{Process ITS Sequences}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -12,34 +12,21 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
+devtools::load_all() # TODO: Switch this to library(neonMicrobe) before publishing
 knitr::opts_knit$set(
-  root.dir = "~/zhulab/neonSoilMicrobeProcessing/" # Update as necessary. Should refer to the absolute filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
+  root.dir = NEONMICROBE_DIR_BASE()
 )
 ```
 
-This vignette demonstrates how to use the functions and parameters in this package to process the raw NEON ITS sequence data into ASV tables. This vignette processes only the forward ITS reads, following recommendations by Pauvert et al. (2019).
+This vignette demonstrates how to use the functions and parameters in this package to process the raw NEON ITS sequence data into ASV tables using the DADA2 workflow. This vignette processes only the forward ITS reads, following recommendations by Pauvert et al. (2019).
 
-**Note:** If you are using this vignette as a reference, rather than running it as an RMarkdown script, be aware that you will need to manually set the working directory to the project root directory, e.g. `setwd(".../neonSoilMicrobeProcessing")`.
+It is assumed that you have already completed the steps in the "Download NEON Data" vignette, so that there are raw sequence files in the appropriate data directory.
 
-# Dependencies
+# Load libraries
 
-To begin, ensure that you have installed all dependencies.
-
-From BiocManager:
-
-```{r eval=FALSE}
-if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
-BiocManager::install("ShortRead")
-BiocManager::install("Biostrings")
-BiocManager::install("dada2")
+```{r, eva=FALSE}
+library(neonMicrobe)
 ```
-
-From CRAN:
-```{r eval=FALSE}
-install.packages(dplyr)
-```
-
-Load libraries
 
 ```{r message=FALSE}
 library(ShortRead)
@@ -48,11 +35,16 @@ library(dada2)
 library(dplyr)
 ```
 
-In addition, source files associated with this package:
+# Set up base directory
+
+Setting the base directory using `setBaseDirectory()` will create a point of reference for the `neonMicrobe` package, so that it knows where to look for the raw sequence files, and where to save the processed data. This should be the same base directory that you used in the "Download NEON Data" vignette.
 
 ```{r}
-source("./R/utils.R")
-source("./code/params.R")
+print(dirname(getwd()))
+```
+
+```{r}
+setBaseDirectory(getwd())
 ```
 
 # Setup variables

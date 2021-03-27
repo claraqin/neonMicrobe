@@ -2,7 +2,7 @@
 title: "Process 16S Sequences"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{process-its-sequences}
+  %\VignetteIndexEntry{Process 16S Sequences}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -12,222 +12,206 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
+devtools::load_all() # TODO: Switch this to library(neonMicrobe) before publishing
 knitr::opts_knit$set(
-  root.dir = rprojroot::find_rstudio_root_file() # Update as necessary. Should refer to the absolute filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
-)
-knitr::opts_knit$set(
-  root.dir = "~/Documents/UCSC/Projects/NEON_soil_microbe_processing"
+  root.dir = NEONMICROBE_DIR_BASE()
 )
 ```
 
-**Note:** If you are using this vignette as a reference, rather than running it as an RMarkdown script, be aware that you will need to manually set the working directory to the project root directory, e.g. `setwd(".../neonSoilMicrobeProcessing")`.
+This vignette demonstrates how to use the functions and parameters in this package to process the raw NEON 16S sequence data into ASV tables using the DADA2 workflow.
 
-# Dependencies
+It is assumed that you have already completed the steps in the "Download NEON Data" vignette, so that there are raw sequence files in the appropriate data directory.
 
-To begin, ensure that you have installed all dependencies.
+Note that few of the code chunks in this .Rmd file are actually run, because DADA2 functions have relatively long runtimes. Therefore, outputs like the read tracking tables are not displayed.
 
-From BiocManager:
 
-```{r eval=FALSE}
-if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
-BiocManager::install("ShortRead")
-BiocManager::install("Biostrings")
-BiocManager::install("dada2")
+# Load libraries
+
+```{r, eva=FALSE}
+library(neonMicrobe)
 ```
-
-From CRAN:
-```{r eval=FALSE}
-install.packages(dplyr)
-```
-
-Load libraries
 
 ```{r message=FALSE}
 library(ShortRead)
 library(Biostrings)
 library(dada2)
 library(dplyr)
+library(ggplot2)
 ```
 
-In addition, source files associated with this package:
+
+# Set up base directory
+
+Setting the base directory using `setBaseDirectory()` will create a point of reference for the `neonMicrobe` package, so that it knows where to look for the raw sequence files, and where to save the processed data. This should be the same base directory that you used in the "Download NEON Data" vignette.
 
 ```{r}
-source("./R/utils.R")
-source("./code/params.R")
+print(dirname(getwd()))
 ```
 
-# Setup variables
-
-Get filepath names:
-
 ```{r}
-if(is.null(PRESET_OUTDIR_SEQUENCE) | PRESET_OUTDIR_SEQUENCE == "") {
-  PATH_RAW <- file.path(getwd(), "data", "raw_sequence", "16S", "0_raw")
-} else {
-  PATH_RAW <- file.path(PRESET_OUTDIR_SEQUENCE, "16S", "0_raw")
-}
+setBaseDirectory(dirname(getwd()))
 ```
 
-Create output directory using today's date:
+
+# Select metadata
+
+As explained in the "Download NEON Data" vignette, `neonMicrobe` is a *metadata-first* processing pipeline. So we begin by retrieving sequence metadata. Any fastq files that are represented in the metadata will be processed by the functions in the next section, and any fastq files that are *not* represented in the metadata will be ignored. Therefore, it is recommended that you use the same metadata you used to download the files in the first place, lest you end up with fewer or more processed samples than intended.
 
 ```{r}
-today <- Sys.Date()
-if(is.null(PRESET_OUTDIR_OUTPUTS) | PRESET_OUTDIR_OUTPUTS == "") {
-  PATH_OUTPUTS <- file.path(getwd(), "outputs", today)
-} else {
-  PATH_OUTPUTS <- file.path(PRESET_OUTDIR_OUTPUTS, today)
-}
-dir.create(PATH_OUTPUTS)
-
-PATH_MIDPROCESS <- file.path(PATH_OUTPUTS, "mid_process", "16S")
-PATH_TRACK <- file.path(PATH_OUTPUTS, "track_reads", "16S")
-
-PATH_TRIMMED <- file.path(PATH_MIDPROCESS, "1_trimmed")
-PATH_FILTERED <- file.path(PATH_MIDPROCESS, "2_filtered")
-PATH_SEQTABS <- file.path(PATH_MIDPROCESS, "3_seqtabs")
-```
-
-Load sequence metadata. We'll pull in the newest metadata file, and give a warning if it doesn't contain as many samples as the sequence table contains.
-
-```{r}
-# Find newest metadata file
-df <- file.info(list.files(file.path(PRESET_OUTDIR,PRESET_OUTDIR_SEQMETA), full.names = T)) %>% 
-  tibble::rownames_to_column('filename') %>%
-  filter(grepl("soilMetadata_16S", filename)) %>%
-  arrange(desc(mtime))
-selected_metadata <- df[which.max(df$mtime),]$filename
-meta_full <- read.csv(selected_metadata)
-
-# n_seq_samples <- nrow(seqtab_orig)
-n_sampledata <- nrow(meta_full)
-# if (n_seq_samples > n_sampledata) {
-# 	msg <- paste0("There appear to be more samples in your sequence table than in your metadata table! You will need to download additional metadata for this vignette to work. See vignette #1 for metadata downloading function.")
-# 	message(msg)
-# }
-message("For 16S processing, used newest sequence metadata file: ", selected_metadata, ". This defines the entire scope of sequence metadata that was processed. If this is not what you wanted, then modify the variable 'select_metadata` and re-run.")
-```
-
-Quality control metadata
-
-```{r}
-meta <- qcMetadata(meta_full)
+data("seqmeta_greatplains")
+meta <- seqmeta_greatplains
 meta$date_ymd <- as.Date(format(as.Date(meta$collectDate, format="%Y-%m-%d %H:%M:%S"), "%Y-%m-%d"))
 ```
 
-Match fastq files to metadata:
+
+# Process reads into ASV tables
+
+It is generally better to use DADA2 to process one sequencing run at a time, because different sequencing runs may have different error rates, and the dada sequence-calling algorithm assumes homogeneous error rates across input samples. We can retrieve all sequencing run IDs from the metadata:
 
 ```{r}
-meta_fn <- matchFastqToMetadata(list.files(PATH_RAW, full.names=TRUE), meta)
+unique_runs <- unique(meta$sequencerRunID)
 ```
 
-Get all run IDs so you can process fastq files in sequencing-run batches:
+For demonstration purposes, we show how you would process just one sequencing run. In practice, the remainder of this section may be enclosed within a `for` loop that cycles through all sequencing runs in the metadata.
 
 ```{r}
-unique_runs <- unique(meta_fn$sequencerRunID)
+meta_onerun <- meta[which(meta$sequencerRunID==unique_runs[1]),]
+nrow(meta_onerun)
 ```
 
-# Process reads
-
-We use DADA2 to process reads one sequencing run at a time.
+Although you can specify filenames to process, here we'll just use all the filenames specified in this subset of the metadata. (Don't worry; any files that don't exist in the file system will be safely ignored.) Note that these filenames are just basenames, i.e. they contain no directory path information. This is fine, as we will see in the next code chunk.
 
 ```{r}
-seqtab_filenames <- c()
-t1 <- Sys.time()
-ti <- c()
-for (i in 1:length(unique_runs)) {
-  runID <- unique_runs[i]
-  message(paste0("Began processing ", runID, " at ", Sys.time()))
-
-  # Get fastq files from this sequencing run ID
-  fn <- meta_fn$file[which(meta_fn$sequencerRunID==runID)]
-  fn_base <- basename(fn)
-  if(length(fn)==0) {
-    message("No files found for sequencing run ", runID, ". Trying next sequencing run.")
-    next
-  }
-
-  # Trim reads based on the primer lengths supplied in params.r
-  trim_trackReads <- trimPrimers16S2(fn, PATH_TRIMMED, meta, "CCTACGGGNBGCASCAG", "GACTACNVGGGTATCTAATCC")
-
-  # Filter reads based on the settings in params.r
-  filter_trackReads <- qualityFilter16S2(file.path(PATH_TRIMMED, fn_base), PATH_FILTERED, meta, multithread = MULTITHREAD, maxEE = c(MAX_EE_FWD, MAX_EE_REV), truncLen=220)
-
-  # Now create sequence table for run
-  seqtab.list <- runDada16S2(file.path(PATH_FILTERED, fn_base), meta, remove_chimeras=TRUE, multithread=MULTITHREAD, verbose=VERBOSE)
-
-  # Create output tracking file
-  track <- Reduce(
-    function(x, y, ...) transform(merge(x, y, by = 0, all = TRUE, ...), row.names=Row.names, Row.names = NULL),
-    list(trim_trackReads, 
-         filter_trackReads[,2,drop=FALSE], 
-         seqtab.list$track)
-  )
-  names(track)[3] <- "filtered"
-  track[is.na(track)] <- 0
-
-  # Save tracking table (which tracks no. of reads remaining at each stage) and sequence table
-  write.csv(track, file.path(PATH_TRACK, paste0("track_reads_", runID, ".csv")))
-  saveRDS(seqtab.list$seqtab, file.path(PATH_SEQTABS, paste0("NEON_16S_seqtab_nochim_", runID, ".rds")))
-  seqtab_filenames <- c(seqtab_filenames, file.path(PATH_SEQTABS, paste0("NEON_16S_seqtab_nochim_", runID, ".rds")))
-  message(paste0("Finished processing reads in ", runID, " at ", Sys.time()))
-  message(paste0("Sequencing run-specific sequence tables can be found in ", PATH_SEQTABS))
-  
-  # Clean up
-  rm(trim_trackReads)
-  rm(filter_trackReads)
-  rm(seqtab.list)
-}
+fl_nm <- meta_onerun$rawDataFileName
+head(fl_nm)
 ```
 
-Merge the sequence tables from all runs
+## Trim primers from the 16S sequences
 
-```{r}
-if(length(seqtab_filenames) == 1) {
-  seqtab_joined <- readRDS(seqtab_filenames[1])
-} else {
-  seqtab_joined <- mergeSequenceTables(tables = seqtab_filenames)
-}
+`trimPrimers16S()` trims primer sequences from 16S reads by using the `dada2` function `filterAndTrim()`. `trimPrimers16S()` assumes that each read begins with its full primer sequence and operates by truncating the beginning of each read by the length of its primer sequence. Should this aspect of the NEON 16S sequence data change, this step will need to be modified.
+
+In `trimPrimers16S()`, the argument `in_subdir` is "raw" -- a reserved value that tells the function to look for the input files in a special subdirectory of `NEONMICROBE_DIR_SEQUENCE()`. Any other value passed to `in_subdir` would tell it to look for the input files in the corresponding subdirectory of `NEONMICROBE_DIR_MIDPROCESS()`. To override this behavior and specify an input directory explicitly, pass a directory path to `in_explicitdir`. The same rules apply for `out_subdir` (which can be overridden with `out_explicitdir`), except that it has no specially reserved values.
+
+`trimPrimers16S()` additionally returns an integer matrix denoting the number of reads remaining after primer-trimming for each input file.
+
+```{r, eval=FALSE}
+trim_trackReads <- trimPrimers16S(fl_nm, in_subdir = "raw", out_subdir = "1_trimmed", 
+                                  meta = seqmeta_greatplains)
 ```
 
-Next, we'll assign taxonomy to each of the identified sequences. This is a computationally expensive step - it can take hours, or even days, to run. Because of this, we're going to reduce the size of the dataset, by removing samples with fewer than 1000 reads, as well as any taxa with fewer than 10 counts in the whole dataset. This is optional, and the cutoffs here can be modified.
+## Filter the 16S sequences
 
-```{r}
-# Remove low-abundance taxa (optional)
-keep <- which(colSums(seqtab_orig) > 10)
-seqtab_joined <- seqtab_orig[,keep]
+`qualityFilter16S()` filters 16S reads by their quality scores, also by using `filterAndTrim()`. The argument structure of `qualityFilter16S()` is similar to that of `trimPrimers16S()`, except for its optional arguments related to quality filtering parameters, which are passed to `filterAndTrim()`. You can learn more about these quality filtering parameters at `?dada2::filterAndTrim`. Here are the definitions of some of the most commonly used parameters:
 
-# Remove low-quality samples (optional)
-keep <- which(rowSums(seqtab) > 1000)
-seqtab_joined <- seqtab_joined[keep,]
+- `truncLen`: Default 0 (no truncation). Truncate reads after `truncLen` bases. Reads shorter than this are discarded.
+- `minLen`: Default 20. Remove reads with length less than `minLen`. `minLen` is enforced after trimming and truncation.
+- `maxEE`: Default Inf (no EE filtering). After truncation, reads with higher than `maxEE` "expected errors" will be discarded. Expected errors are calculated from the nominal definition of the quality score: `$EE = \sum_{l=1}^{L} 10^{-Q_l/10}$`, where `$L$` is the length of the read.
+
+How do you decide what quality filtering parameters to use? One way is to use the `dada2` function `plotQualityProfile()` to visually inspect the quality profiles of a collection of reads. `neonMicrobe` also offers an extension of `plotQualityProfile()` called `plotEEProfile()`, which translates quality scores of reads into cumulative expected errors. This is particularly useful for understanding how `truncLen` and `maxEE` interact to affect the read retention rate.
+
+```{r, fig.width=6, fig.height=6}
+files_to_plot <- list.files(file.path(NEONMICROBE_DIR_SEQUENCE(), "16S"), full.names=TRUE,
+                            pattern="fastq")
+plotEEProfile(files_to_plot, aggregate=FALSE) 
+# set aggregate = TRUE to produce one plot combining all reads across files
+```
+
+The reads in these samples are of reasonably high quality, but as is typical with the Illumina MiSeq platform, the reverse reads are lower in quality than the forward reads. We can set different parameters for the forward and reverse reads by entering a vector of two numbers into each of the quality filtering arguments we wish to specify, `c([forward-read value], [reverse-read value])`.
+
+```{r, eval=FALSE}
+filter_trackReads <- qualityFilter16S(
+  fl_nm, in_subdir = "1_trimmed", out_subdir = "2_filtered",
+  meta = seqmeta_greatplains, truncLen = c(250, 230), maxEE = c(2, 8))
+```
+
+## Denoise reads using the dada algorithm
+
+`runDada16S()` picks or "denoises" 16S reads to generate an amplicon sequence variant (ASV) table by using the 'dada' algorithm. It first calculates the expected base-calling error rate of the reads, and then uses the 'dada' divisive partitioning algorithm to iteratively separate reads into groups distinguished by their likelihood of referring to the same true sequence, until a threshold is reached. Once finished, the partitions are considered amplicon sequence variants (ASVs), and are used to populate a sequence abundance table. (Read the DADA2 methods paper, [Callahan et al. (2016)](https://doi.org/10.1038/nmeth.3869), for more details.) 
+
+`runDada16s()` is actually a wrapper for four different `dada2` functions that carry out the process just outlined: `learnErrors()`, `derepFastq()`, `dada()`, and `mergePairs()`. Since so many functions are wrapped by `runDada16S()`, it may be worth familiarizing yourself with the source code for `runDada16()`, as well as the documentation for the wrapped functions, to ensure it is behaving as expected.
+
+The arguments to `runDada16S()` follow the same conventions as `trimPrimers16S()` and `qualityFilter16S()` for the input variables, but `runDada16S()` requires output file names instead of directory names. `out_seqtab` is the file path where the ASV table will be written, and `out_track` is the file path where the read tracking table will be written. By default, these refer to special subdirectories in `NEONMICROBE_DIR_MIDPROCESS()` and `NEONMICROBE_DIR_TRACKREADS()`, respectively, and the file-writing behavior can be suppressed by setting the corresponding argument to `FALSE`. These ASV table and read-tracking table will also be returned by this `runDada16S()`, but since `runDada16S()` takes so long to run, forgetting to assign its output to a variable could result in a lot of lost time... hence, these output file name arguments.
+
+```{r, eval=FALSE} 
+dada_out <- runDada16S(
+  fl_nm, in_subdir = "2_filtered", meta = seqmeta_greatplains, verbose = FALSE,
+  multithread = TRUE) # set multithread = FALSE on Windows computers though
+```
+
+**And there you have it: You've created an ASV table from the NEON 16S sequences!**
+
+
+## Combine the read-tracking tables
+
+It can be useful to track the loss of reads at each step in the processing pipeline, as it may allow you to pinpoint where something went wrong. Each of the processing functions shown above (`trimPrimers16S()`, `qualityFilter16S()`, and `runDada16S()`) returns a read-tracking table. The tables can be combined using the following function. Setting `out_file = NULL` tells the function to save the combined read-tracking table in the specialized directory within `NEONMICROBE_DIR_TRACKREADS()` -- a behavior that can be suppressed by setting `out_file = FALSE`.
+
+```{r, eval=FALSE}
+combineReadTrackingTables16S(trim_trackReads, filter_trackReads, dada_out$track, out_file = NULL)
+```
+
+At this point, it is safe to clear some variables from the R environment, freeing up memory. This is especially important when processing multiple sequencing runs one after another.
+
+```{r, eval=FALSE}
+rm(trim_trackReads)
+rm(filter_trackReads)
+rm(dada_out)
+```
+
+
+## Merging ASV tables from across sequencing runs
+
+If you've processed multiple sequencing runs separately (as you should!), then you will have created multiple ASV tables. You can merge ASV tables together using the `dada2` function `mergeSequenceTables()`.
+
+```{r, eval=FALSE}
+seqtab_joined <- mergeSequenceTables(tables = seqtab_filenames)
+```
+
+While `mergeSequenceTables()` checks for duplicate samples, it performs no ASV clustering. Clustering may be prudent when joining sequences across sequencing runs, because the 'dada' algorithm could produce an ASV in one run that is identical to an ASV in another run *except that one of the ASVs is one or two base pairs longer*. (Anecdotally, this can result in the detection of a mean effect on community composition where it does not exist!) ASVs that differ only in length can be combined using any "100% clustering" algorithm, and `dada2` provides one through `collapseNoMismatch()`. Be warned, though, that at the time of writing (`dada2` version 1.12.1), `collapseNoMismatch()` is not parallelizable, and does not scale well with an increasing number of ASVs. 
+
+```{r, eval=FALSE}
+seqtab_joined_collapsed <- collapseNoMismatch(seqtab_joined)
+write.csv(seqtab_joined_collapse, 
+          file.path(NEONMICROBE_PATH_MIDPROCESS(), "16S", "4_collapsed",
+                    paste0("asv_16s_collapsed_", sub(" ", "_", gsub(":", "", Sys.time())), ".csv")))
+```
+
+
+# Assigning taxonomy
+
+In this final section of the vignette, we assign taxonomy to each of the identified sequences. This is a computationally expensive step - it can take hours, or even days, to run. Because of this, we're going to reduce the size of the dataset, by removing samples with fewer than 1000 reads, as well as any taxa with fewer than 10 counts in the whole dataset. This is optional, and the cutoffs here can be modified.
+
+```{r, eval=FALSE}
+# Remove low-abundance taxa and low-quality samples
+keep_taxa <- which(colSums(seqtab_joined_collapsed) > 10)
+keep_samples <- which(rowSums(seqtab_joined_collapsed) > 1000)
+seqtab_joined_collapsed <- seqtab_joined_collapsed[,keep_taxa]
+seqtab_joined_collapsed <- seqtab_joined_collapsed[keep_samples,]
 
 # Check size of dataset
-print(dim(seqtab_joined))
+print(dim(seqtab_joined_collapsed))
 ```
 
+We will be assigning taxonomy using the SILVA reference database. Download the SILVA reference database if necessary.
 
-## Download Silva reference database if necessary
-If you have already downloaded a taxonomic database, change the `SILVA_REF_PATH` parameter in the params.r file.
-
-```{r}
+```{r, eval=FALSE}
 silva.url <- "https://zenodo.org/record/3986799/files/silva_nr99_v138_train_set.fa.gz"
-if(!file.exists(SILVA_REF_PATH)){
-	download.file(silva.url, SILVA_REF_PATH)
-}
-
+download.file(silva.url, NEONMICROBE_DIR_TAXREF(), basename(silva.url))
 ```
 
-## Assign taxonomy using the Silva reference database
-```{r}
-tax <- assignTaxonomy(seqtab_joined, SILVA_REF_PATH, multithread = MULTITHREAD, verbose = VERBOSE)
+Assign taxonomy using the SILVA reference database:
+
+```{r, eval=FALSE}
+tax <- assignTaxonomy(
+  seqtab_joined_collapsed, file.path(NEONMICROBE_DIR_TAXREF(), basename(silva.url)), 
+  verbose = TRUE, multithread = TRUE) # set multithread = FALSE on Windows computers though
 ```
 
-## Save processed data to file
+Save the taxonomy table to file:
 
-```{r}
-# Save OTU table and taxonomic table as RDS files
-# to hand off to dada2_to_phyloseq.R
-saveRDS(seqtab_joined, file.path(PATH_OUTPUTS, "NEON_16S_seqtab.rds"))
-saveRDS(tax, file.path(PATH_OUTPUTS, "NEON_16S_tax.rds"))
+```{r, eval=FALSE}
+write.csv(tax, 
+          file.path(NEONMICROBE_DIR_OUTPUTS(), "16S", "5_tax", 
+                    paste0("tax_16s_collapsed_", sub(" ", "_", gsub(":", "", Sys.time())), ".csv")))
 ```
 
 

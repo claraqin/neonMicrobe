@@ -47,13 +47,6 @@ makeDataDirectories <- function(check_location = TRUE) {
   outputs_dir <- NEONMICROBE_DIR_OUTPUTS()
   batches_dir <- NEONMICROBE_DIR_BATCHES()
 
-  # if(is.null(seq_dir) | seq_dir == "") seq_dir <- file.path(getwd(), "data", "raw_sequence")
-  # if(is.null(seqmeta_dir) | seqmeta_dir == "") seqmeta_dir <- file.path(getwd(), "data", "sequence_metadata")
-  # if(is.null(soil_dir) | soil_dir == "") soil_dir <- file.path(getwd(), "data", "soil")
-  # if(is.null(taxref_dir) | taxref_dir == "") taxref_dir <- file.path(getwd(), "data", "tax_ref")
-  # if(is.null(outputs_dir) | outputs_dir == "") outputs_dir <- file.path(getwd(), "outputs")
-  # if(is.null(outputs_dir) | outputs_dir == "") outputs_dir <- file.path(getwd(), "batch_outputs")
-
   message("Building output directories:")
   message("Using '", seq_dir, "' as sequence subdirectory.")
   message("Using '", seqmeta_dir, "' as sequence metadata subdirectory.")
@@ -63,41 +56,36 @@ makeDataDirectories <- function(check_location = TRUE) {
   message("Using '", batches_dir, "' as batches output data subdirectory.")
 
   createDirIfNotExist <- function(dir) {
-    if(!dir.exists(dir)) dir.create(dir, recursive=TRUE)
+    if(length(dir) == 1) {
+      if(!dir.exists(dir)) dir.create(dir, recursive=TRUE)
+    } else {
+      for(d in dir) {
+        if(!dir.exists(d)) dir.create(d, recursive=TRUE)
+      }
+    }
   }
 
   # If preset output directories for raw and QC'd sequence metadata do not exist, create them
-  createDirIfNotExist(seqmeta_dir)
-  raw_seqmeta_dir <- file.path(seqmeta_dir, "raw_metadata")
-  qc_seqmeta_dir <- file.path(seqmeta_dir, "qc_metadata")
-  createDirIfNotExist(raw_seqmeta_dir)
-  createDirIfNotExist(qc_seqmeta_dir)
+  createDirIfNotExist(file.path(seqmeta_dir, c("raw_metadata",
+                                               "qc_metadata")))
 
   # If preset directories for ITS and 16S data do not exist, create them
-  createDirIfNotExist(seq_dir)
-  seq_its_dir <- file.path(seq_dir, "ITS")
-  seq_16s_dir <- file.path(seq_dir, "16S")
-  createDirIfNotExist(file.path(seq_its_dir, "0_raw"))
-  createDirIfNotExist(file.path(seq_16s_dir, "0_raw"))
+  createDirIfNotExist(file.path(seq_dir, c("ITS",
+                                           "16S")))
 
   # Create intermediary directories for ITS and 16S data in the middle
   # of being processed
-  createDirIfNotExist(outputs_dir)
-  processing_its_dir <- file.path(outputs_dir, "mid_process", "ITS")
-  processing_16s_dir <- file.path(outputs_dir, "mid_process", "16S")
-  createDirIfNotExist(file.path(processing_its_dir, "1_filtN"))
-  createDirIfNotExist(file.path(processing_its_dir, "2_trimmed"))
-  createDirIfNotExist(file.path(processing_its_dir, "3_filtered"))
-  createDirIfNotExist(file.path(processing_its_dir, "4_seqtabs"))
-  createDirIfNotExist(file.path(processing_16s_dir, "1_trimmed"))
-  createDirIfNotExist(file.path(processing_16s_dir, "2_filtered"))
-  createDirIfNotExist(file.path(processing_16s_dir, "3_seqtabs"))
+  createDirIfNotExist(file.path(outputs_dir, "mid_process", "ITS", c("1_filtN",
+                                                                     "2_trimmed",
+                                                                     "3_filtered",
+                                                                     "4_seqtabs")))
+  createDirIfNotExist(file.path(outputs_dir, "mid_process", "16S", c("1_trimmed",
+                                                                     "2_filtered",
+                                                                     "3_seqtabs")))
 
   # Also create directories for read-tracking tables
-  read_tracking_its_dir <- file.path(outputs_dir, "track_reads", "ITS")
-  read_tracking_16s_dir <- file.path(outputs_dir, "track_reads", "16S")
-  createDirIfNotExist(read_tracking_its_dir)
-  createDirIfNotExist(read_tracking_16s_dir)
+  createDirIfNotExist(file.path(outputs_dir, "track_reads", c("ITS",
+                                                              "16S")))
 
   # If preset directory for soil data does not exist, create it
   createDirIfNotExist(soil_dir)
@@ -115,6 +103,12 @@ makeDataDirectories <- function(check_location = TRUE) {
 ###############################
 # Dynamic directory names:
 
+#' Dynamic Directory Name for Base Directory
+#'
+#' @return Directory path (character).
+#' @export
+#'
+#' @examples
 NEONMICROBE_DIR_BASE <- function() {
   if("NEONMICROBE_DIR_BASE" %in% ls(envir = neonmicrobe_env)) {
     get("NEONMICROBE_DIR_BASE", envir = neonmicrobe_env)
@@ -123,24 +117,63 @@ NEONMICROBE_DIR_BASE <- function() {
     getwd()
   }
 }
-# for sequence data (fastq files)
+
+#' Dynamic Directory Name for Raw Sequence Data
+#'
+#' For raw sequence data (fastq files) from NEON soil microbe marker gene sequences
+#' (DP1.10108.001).
+#'
+#' @return Directory path (character).
+#' @export
 NEONMICROBE_DIR_SEQUENCE <- function() {
   file.path(NEONMICROBE_DIR_BASE(), "data", "raw_sequence/")
 }
-# for sequence metadata
+
+#' Dynamic Directory Name for Sequence Metadata
+#'
+#' For metadata associated with NEON soil microbe marker gene sequences (DP1.10108.001).
+#'
+#' @return Directory path (character).
+#' @export
 NEONMICROBE_DIR_SEQMETA <- function() {
   file.path(NEONMICROBE_DIR_BASE(), "data", "sequence_metadata/")
 }
-# for soil data
+
+#' Dynamic Directory Name for Soil Data
+#'
+#' For NEON soil data DP1.10086.001:
+#' "Soil physical and chemical properties, periodic",
+#' tables sls_soilCoreCollection, sls_soilMoisture, sls_soilpH, and sls_soilChemistry.
+#'
+#' @return Directory path (character).
+#' @export
 NEONMICROBE_DIR_SOIL <- function() {
   file.path(NEONMICROBE_DIR_BASE(), "data", "soil/")
 }
-# for taxonomy reference data
+
+
+#' Dynamic Directory Name for Taxonomic Reference Data
+#'
+#' For taxonomic reference data, e.g. UNITE and SILVA databases.
+#' Not strictly necessary for functioning, so long as user specifies
+#' reference datasets in \code{\link[dada2]{assignTaxonomy}}.
+#'
+#' @return Directory path (character).
+#' @export
 NEONMICROBE_DIR_TAXREF <- function() {
   file.path(NEONMICROBE_DIR_BASE(), "data", "tax_ref/")
 }
 
-# for outputs (sequence table, taxonomy table, phyloseq object). Contains mid_process and track_reads
+#' Dynamic Directory Name for Outputs
+#'
+#' For outputs (sequence table, taxonomy table, phyloseq object).
+#' Contains mid_process and track_reads. Subject to modification
+#' by batch processing parameters.
+#'
+#' @param dir If not NULL, directory path to force this to return.
+#'
+#' @return Directory path (character).
+#' @export
 NEONMICROBE_DIR_OUTPUTS <- function(dir = NULL) {
   checkArgsAgainstBatchParams("dir" = "DIR_OUTPUTS", verbose=FALSE)
   if(is.null(dir)) {
@@ -150,7 +183,25 @@ NEONMICROBE_DIR_OUTPUTS <- function(dir = NULL) {
   }
 }
 
-# for batch-specific outputs (when processing batch is set using setBatch() or newBatch())
+#' Dynamic Directory Name for Mid-Processing Fastq Files
+#'
+#' For sequence files in the middle of being processed. Subject
+#' to modification by batch processing parameters via their
+#' modifications to \code{link{NEONMICROBE_DIR_OUTPUTS}}, of which
+#' this is a subdirectory. Contains subdirs "16S", "ITS".
+#'
+#' @return Directory path (character).
+#' @export
+NEONMICROBE_DIR_MIDPROCESS <- function() {
+  file.path(NEONMICROBE_DIR_OUTPUTS(), "mid_process")
+}
+
+#' Dynamic Directory Name for Processing Batch Outputs
+#'
+#' For batch-specific outputs (when processing batch is set using \code{\link{setBatch}} or \code{\link{newBatch}})
+#'
+#' @return Directory path (character).
+#' @export
 NEONMICROBE_DIR_BATCHES <- function() {
   file.path(NEONMICROBE_DIR_BASE(), "batch_outputs")
 }
@@ -163,12 +214,16 @@ NEONMICROBE_DIR_BATCHES <- function() {
 #     file.path(outputs_dir, "mid_process")
 #   }
 # }
-# NEONMICROBE_DIR_TRACKREADS <- function(outputs_dir = NULL) { # for read-tracking tables
-#   checkArgsAgainstBatchParams("outputs_dir" = "DIR_OUTPUTS", verbose=FALSE)
-#   if(is.null(outputs_dir)) {
-#     file.path(NEONMICROBE_DIR_OUTPUTS(), "track_reads")
-#   } else {
-#     file.path(outputs_dir, "track_reads")
-#   }
-# }
+
+#' Dynamic Directory Name for Read-Tracking Tables
+#'
+#' For read-tracking tables. Subject to modification by batch
+#' processing parameters via their modifications to \code{link{NEONMICROBE_DIR_OUTPUTS}},
+#' of which this is a subdirectory. Contains subdirs "16S", "ITS".
+#'
+#' @return Directory path (character).
+#' @export
+NEONMICROBE_DIR_TRACKREADS <- function() { # for read-tracking tables
+  file.path(NEONMICROBE_DIR_OUTPUTS(), "track_reads")
+}
 ###############################

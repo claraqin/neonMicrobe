@@ -2,47 +2,53 @@
 % Please edit documentation in R/dada_wrappers.R
 \name{runDadaITS}
 \alias{runDadaITS}
-\title{Run Dada on R1 ITS sequences}
+\title{Run Dada on R1 ITS Sequences (with metadata)}
 \usage{
 runDadaITS(
   fn,
-  dir_in,
+  meta,
+  out_seqtab = "",
+  out_track = "",
+  remove_chimeras = TRUE,
   multithread = FALSE,
   verbose = FALSE,
   seed = NULL,
-  post_samplename_pattern1 = "_R1.*\\\\.fastq",
-  post_samplename_pattern2 = "_R2.*\\\\.fastq",
   nbases = 1e+07
 )
 }
 \arguments{
-\item{fn}{Names of input fastq files, excluding directory path which is specified by dir_in. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning. It is assumed that these are R1 (forward-read) files only.}
+\item{fn}{Full names of input fastq files, including directory. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning.}
 
-\item{dir_in}{Directory containing input fastq files.}
+\item{meta}{The output of \code{\link{downloadSequenceMetadata}}. Must be provided as either the data.frame returned by \code{\link{downloadSequenceMetadata}} or as a filepath to the csv file produced by \code{\link{downloadSequenceMetadata}}.}
+
+\item{out_seqtab, out_track}{(Optional) File locations where sequence table and read-tracking table (respectively) will be saved as csv files. If blank (default), will not save to file.}
+
+\item{remove_chimeras}{(Optional) Default TRUE. Whether to remove chimeras from the sequence table. Currently only supports removal using \code{\link[dada2]{removeBimeraDenovo}} with the consensus method.}
 
 \item{multithread}{Default FALSE. Whether to use multithreading.}
 
-\item{verbose}{Default FALSE. Whether to print messages regarding the dereplication step, the denoising step, and the dimensions of the resulting sequence table and the distribution of sequence lengths.}
+\item{verbose}{Default FALSE. Whether to print messages regarding the samples being processed, dimensions of the resulting sequence table, and the distribution of sequence lengths.}
 
 \item{seed}{(Optional) Integer to use as random seed for reproducibility.}
-
-\item{post_samplename_pattern1, post_samplename_pattern2}{(Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).*\\.fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.}
 
 \item{nbases}{(Optional) Number of bases to use for learning errors. Default 1e7.}
 }
 \value{
-A list of three elements. \strong{seqtab} is the sequence table before removing chimeras, \strong{seqtab.nochim} is the sequence table after removing chimeras, and \strong{track} is a data frame displaying the number of reads remaining for each sample at various points throughout the processing pipeline.
+(Invisibly) A list of two elements. \strong{seqtab} is the sequence table, with chimeras removed if remove_chimeras == TRUE, and \strong{track} is a data frame displaying the number of reads remaining for each sample at various points throughout the processing pipeline.
 }
 \description{
-Runs the Dada algorithm to infer sample composition from R1 ITS fastq files.
-We recommend using only the R1 reads because attempting to merge with R2
+Runs the Dada algorithm to infer sample composition. Currently only supports (R1)
+sequences. If reverse reads are included, they will be ignored.
+We use only the R1 reads because attempting to merge with R2
 reads may result in less accurate representations of the fungal community
 composition (Pauvert et al., 2019).
+}
+\details{
 This implementation is based on Ben Callahan's vignettes at \url{https://benjjneb.github.io/dada2/bigdata.html}
 and \url{https://benjjneb.github.io/dada2/ITS_workflow.html}.
 }
 \examples{
 \dontrun{
-seqtab.list <- runDadaITS(c("sample1_R1.fastq", "sample1_R2.fastq", "sample2_R1.fastq", "sample2_R2.fastq"), './seq/filtered/', seed=1010100)
+seqtab.list <- runDada16S(c("sample1_R1.fastq", "sample1_R2.fastq", "sample2_R1.fastq", "sample2_R2.fastq"), meta, seed=1010100)
 }
 }

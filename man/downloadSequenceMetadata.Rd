@@ -11,7 +11,7 @@ downloadSequenceMetadata(
   targetGene = "all",
   sequencingRuns = "",
   dpID = "DP1.10108.001",
-  outDir = file.path(NEONMICROBE_DIR_SEQMETA(), "raw_sequence")
+  outDir = NULL
 )
 }
 \arguments{
@@ -25,7 +25,7 @@ downloadSequenceMetadata(
 
 \item{dpID}{NEON data product of interest. Default is soil marker gene sequences, and currently code only works for marker genes data products.}
 
-\item{outDir}{Default file.path(NEONMICROBE_DIR_SEQMETA(), "raw_sequence"). To save a copy of the metadata to the local file system, provide the path to output directory. If this behavior is not desired, set outDir=FALSE.}
+\item{outDir}{Directory where a copy of the downloaded data will be saved. By default (NULL), this is file.path(NEONMICROBE_DIR_SEQMETA(), "raw_metadata"). If no copy should be saved, set outDir=FALSE.}
 }
 \value{
 Data frame containing joined records from across the NEON soil marker gene sequence metadata, subsetted according to function arguments.

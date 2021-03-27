@@ -2,33 +2,36 @@
 % Please edit documentation in R/dada_wrappers.R
 \name{trimPrimersITS}
 \alias{trimPrimersITS}
-\title{Trim Primers from ITS Sequences}
+\title{Trim Primers from ITS Sequences (with metadata)}
 \usage{
 trimPrimersITS(
   fn,
-  dir_in,
-  dir_out,
-  primer_ITS_fwd,
-  primer_ITS_rev,
-  cutadapt_path = CUTADAPT_PATH,
-  post_samplename_pattern1 = "_R1.*\\\\.fastq",
-  post_samplename_pattern2 = "_R2.*\\\\.fastq",
+  in_subdir,
+  out_subdir,
+  meta,
+  cutadapt_path,
+  in_explicitdir = NULL,
+  out_explicitdir = NULL,
+  primer_ITS_fwd = "CTTGGTCATTTAGAGGAAGTAA",
+  primer_ITS_rev = "GCTGCGTTCTTCATCGATGC",
   very_verbose = FALSE,
   discard_untrimmed = FALSE
 )
 }
 \arguments{
-\item{fn}{Names of input fastq files, excluding directory path which is specified by dir_in. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning. It is assumed that these are R1 (forward-read) files only.}
+\item{fn}{Base names of input fastq files. If inputs are not base names (i.e. if they include directory paths), the directory paths will be removed. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning.}
 
-\item{dir_in}{Directory containing input fastq files.}
+\item{in_subdir}{Subdirectory name from which to retrieve input fastq files. Enter "raw" for raw sequence files, or any other character string to specify a subdirectory within \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/ITS. To specify a directory outside \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/ITS, use the 'in_explicitdir' argument.}
 
-\item{dir_out}{Output directory. If it does not exist, it will be created.}
+\item{out_subdir}{Subdirectory name where output fastq files will be written. Enter any character string to specify a subdirectory within \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/ITS. If the directory does not exist, it will be created. To specify a directory outside \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/ITS, use the 'out_explicitdir' argument.}
 
-\item{primer_ITS_fwd, primer_ITS_rev}{DNA sequence of the ITS forward and reverse primer, respectively.}
+\item{meta}{The output of \code{\link{downloadSequenceMetadata}}. Must be provided as either the data.frame returned by \code{\link{downloadSequenceMetadata}} or as a filepath to the csv file produced by \code{\link{downloadSequenceMetadata}}.}
 
 \item{cutadapt_path}{Default CUTADAPT_PATH in params.R. Path to cutadapt on your file system.}
 
-\item{post_samplename_pattern1, post_samplename_pattern2}{(Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).*\\.fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.}
+\item{in_explicitdir, out_explicitdir}{Directory names to use instead of 'in_subdir' and 'out_subdir', if static directory names or directories outside of \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/ITS are desired. Not recommended for use within processing batches.}
+
+\item{primer_ITS_fwd, primer_ITS_rev}{DNA sequence of the ITS forward and reverse primer, respectively.}
 
 \item{very_verbose}{Default FALSE. Whether to print output from cutadapt.}
 
@@ -38,7 +41,7 @@ trimPrimersITS(
 No value is returned.
 }
 \description{
-Trims primers from ITS sequences using cutadapt. Cutadapt must be installed in order for this to work. Currently only supports R1 (forward-read) files.
+Trims primers from ITS sequences using cutadapt. Cutadapt must be installed in order for this to work. Currently only supports forward-read (R1) sequences. If reverse reads are included, they will be ignored.
 }
 \examples{
 \dontrun{

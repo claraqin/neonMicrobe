@@ -176,7 +176,7 @@ removeUnpairedFastqFiles <- function(fnFs, fnRs, meta, value=TRUE, verbose=TRUE)
 #'
 #' @examples
 #' \dontrun{
-#' meta_ext <- matchFastqToMetadata(c("sample1_R1.fastq", "sample1_R2.fastq"), )
+#' meta_ext <- matchFastqToMetadata(c("sample1_R1.fastq", "sample1_R2.fastq"), meta)
 #' }
 matchFastqToMetadata <- function(fn, meta, verbose=TRUE) {
   # Get basenames of fn

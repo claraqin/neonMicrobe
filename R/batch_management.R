@@ -438,7 +438,7 @@ listBatches <- function(batches_dir = NULL) {
 #' the parent function would instead use the batch-specific outputs.
 #'
 #' @param priority Must be "batch" or "arguments". Whether to defer to batch-specific processing parameters or function arguments when they conflict.
-#' @param ... Format [function argument (string)] = [batch parameter (string)]. Arguments with a corresponding batch parameter, set to whatever the name of that batch parameter is, e.g. `"maxEE" = "MAX_EE_FWD`. The arguments will be checked against the batch parameters.
+#' @param ... Format [function argument (string or name)] = [batch parameter (string)]. Arguments with a corresponding batch parameter, set to whatever the name of that batch parameter is, e.g. `maxEE = "MAX_EE_FWD`. The arguments will be checked against the batch parameters.
 #' @param verbose Default TRUE. Whether to print a warning if the function argument and batch parameter do not match.
 #' @param warn_no_batch Default FALSE. Whether to print a warning if there is no current processing batch.
 #'

@@ -14,7 +14,7 @@ checkArgsAgainstBatchParams(
 \arguments{
 \item{priority}{Must be "batch" or "arguments". Whether to defer to batch-specific processing parameters or function arguments when they conflict.}
 
-\item{...}{Format \link{function argument (string)} = \link{batch parameter (string)}. Arguments with a corresponding batch parameter, set to whatever the name of that batch parameter is, e.g. \verb{"maxEE" = "MAX_EE_FWD}. The arguments will be checked against the batch parameters.}
+\item{...}{Format \link{function argument (string or name)} = \link{batch parameter (string)}. Arguments with a corresponding batch parameter, set to whatever the name of that batch parameter is, e.g. \verb{maxEE = "MAX_EE_FWD}. The arguments will be checked against the batch parameters.}
 
 \item{verbose}{Default TRUE. Whether to print a warning if the function argument and batch parameter do not match.}
 

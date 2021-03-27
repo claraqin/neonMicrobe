@@ -14,7 +14,7 @@ organizeRawSequenceData(
 \arguments{
 \item{fn}{Character vector of full names (including path) of raw sequence files. Can include tarballs.}
 
-\item{metadata}{The output of downloadSequenceMetadata(). Must be provided as either the data.frame returned by downloadSequenceMetadata() or as a filepath to the csv file produced by downloadSequenceMetadata() when outDir is provided.}
+\item{metadata}{The output of \code{\link{downloadSequenceMetadata}}. Must be provided as either the data.frame returned by \code{\link{downloadSequenceMetadata}} or as a filepath to the csv file produced by \code{\link{downloadSequenceMetadata}}.}
 
 \item{outdir_sequence}{Default NEONMICROBE_DIR_SEQUENCE(). Directory where raw sequence files can be found before reorganizing.}
 

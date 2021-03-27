@@ -7,7 +7,7 @@
 listBatches(batches_dir = NULL)
 }
 \arguments{
-\item{batches_dir}{Directory where batch-specific directories are saved. By default (NULL), looks in NEONMICROBE_DIR_OUTPUTS(), ignoring batch modifications.}
+\item{batches_dir}{Directory where batch-specific directories are saved. By default (NULL), looks in NEONMICROBE_DIR_BATCHES().}
 }
 \value{
 

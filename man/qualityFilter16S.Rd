@@ -2,38 +2,47 @@
 % Please edit documentation in R/dada_wrappers.R
 \name{qualityFilter16S}
 \alias{qualityFilter16S}
-\title{Filter 16S Sequences}
+\title{Filter 16S Sequences (with metadata)}
 \usage{
 qualityFilter16S(
   fn,
-  dir_in,
-  dir_out,
-  trunc_qscore = 23,
+  in_subdir,
+  out_subdir,
+  meta,
+  in_explicitdir = NULL,
+  out_explicitdir = NULL,
   multithread = FALSE,
-  post_samplename_pattern1 = "_R1.*\\\\.fastq",
-  post_samplename_pattern2 = "_R2.*\\\\.fastq",
+  verbose = FALSE,
+  trunc_qscore = 23,
   ...
 )
 }
 \arguments{
-\item{fn}{Names of input fastq files, excluding directory path which is specified by dir_in. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning.}
+\item{fn}{Base names of input fastq files. If inputs are not base names (i.e. if they include directory paths), the directory paths will be removed. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning.}
 
-\item{dir_in}{Directory containing input fastq files.}
+\item{in_subdir}{Subdirectory name from which to retrieve input fastq files. Enter "raw" for raw sequence files, or any other character string to specify a subdirectory within \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S. To specify a directory outside \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S, use the 'in_explicitdir' argument.}
 
-\item{dir_out}{Path to output directory where filtered fastq files will be written.}
+\item{out_subdir}{Subdirectory name where output fastq files will be written. Enter any character string to specify a subdirectory within \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S. If the directory does not exist, it will be created. To specify a directory outside \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S, use the 'out_explicitdir' argument.}
 
-\item{trunc_qscore}{Default 23. Quality score at which point to truncate each read, if truncLen is NULL.}
+\item{meta}{The output of \code{\link{downloadSequenceMetadata}}. Must be provided as either the data.frame returned by \code{\link{downloadSequenceMetadata}} or as a filepath to the csv file produced by \code{\link{downloadSequenceMetadata}}.}
+
+\item{in_explicitdir, out_explicitdir}{Directory names to use instead of 'in_subdir' and 'out_subdir', if static directory names or directories outside of \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S are desired. Not recommended for use within processing batches.}
 
 \item{multithread}{Default FALSE. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.}
 
-\item{post_samplename_pattern1, post_samplename_pattern2}{(Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).*\\.fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.}
+\item{verbose}{Default FALSE. Whether to print messages associated with automated selection of truncation length (truncLen).}
 
-\item{...}{Other arguments to be passed to \code{\link[dada2]{filterAndTrim}}, such as maxEE. See documentation for more details.}
+\item{trunc_qscore}{Default 23. If truncLen is not provided, specifies the mean quality score at which point to truncate each read. The behavior of this argument has not been extensively tested, so it is generally recommended that truncLen be used instead.}
+
+\item{...}{Other arguments to be passed to \code{\link[dada2]{filterAndTrim}}, such as maxEE, truncLen, and minLen. By default, uses \code{\link[dada2]{filterAndTrim}}'s default values. See documentation for \code{\link[dada2]{filterAndTrim}} for more details.}
 }
 \value{
-Two-column matrix displaying the number of reads in input vs. output for each file.
+(Invisibly) Two-column matrix displaying the number of reads in input vs. output for each file.
 }
 \description{
 Applies a quality filter to 16S sequence fastq files via the \code{\link[dada2]{filterAndTrim}} function.
 It is assumed that both forward- and reverse-read files are included.
+}
+\seealso{
+\code{\link[dada2]{filterAndTrim}}
 }
