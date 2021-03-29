@@ -7,7 +7,10 @@ Authors@R: c(
           person(given = "Zoey", family = "Werbin", role = "aut", email = "zrwerbin@bu.edu"),
           person(given = "Ryan", family = "Bartelme", role = "ctb", email = "rbartelme@arizona.edu"),
           person(given = "Peter", family = "Pellitier", role = "ctb", email = "ptpell@stanford.edu"),
-          person(given = "Ayanna", family = "St. Rose", role = "ctb", email = "astrose@uark.edu")
+          person(given = "Ayanna", family = "St. Rose", role = "ctb", email = "astrose@uark.edu"),
+          person(given = "Dawson", family = "Fairbanks", role = "ctb", email = "dawsonfairbanks@email.arizona.edu"),
+          person(given = "Kusum", family = "Naithani", role = "ctb", email = "kusum@uark.edu"),
+          person(given = "Kai", family = "Zhu", role = "ctb", email = "kai.zhu@ucsc.edu")
           )
 Description: neonMicrobe is a suite of functions for downloading, pre-processing, and assembling heterogeneous data around the NEON soil microbe marker gene sequence data. To do so, neonMicrobe downloads NEON data products from the NEON Data API and processes sequences using the DADA2 workflow. In addition, neonMicrobe offers a processing-batch infrastructure to encourage explicit versioning of processed data.
 License: `use_mit_license()`
