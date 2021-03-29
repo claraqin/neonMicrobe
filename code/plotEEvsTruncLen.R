@@ -3,12 +3,13 @@
 library(ShortRead)
 library(tidyr)
 library(ggplot2)
+library(dplyr)
 
 source("R/utils.R") # load the plotEEProfile function
 source("code/params.R")
 
-runIDs <- c("runC5B2R", "runCBTWG", "runBFDG8")
-# runIDs <-  c("runB69PP", "runB69RN", "runB9994", "runBDNB6", "runBF462", "runBFDG8", "runBNMJ5", "runBNMWB", "runBRPH4", "runC24VW", "runC25T6", "runC5B2R", "runC7WK3", "runC8VMV", "runC977L", "runC983L", "runCBJYB", "runCBTWG", "runCDHG2", "runCDJ5J")
+# runIDs <- c("runC5B2R", "runCBTWG", "runBFDG8")
+runIDs <-  c("runB69PP", "runB69RN", "runB9994", "runBDNB6", "runBF462", "runBFDG8", "runBNMJ5", "runBNMWB", "runBRPH4", "runC24VW", "runC25T6", "runC5B2R", "runC7WK3", "runC8VMV", "runC977L", "runC983L", "runCBJYB", "runCBTWG", "runCDHG2", "runCDJ5J")
 
 if(is.null(PRESET_OUTDIR_SEQUENCE) | PRESET_OUTDIR_SEQUENCE == "") {
   PATH_16S <- file.path(PRESET_OUTDIR, "raw_sequence", "16S")
@@ -29,10 +30,13 @@ for(i in 1:length(runIDs)) {
 rawFs <- lapply(rawFs, `[`, 1:10)
 rawRs <- lapply(rawRs, `[`, 1:10)
 
+theme_set(theme_bw())
 g <- gridExtra::arrangeGrob(
-  gridExtra::arrangeGrob(grobs = lapply(rawFs, function(x) plotEEProfile(x, aggregate=TRUE) + ggtitle(paste0(runIDs[i], ", R1")))),
-  gridExtra::arrangeGrob(grobs = lapply(rawRs, function(x) plotEEProfile(x, aggregate=TRUE) + ggtitle(paste0(runIDs[i], ", R2")))),
+  gridExtra::arrangeGrob(grobs = lapply(seq_along(runIDs), function(i) plotEEProfile(rawFs[[i]], aggregate=TRUE) + ggtitle(paste0(runIDs[i], ", R1"))), ncol=1),
+  gridExtra::arrangeGrob(grobs = lapply(seq_along(runIDs), function(i) plotEEProfile(rawRs[[i]], aggregate=TRUE) + ggtitle(paste0(runIDs[i], ", R2"))), ncol=1),
   ncol=2
 )
 
-ggsave(file.path(PATH_OUTPUT, "expected_errors_plot.png"), plot=g, width=5, height=7, units="in")
+saveRDS(g, file.path(PATH_OUTPUT, "eeplot.Rds"))
+# ggsave(file.path(PATH_OUTPUT, "expected_errors_plot.png"), plot=g, width=5, height=42, units="in")
+
