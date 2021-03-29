@@ -9,6 +9,7 @@ Authors@R: c(
           person(given = "Peter", family = "Pellitier", role = "ctb", email = "ptpell@stanford.edu"),
           person(given = "Ayanna", family = "St. Rose", role = "ctb", email = "astrose@uark.edu"),
           person(given = "Dawson", family = "Fairbanks", role = "ctb", email = "dawsonfairbanks@email.arizona.edu"),
+          person(given = "Chance", family = "Muscarella", role = "ctb", email = "chancemusky@email.arizona.edu "),
           person(given = "Kusum", family = "Naithani", role = "ctb", email = "kusum@uark.edu"),
           person(given = "Kai", family = "Zhu", role = "ctb", email = "kai.zhu@ucsc.edu")
           )
