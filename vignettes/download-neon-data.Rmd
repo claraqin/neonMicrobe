@@ -13,6 +13,7 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 devtools::load_all() # TODO: Switch this to library(neonMicrobe) before publishing
+setBaseDirectory(dirname(getwd()))
 knitr::opts_knit$set(
   root.dir = NEONMICROBE_DIR_BASE()
 )
@@ -43,7 +44,7 @@ dirname(getwd())
 ```
 
 ```{r}
-setBaseDirectory(dirname(getwd()))
+setBaseDirectory(getwd())
 ```
 
 Set up the directory structure associated with the various NEON data products. This will generate (recursively) the following directory structure
@@ -77,12 +78,12 @@ makeDataDirectories()
 2. You can subset the raw sequence data before you even download it, by subsetting the sequence metadata.
 3. Many of the functions in `neonMicrobe` (especially the DADA2 wrappers and the batch constructor) taken in metadata as a primary argument.
 
-To download the metadata associated with the collection and analysis of NEON soil microbial marker gene sequences, use the `downloadSequenceMetadata()` function. The `downloadSequenceMetadata()` function downloads NEON data product "Soil microbe marker gene sequences" (NEON.DP1.10108.001) using the `neonUtilities` package. This data product contains data tables related to the processing and generation of raw sequence data. The function returns a data.frame object with the data tables for the marker gene sequencing data product joined together, in the following order:
+To download the metadata associated with the collection and analysis of NEON soil microbial marker gene sequences, use the `downloadSequenceMetadata()` function. The `downloadSequenceMetadata()` function downloads NEON data product "Soil microbe marker gene sequences" (NEON.DP1.10108.001) using the `neonUtilities` package. This data product contains data tables related to the processing and generation of raw sequence data. The function returns a data.frame object with the data tables for the marker gene sequencing data product joined together:
 
     - mmg_soilRawDataFiles
-    - mmg_soilDnaExtraction [16S and/or ITS]
-    - mmg_soilMarkerGeneSequencing [16S and/or ITS]
-    - mmg_soilPcrAmplification [16S and/or ITS]
+    - mmg_soilDnaExtraction
+    - mmg_soilMarkerGeneSequencing
+    - mmg_soilPcrAmplification
 
 When 'all' is passed to the `targetGene` argument, both the 16S and ITS metadata are downloaded in the same R object/file. For downstream analysis, limit the metadata to just the 16S or ITS records by filtering to either '16S rRNA' or 'ITS' in the data field 'targetGene'.
 

@@ -13,12 +13,12 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
+devtools::load_all() # TODO: Before publishing, replace this with library(neonMicrobe)
+setBaseDirectory(dirname(getwd()))
 knitr::opts_knit$set(
-  root.dir = "~/zhulab/neonSoilMicrobeProcessing/" # Update as necessary. Should refer to the absolute filepath of the project root directory (e.g. .../neonSoilMicrobeProcessing)
+  root.dir = NEONMICROBE_DIR_BASE()
 )
 ```
-
-## Note for editors: Need to update section on beta-diversity by adding an environmental gradient to compare against parameter effects
 
 The purpose of this vignette is to demonstrate how a researcher can test the effects of various DADA2 quality filtering parameter combinations on the outputs of the DADA2 pipeline, and ultimately, on the ecological inference. Specifically, this vignette asks the following from a subset of NEON 16S marker gene sequences:
 
@@ -32,13 +32,12 @@ The parameters that we vary to observe their downstream effects include the foll
 
 Because we are interested in variation in these benchmark metrics across different parameter sets, we refer to this analysis as a **sensitivity analysis**. This vignette is intended to provide a boilerplate for users of this R package to construct their own sensitivity analyses.
 
-**Note:** If you are using this vignette as a reference, rather than running it as an RMarkdown script, be aware that you will need to manually set the working directory to the project root directory, e.g. `setwd(".../neonSoilMicrobeProcessing")`.
 
-# Dependencies
+# Load libraries
 
-To begin, ensure that you have installed all dependencies.
-
-Load libraries:
+```{r, eval=FALSE}
+library(neonMicrobe)
+```
 
 ```{r message=FALSE}
 library(dada2)
@@ -52,14 +51,20 @@ library(ggplot2)
 library(tidyr)
 ```
 
-In addition, source files associated with this package:
+# Set up base directory
+
+Setting the base directory using `setBaseDirectory()` will create a point of reference for the `neonMicrobe` package, so that it knows where to look for the raw sequence files, and where to save the processed data. This should be the same base directory that you used in the "Download NEON Data" vignette.
 
 ```{r}
-source("./R/utils.R")
-source("./code/params.R")
+print(getwd())
 ```
 
-## Constants used for this sensitivity analysis:
+```{r}
+setBaseDirectory()
+```
+
+
+# Constants used for this sensitivity analysis:
 
 Quality filter parameters that we do not vary in this sensitivity analysis
 
@@ -73,8 +78,8 @@ Parameters specific to this sensitivity analysis
 
 ```{r}
 N_SAMPLES <- 200
-DIRNAME_TEST <- "qf_test_2-8-2021"
-runIDs <-  c("runB69PP", "runB69RN", "runB9994", "runBDNB6", "runBF462", "runBFDG8", "runBNMJ5", "runBNMWB", "runBRPH4", "runC24VW", "runC25T6", "runC5B2R", "runC7WK3", "runC8VMV", "runC977L", "runC983L", "runCBJYB", "runCBTWG", "runCDHG2", "runCDJ5J")
+DIRNAME_TEST <- "qf_test_3-29-2021"
+runIDs <-  c("B69PP", "B69RN", "B9994", "BDNB6", "BF462", "BFDG8", "BNMJ5", "BNMWB", "BRPH4", "C24VW", "C25T6", "C5B2R", "C7WK3", "C8VMV", "C977L", "C983L", "CBJYB", "CBTWG", "CDHG2", "CDJ5J")
 ```
 
 Parameter value grid. The following allows testing of two quality filtering parameters at a time.
@@ -92,17 +97,16 @@ params <- matrix(
 param_sets <- apply(params, 1, function(x) paste(c(rbind(c(PARAM1, PARAM2), x)), collapse="_"))
 ```
 
+
 # Assign filepath variables
 
+Special directories were used for this sensitivity analysis.
+
 ```{r}
-if(is.null(PRESET_OUTDIR_SEQUENCE) | PRESET_OUTDIR_SEQUENCE == "") {
-  PATH_16S <- file.path(PRESET_OUTDIR, "raw_sequence", "16S")
-} else {
-  PATH_16S <- file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE, "16S")
-}
-PATH_RAW <- file.path(PATH_16S, "0_raw")
+PATH_16S <- file.path(NEONMICROBE_DIR_SEQUENCE(), "16S")
+PATH_RAW <- PATH_16S
 PATH_TRIMMED <- file.path(PATH_16S, "1_trimmed")
-PATH_TEST <- file.path(PATH_16S, DIRNAME_TEST)
+PATH_TEST <- file.path("outputs", DIRNAME_TEST)
 dir.create(file.path(PATH_TEST, "results"), recursive=TRUE)
 ```
 
@@ -111,28 +115,28 @@ dir.create(file.path(PATH_TEST, "results"), recursive=TRUE)
 Retrieve files that match the sequence run IDs specified earlier.
 
 ```{r}
-rawFs <- sort(list.files(PATH_RAW, pattern = paste0("(",paste0("(", runIDs, ")", collapse="|"),")", ".*_R1\\.fastq"), full.names = TRUE))
-rawRs <- sort(list.files(PATH_RAW, pattern = paste0("(",paste0("(", runIDs, ")", collapse="|"),")", ".*_R2\\.fastq"), full.names = TRUE))
+rawFs <- sort(list.files(PATH_RAW, pattern = "_R1", full.names = TRUE, recursive = FALSE))
+rawRs <- sort(list.files(PATH_RAW, pattern = "_R2", full.names = TRUE, recursive = FALSE))
 ```
 
 
 Retrieve metadata. If you saved your metadata to file, you can load it here:
 
 ```{r}
-meta0 <- read.csv("./NEON/sequence_metadata/mmg_soilMetadata_16S_2021-01-12135435.csv")
-meta <- qcMetadata(meta0, PATH_TEST, pairedReads="N", rmDupes=TRUE, rmFlagged="Y")
+meta <- read.csv("data/sequence_metadata/qc_metadata/mmg_metadata_16SrRNA_QCd_20210329.csv")
 ```
 
-If you did not save your metadata to file, you can re-download it using `downloadSequenceMetadata()`:
+If you did not save your metadata to file, you can re-download it using `downloadSequenceMetadata()`, and quality-control it using    `qcMetadata()`.
 
 ```{r eval=FALSE}
 meta <- downloadSequenceMetadata(targetGene = "16S")
+meta <- qcMetadata(meta)
 ```
 
 Remove any samples that only have forward reads or only have reverse reads.
 
 ```{r}
-matched_fn <- removeUnpairedFastqFiles(rawFs, rawRs, meta)
+matched_fn <- getPairedFastqFiles(c(rawFs, rawRs), meta)
 rawFs <- matched_fn[[1]]
 rawRs <- matched_fn[[2]]
 ```
@@ -162,18 +166,11 @@ if(length(rawFs) > N_SAMPLES) {
 write.csv(cbind(rawFs, rawRs), file.path(PATH_TEST, "input_files.csv"))
 ```
 
-Ensure there are no poor quality flags or legacy data in the subset.
 
-```{r}
-# meta_ext <- matchFastqToMetadata(c(rawFs, rawRs), meta)
-meta_ext <- matchFastqToMetadata(c(rawFs_subset, rawRs_subset), meta)
-with(meta_ext, table(sequencerRunID, qaqcStatus.dna))
-with(meta_ext, table(sequencerRunID, qaqcStatus.pcr))
-with(meta_ext, table(sequencerRunID, qaqcStatus.seq))
-with(meta_ext, table(sequencerRunID, dataQF.rawFiles))
-with(meta_ext, table(sequencerRunID, dataQF.dna))
-with(meta_ext, table(sequencerRunID, dataQF.pcr))
-with(meta_ext, table(sequencerRunID, dataQF.seq))
+```{r, echo=FALSE, results="hide"}
+input_files <- read.csv(file.path(PATH_TEST, "input_files.csv"), row.names = 1, stringsAsFactors = FALSE)
+rawFs <- input_files$rawFs
+rawRs <- input_files$rawRs
 ```
 
 Plot quality profiles
@@ -200,6 +197,7 @@ Split complete filenames into "basenames" and directory names
 ```{r}
 fn_base <- basename(c(rawFs, rawRs))
 PATH_PARAMSETS <- file.path(PATH_TEST, param_sets)
+for(p in PATH_PARAMSETS) dir.create(p, showWarnings=FALSE)
 ```
 
 
@@ -208,7 +206,9 @@ PATH_PARAMSETS <- file.path(PATH_TEST, param_sets)
 Trim reads based on the primer sequences supplied in `params.R`.
 
 ```{r, eval=FALSE}
-trim_trackReads <- trimPrimers16S(fn_base, PATH_RAW, PATH_TRIMMED, "CCTACGGGNBGCASCAG", "GACTACNVGGGTATCTAATCC")
+trim_trackReads <- trimPrimers16S(fn_base, in_subdir="raw", out_explicitdir=PATH_TRIMMED, meta=meta,
+                                  primer_16S_fwd="CCTACGGGNBGCASCAG", primer_16S_rev="GACTACNVGGGTATCTAATCC")
+# trim_trackReads <- trimPrimers16S(fn_base, PATH_RAW, PATH_TRIMMED, "CCTACGGGNBGCASCAG", "GACTACNVGGGTATCTAATCC")
 ```
 
 ## Run quality filter on sequences
@@ -220,12 +220,13 @@ filter_trackReads <- list()
 for(i in 1:length(param_sets)) {
   filter_trackReads[[i]] <- qualityFilter16S(
     fn_base,
-    PATH_TRIMMED,
-    PATH_PARAMSETS[[i]],
+    in_explicitdir = PATH_TRIMMED,
+    out_explicitdir = PATH_PARAMSETS[[i]],
+    meta = meta,
     maxEE=c(MAX_EE_FWD, params[i,1]), # Vary maxEE.R
     truncLen=c(TRUNC_LEN_FWD, params[i,2]), # Vary truncLen.R
     minLen=MIN_LEN,
-    multithread=MULTITHREAD)
+    multithread=TRUE) # set FALSE for Windows computers
   rownames(filter_trackReads[[i]]) <- paste0(param_sets[i], "|", rownames(filter_trackReads[[i]]))
 }
 filter_trackReads_mat <- do.call(rbind, filter_trackReads)
@@ -250,23 +251,36 @@ seqtabs <- dada_trackReads <- lapply(1:length(param_sets), function(x) lapply(1:
 Now we continue with the processing pipeline to produce different versions of the resulting sequence tables.
 
 ```{r}
+meta_fn <- matchFastqToMetadata(fn_base, meta)
+
 for(i in 1:length(param_sets)) {
   for(j in 1:length(runIDs)) {
     message("Sensitivity analysis: parameter set ", param_sets[i], ", sequencing run ",  runIDs[j])
 
     # Retrieve only those files associated with the appropriate parameter set and runID
-    fn_base.star <- grep(runIDs[j], fn_base, value=TRUE)
+    meta_thisrun <- meta_fn[which(meta_fn$sequencerRunID==runIDs[j]),]
+    fn_base_thisrun <- meta_thisrun$file
 
-    seqtab.list <- runDada16S(fn_base.star, PATH_PARAMSETS[i], MULTITHREAD, VERBOSE, seed=11001100)
-    seqtabs[[i]][[j]] <- seqtab.list$seqtab.nochim
-    dada_trackReads[[i]][[j]] <- seqtab.list$track
+    dada_out <- runDada16S(
+      fn_base_thisrun, 
+      in_explicitdir = PATH_PARAMSETS[[i]],
+      out_seqtab = file.path(PATH_PARAMSETS[i], paste0("sensitivity_seqtab_", runIDs[j], ".Rds")),
+      multithread = TRUE, # set FALSE for Windows computers
+      verbose = FALSE, 
+      seed = 11001100)
+    
+    seqtabs[[i]][[j]] <- dada_out$seqtab
+    dada_trackReads[[i]][[j]] <- dada_out$track
 
     rownames(seqtabs[[i]][[j]]) <- paste0(param_sets[i], "|", rownames(seqtabs[[i]][[j]]))
     rownames(dada_trackReads[[i]][[j]]) <- paste0(param_sets[i], "|", rownames(dada_trackReads[[i]][[j]]))
     
     # Can save work as you go:
-    saveRDS(seqtab.list$seqtab.nochim, file.path(PATH_PARAMSETS[i], paste0("sensitivity_seqtab_", runIDs[j], ".Rds")))
-    write.csv(seqtab.list$track, file.path(PATH_PARAMSETS[i], paste0("sensitivity_trackReads_dada_", runIDs[j], ".csv")), row.names=TRUE)
+    saveRDS(seqtab.list$seqtab.nochim, 
+            file.path(PATH_PARAMSETS[i], paste0("sensitivity_seqtab_", runIDs[j], ".Rds")))
+    write.csv(seqtab.list$track, 
+              file.path(PATH_PARAMSETS[i], paste0("sensitivity_trackReads_dada_", runIDs[j], ".csv")),
+              row.names=TRUE)
   }
 }
 
@@ -281,14 +295,8 @@ trim_trackReads_mat <- do.call(rbind, lapply(1:length(param_sets), function(i) {
   trim_trackReads
 }))
 
-track <- Reduce(
-  function(x, y, ...) transform(merge(x, y, by=0, all = TRUE, ...), row.names=Row.names, Row.names=NULL),
-  list(trim_trackReads_mat[,1],
-       filter_trackReads_mat,
-       dada_trackReads_mat)
-)
-names(track) <- c("input", "trimmed", "filtered", colnames(dada_trackReads_mat))
-track[is.na(track)] <- 0
+combineReadTrackingTables16S(trim_trackReads, filter_trackReads, dada_trackReads_mat,
+                             out_file = file.path(PATH_TEST, "results", "sensitivity_trackReads.csv"))
 
 ```
 
@@ -305,14 +313,13 @@ Save the data so far:
 
 ```{r}
 saveRDS(seqtabs_joinrun, file.path(PATH_TEST, "results", "sensitivity_seqtabs_joinrun_list.Rds"))
-write.csv(track, file.path(PATH_TEST, "results", "sensitivity_trackReads.csv"), row.names=TRUE)
 ```
 
 You can reload RDS objects into R to pick up where you left off:
 
 ```{r, eval=FALSE}
-seqtabs_joinrun <- readRDS(file.path(PATH_16S, "qf_test_1-13-2021", "results", "sensitivity_seqtabs_joinrun_list.Rds"))
-track <- read.csv(file.path(PATH_16S, "qf_test_1-13-2021", "results", "sensitivity_trackReads.csv"), row.names=1)
+seqtabs_joinrun <- readRDS(file.path(PATH_TEST, "results", "sensitivity_seqtabs_joinrun_list.Rds"))
+track <- read.csv(file.path(PATH_TEST, "results", "sensitivity_trackReads.csv"), row.names=1)
 ```
 
 
@@ -343,11 +350,11 @@ Plot!
 
 ```{r, fig.width=9, fig.height=3.5}
 theme_set(theme_bw())
-ggplot(track_aggRun, aes(x=step, y=reads, col=as.factor(maxEE.R))) +
-  geom_line(aes(linetype=as.factor(truncLen.R), group=interaction(maxEE.R, truncLen.R))) +
+ggplot(track_aggRun, aes(x=step, y=reads, col=as.factor(truncLen.R))) +
+  geom_line(aes(linetype=as.factor(maxEE.R), group=interaction(maxEE.R, truncLen.R))) +
   # facet_wrap(~runID, scales="free_y") +
   facet_wrap(~runID) +
-  labs(linetype="truncLen.R", color="maxEE.R") +
+  labs(linetype="maxEE.R", color="truncLen.R") +
   scale_linetype_manual(values=c("dotted", "dashed", "solid")) +
   theme(axis.text.x = element_text(angle=45, hjust=1)) +
   scale_y_continuous(trans="log10")
@@ -460,12 +467,29 @@ First, combine all sequence tables into ONE large sequence table. A sample data 
 
 ```{r}
 seqtab_joined <- mergeSequenceTables(tables=seqtabs_joinrun)
+```
 
+Unite sequence-length variants:
+
+```{r, eval=FALSE}
+t1 <- Sys.time()
+seqtab_joined_collapsed <- collapseNoMismatch(seqtab_joined)
+t2 <- Sys.time()
+t2-t1
+```
+
+Or load the collapsed version of the joined sequence table (recommended!)
+
+```{r}
+seqtab_joined <- readRDS("./data/seqtab_joined_runs_and_params_COLLAPSED.Rds")
+```
+
+```{r}
 # Sample data (parameters)
 sampledata <- parseParamsFromRownames(seqtab_joined, PARAM1, PARAM2, keep_rownames=TRUE, keep_original_cols = FALSE)
 ```
 
-**FOR TESTING ONLY**: Custom function to match rownames in this sequence table (which are based on the original fastq filenames) to the sequence metadata.
+Custom function to match rownames in this sequence table (which are based on the original fastq filenames) to the sequence metadata.
 
 ```{r}
 matchSeqtabToMetadata <- function(tab, meta, verbose=TRUE) {
@@ -491,7 +515,7 @@ matchSeqtabToMetadata <- function(tab, meta, verbose=TRUE) {
   return(cbind(rowname = rownms, meta[key_match,], stringsAsFactors=FALSE))
 }
 
-meta_seqtab <- matchSeqtabToMetadata(seqtab_joined, read.csv("./NEON/sequence_metadata/mmg_soilMetadata_16S_2021-01-12135435.csv"))
+meta_seqtab <- matchSeqtabToMetadata(seqtab_joined, read.csv("./data/sequence_metadata/qc_metadata/mmg_metadata_16SrRNA_QCed_20210208.csv"))
 sampledata_with_meta <- cbind(sampledata, meta_seqtab)
 all(rownames(sampledata_with_meta) == meta_seqtab$rowname)
 ```
@@ -521,7 +545,7 @@ physeq_joined_nonzero <- prune_samples(sample_sums(physeq_joined) > 0, physeq_jo
 Optionally, discard taxa with 10 or fewer reads:
 
 ```{r}
-physeq_joined_nonzero <- prune_taxa(taxa_sums(physeq_joined) > 10, physeq_joined)
+physeq_joined_nonzero <- prune_taxa(taxa_sums(physeq_joined_nonzero) > 10, physeq_joined_nonzero)
 ```
 
 Ordinate, one sequencing run at a time. (Samples from different sequencing runs may be highly dissimilar, producing difficult-to-interpret ordination plots.)
@@ -530,18 +554,18 @@ Ordinate, one sequencing run at a time. (Samples from different sequencing runs 
 ord_list <- ps_runID <- list()
 
 for (i in 1:length(runIDs)) {
-  ps_runID[[i]] <- subset_samples(physeq_joined_nonzero, runID==runIDs[i])
+  ps_runID[[i]] <- subset_samples(physeq_joined_nonzero, sequencerRunID==runIDs[i])
   set.seed(1010101)
   ord_list[[i]] <- ordinate(ps_runID[[i]], "NMDS", "bray", k=2)
-  saveRDS(ord_list[[i]], file.path(PATH_TEST, "results", paste0("sensitivity_ordination_", runIDs[i], ".Rds")))
+  saveRDS(ord_list[[i]], file.path(PATH_TEST, "results", paste0("sensitivity_ordination_", runIDs[i], "_COLLAPSED.Rds")))
 }
 ```
 
 Load ordination data if previously run:
 
-```{r}
+```{r, eval=FALSE}
 for(i in 1:length(runIDs)) {
-  ord_list[[i]] <- readRDS(file.path(PATH_TEST, "results", paste0("sensitivity_ordination_", runIDs[i], ".Rds")))
+  ord_list[[i]] <- readRDS(file.path(PATH_TEST, "results", paste0("sensitivity_ordination_", runIDs[i], "_COLLAPSED.Rds")))
 }
 ```
 
@@ -570,145 +594,87 @@ for(i in 1:length(ord_list)) {
     guides(col=FALSE, shape=FALSE) +
     ggtitle(runIDs[i]) +
     geom_text(data=stress_annotations[[i]], aes(x=xloc, y=yloc, label=label, hjust=hjust, vjust=vjust), size=3) +
-    NULL
+    theme(plot.title = element_text(hjust=0.5),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank())
 }
 g <- gridExtra::arrangeGrob(grobs=ordplot_list, ncol=5)
-ggsave(file.path(PATH_TEST, "results", "ordination_plot.png"), plot=g, width=10, height=7, units="in")
+ggsave(file.path(PATH_TEST, "results", "ordination_plot_COLLAPSED.png"), plot=g, width=10, height=7, units="in")
 plot(g)
 ```
 
-Try ordinating ALL sensitivity analysis samples:
+### Test statistical significance using permANOVA
+
+Use statistical tests to confirm the effects of the quality filtering parameters. First we normalize the combined sequence table by proportionalizing the counts:
 
 ```{r}
 # Start by pruning low-sequencing depth samples and removing uncommon taxa
 ps_nonzero_mindepth <- prune_samples(sample_sums(physeq_joined_nonzero) > 2500, physeq_joined_nonzero)
 ps_nonzero_mindepth <- prune_taxa(taxa_sums(ps_nonzero_mindepth) > 15, ps_nonzero_mindepth)
-set.seed(1010101)
-ord_all <- ordinate(ps_nonzero_mindepth, "NMDS", "bray", k=2)
-saveRDS(ord_all, file.path(PATH_TEST, "results", paste0("sensitivity_ordination_all_runs.Rds")))
+ps_nonzero_mindepth_prop <- transform_sample_counts(ps_nonzero_mindepth, function(x) x/sum(x))
+saveRDS(ps_nonzero_mindepth_prop, file.path(PATH_TEST, "results", paste0("sensitivity_ps_nonzero_mindepth_prop_COLLAPSED.Rds")))
 ```
 
+Add more variables into the sampledata for ease of use.
 
-```{r, fig.width=12}
-sampledata <- as(sample_data(ps_nonzero_mindepth), "data.frame")
+```{r}
+sampledata <- as(sample_data(ps_nonzero_mindepth_prop), "data.frame")
 sampledata$maxEE.R <- as.factor(sampledata$maxEE.R)
 sampledata$truncLen.R <- as.factor(sampledata$truncLen.R)
 sampledata <- cbind(sampledata, scores(ord_all)[match(rownames(sampledata), rownames(scores(ord_all))),])
 sampledata$collectYear <- as.integer(format(as.Date(sampledata$collectDate), "%Y"))
-sampledata$processedYear.rawFiles <- as.integer(format(as.Date(sampledata$processedDate.rawFiles), "%Y"))
-sampledata$processedYear.dna <- as.integer(format(as.Date(sampledata$processedDate.dna), "%Y"))
-sampledata$processedYear.pcr <- as.integer(format(as.Date(sampledata$processedDate.pcr), "%Y"))
-sampledata$processedYear.seq <- as.integer(format(as.Date(sampledata$processedDate.seq), "%Y"))
 ```
-
-At this point I noticed there were two clusters in the ordination, and chose to filter the ordination dataset to only look at one set of quality filtering parameters, so it was clear that the clusters were not produced by the parameters.
-
-```{r}
-sampledata_selectparams <- sampledata[sampledata$maxEE.R==4 & sampledata$truncLen.R==220,]
-gridExtra::grid.arrange(
-  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=processedYear.rawFiles)),
-  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=processedYear.dna)),
-  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=processedYear.pcr)),
-  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=processedYear.seq)) + stat_ellipse(aes(group=processedYear.seq))
-)
-```
-
-```{r}
-cor(sampledata$NMDS1, sampledata$processedYear.seq)
-```
-
-```{r}
-n_distinct <- apply(sampledata, 2, function(x) length(unique(x)))
-n_distinct[n_distinct <= 3]
-```
-
-```{r, fig.width=12}
-gridExtra::grid.arrange(
-  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=library_strategy)),
-  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=library_source)),
-  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=library_layout)),
-  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=sequenceAnalysisType)),
-  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=testProtocolVersion.pcr)),
-  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=testProtocolVersion.seq))
-)
-  
-```
-
-```{r, fig.height=8, fig.width=6}
-gridExtra::grid.arrange(
-  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=siteID)),
-  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + geom_point(aes(col=domainID))
-)
-gridExtra::grid.arrange(
-  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + stat_ellipse(aes(group=siteID), lwd=0.5, col="grey") + geom_point(aes(col=siteID)),
-  ggplot(sampledata_selectparams, aes(x=NMDS1, y=NMDS2)) + stat_ellipse(aes(group=domainID), lwd=0.5, col="grey") + geom_point(aes(col=domainID))
-)
-```
-
-```{r}
-n_distinct[grep("rotocol", names(n_distinct))]
-```
-
-Weird -- there is a separation in the ordination that maps to *the year in which sequencing was performed.* Even though I don't think this is an artefact from our pipeline, I still think that it may be prudent to select only one of the sequencing years in order to avoid confusion, at least until we can confirm the source of this artefact.
-
-```{r}
-sample_data(ps_nonzero_mindepth)$processedYear.seq <- as.integer(format(as.Date(get_variable(ps_nonzero_mindepth, "processedDate.seq")), "%Y"))
-ps_seq2019 <- subset_samples(ps_nonzero_mindepth, processedYear.seq %in% c(2017, 2018))
-set.seed(1010101)
-ord_all <- ordinate(ps_nonzero_mindepth, "NMDS", "bray", k=2)
-saveRDS(ord_all, file.path(PATH_TEST, "results", paste0("sensitivity_ordination_seq2017-18.Rds")))
-```
-
-
-
-Test statistical significance using permANOVA. 
 
 First run permANOVA using all three levels of `truncLen.R`.
 
 ```{r}
-ps_joined_dist <- vegdist(otu_table(physeq_joined_nonzero_runC5B2R))
+ps_joined_dist <- vegdist(otu_table(ps_nonzero_mindepth_prop)) # Takes about 2.5 hours
+saveRDS(ps_joined_dist, file.path(PATH_TEST, "results", "sensitivity_dist_nonzero_mindepth_prop_COLLAPSED.Rds"))
 ```
 
 ```{r}
-adonis(ps_joined_dist ~ maxEE.R + truncLen.R,
-       data = as(sample_data(physeq_joined_nonzero_runC5B2R), "data.frame"),
-       strata = get_variable(physeq_joined_nonzero_runC5B2R, "sampleID"),
-       permutations=999)
+ps_joined_dist <- readRDS(file.path(PATH_TEST, "results", "sensitivity_dist_nonzero_mindepth_prop_COLLAPSED.Rds"))
+
+perm <- how(nperm=999)
+setBlocks(perm) <- get_variable(ps_nonzero_mindepth_prop, "sampleID")
+adonis2(ps_joined_dist ~ maxEE.R + truncLen.R,
+        data = as(sample_data(ps_nonzero_mindepth_prop), "data.frame"),
+        permutations=perm)
 ```
 
-Also, use betadisper to ensure homogeneity of within-group variances (dispersion). Heterogeneity of within-group variances may be confounded with distances between groups in the permANOVA test.
+Distance between groups may be confounded with heterogeneity of within-group variances (dispersion) in the permANOVA test, so we use betadisper to test separately for heterogeneity of within-group variances. 
 
 ```{r}
-beta_disper <- vegan::betadisper(ps_joined_dist, get_variable(physeq_joined_nonzero_runC5B2R, "truncLen.R"))
+beta_disper <- vegan::betadisper(ps_joined_dist, get_variable(ps_nonzero_mindepth_prop, "truncLen.R"))
 anova(beta_disper)
-```
-
-```{r}
 mod.HSD <- TukeyHSD(beta_disper)
 plot(mod.HSD)
 ```
 
-Next re-run permANOVA using only top two levels of `truncLen.R`.
+
+There is less dispersion among communities that were processed with `truncLen.R` = 170. In order to confirm whether the significant effect of `truncLen.R` on mean community composition is robust to heterogeneity of dispersion, then, we re-run permANOVA using only top two levels of `truncLen.R`.
 
 ```{r}
-ps_joined_dist_hitrunc <- vegdist(otu_table(physeq_joined_nonzero_runC5B2R_hitrunc))
+ps_nonzero_mindepth_prop_hitrunc <- subset_samples(ps_nonzero_mindepth_prop, truncLen.R != 170)
+ps_joined_dist_hitrunc <- vegdist(otu_table(ps_nonzero_mindepth_prop_hitrunc))
+saveRDS(ps_joined_dist_hitrunc, file.path(PATH_TEST, "results", "sensitivity_dist_nonzero_mindepth_prop_hitrunc_COLLAPSED.Rds"))
 ```
 
 ```{r}
-adonis(ps_joined_dist_hitrunc ~ maxEE.R + truncLen.R,
-       data = as(sample_data(physeq_joined_nonzero_runC5B2R_hitrunc), "data.frame"),
-       strata = get_variable(physeq_joined_nonzero_runC5B2R_hitrunc, "sampleID"),
-       permutations=999)
+readRDS <- file.path(PATH_TEST, "results", "sensitivity_dist_nonzero_mindepth_prop_hitrunc_COLLAPSED.Rds")
+perm <- how(nperm=999)
+setBlocks(perm) <- get_variable(ps_nonzero_mindepth_prop_hitrunc, "sampleID")
+adonis2(ps_joined_dist_hitrunc ~ maxEE.R + truncLen.R,
+        data = as(sample_data(ps_nonzero_mindepth_prop_hitrunc), "data.frame"),
+        permutations=perm)
+beta_disper_hitrunc <- vegan::betadisper(ps_joined_dist_hitrunc, get_variable(ps_nonzero_mindepth_prop_hitrunc, "truncLen.R"))
 ```
 
-Also, use betadisper to ensure homogeneity of within-group variances (dispersion). Heterogeneity of within-group variances may be confounded with distances between groups in the permANOVA test.
+Now use betadisper to test homogeneity of within-group variances (dispersion).
 
 ```{r}
 beta_disper_hitrunc <- vegan::betadisper(ps_joined_dist_hitrunc, get_variable(physeq_joined_nonzero_runC5B2R_hitrunc, "truncLen.R"))
 anova(beta_disper_hitrunc)
-```
-
-```{r}
 mod.HSD_hitrunc <- TukeyHSD(beta_disper_hitrunc)
 plot(mod.HSD_hitrunc)
 ```

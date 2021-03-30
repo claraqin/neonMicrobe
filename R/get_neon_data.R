@@ -504,7 +504,7 @@ downloadRawSequenceData <- function(metadata, outDir = NULL, overwrite=FALSE,
 
   # Get target gene to know which directory within outDir to sort into
   targetGene <- metadata.u$targetGene
-  targetGene <- sub("16SrRNA", "16S", targetGene)
+  targetGene <- sub("16S rRNA", "16S", targetGene)
   if(!all(targetGene %in% c("ITS", "16S"))) {
     warning("Target gene is missing from at least one fastq file. These files will not be sorted ",
             "into a subdirectory within the specified outDir.")
@@ -668,10 +668,10 @@ organizeRawSequenceData <- function(fn, metadata, outdir_sequence = NEONMICROBE_
 #'
 #' @return If return_data==TRUE, returns a dataframe consisting of joined soil data records from DP1.10086 ("Soil physical and chemical properties, periodic"). Otherwise, no value is returned.
 #' @export
-downloadRawSoilData <- function(sites='all', startYrMo = NA, endYrMo = NA,
-                                dpID = c("DP1.10086.001"), outDir=NEONMICROBE_DIR_SOIL(),
-                                rmSamplingImpractical=TRUE, rmNTransBouts=TRUE,
-                                rmFailedCNDataQF=TRUE) {
+downloadSoilData <- function(sites='all', startYrMo = NA, endYrMo = NA,
+                             dpID = c("DP1.10086.001"), outDir=NEONMICROBE_DIR_SOIL(),
+                             rmSamplingImpractical=TRUE, rmNTransBouts=TRUE,
+                             rmFailedCNDataQF=TRUE) {
   if(!dir.exists(outDir)) {
     message("Output directory does not exist. Returning NULL.")
     return(NULL)
@@ -849,3 +849,26 @@ downloadRawSoilData <- function(sites='all', startYrMo = NA, endYrMo = NA,
   return(dat_soil)
 }
 
+
+#' Alias for downloadSoilData()
+#'
+#' This function name is deprecated.
+#'
+#' @seealso \code{\link{downloadSoilData}}
+#'
+#' @param sites
+#' @param startYrMo
+#' @param endYrMo
+#' @param dpID
+#' @param outDir
+#' @param rmSamplingImpractical
+#' @param rmNTransBouts
+#' @param rmFailedCNDataQF
+#'
+#' @export
+downloadRawSoilData <- function(sites='all', startYrMo = NA, endYrMo = NA,
+                             dpID = c("DP1.10086.001"), outDir=NEONMICROBE_DIR_SOIL(),
+                             rmSamplingImpractical=TRUE, rmNTransBouts=TRUE,
+                             rmFailedCNDataQF=TRUE) {
+  warning("downloadRawSoilData() is now downloadSoilData().")
+}

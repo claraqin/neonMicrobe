@@ -1,0 +1,138 @@
+---
+title: "Add Environmental Variables to 16S Data"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Add Environmental Variables to 16S Data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+devtools::load_all() # TODO: Switch this to library(neonMicrobe) before publishing
+setBaseDirectory(dirname(getwd()))
+knitr::opts_knit$set(
+  root.dir = NEONMICROBE_DIR_BASE()
+)
+```
+
+The goal of this vignette is to merge various NEON data products to link the outputs of the DADA2 pipeline (e.g. non-chimeric sequence table, taxonomic table) to environmental/sample data. 
+
+It is assumed that you have already completed the steps in the "Download NEON Data" vignette and "Process 16S Sequences" vignette, so that there is an ASV table in your file system.
+
+# Load libraries
+
+```{r, eval=FALSE}
+library(neonMicrobe)
+```
+
+```{r message=FALSE}
+library(phyloseq)
+library(dplyr)
+library(ggplot2)
+```
+
+# Load outputs from DADA2 
+
+Load in the outputs from dada2.
+
+```{r}
+seqtab_orig <- readRDS(file.path(NEONMICROBE_DIR_MIDPROCESS(), "16S", "4_collapsed",
+                       "NEON_16S_seqtab_nochim_grasslands_COLLAPSED.Rds"))
+taxa_orig <- readRDS(file.path(NEONMICROBE_DIR_OUTPUTS(), "16S", "5_tax", 
+                    "NEON_16S_tax_grasslands_COLLAPSED.Rds"))
+```
+
+Now, we add sequence metadata, and subset to some columns of interest.
+
+```{r}
+data("seqmeta_greatplains")
+meta <- seqmeta_greatplains %>% distinct(dnaSampleID, .keep_all = T) %>% 
+	dplyr::select(sequencerRunID, dnaSampleID, dataQF.rawFiles, internalLabID.seq,
+				 siteID, collectDate, plotID, deprecatedVialID, geneticSampleID)
+meta$date_ymd <- as.Date(format(as.Date(meta$collectDate, format="%Y-%m-%d %H:%M:%S"), "%Y-%m-%d"))
+```
+
+This section downloads data associated with soil samples, such as temperature, moisture, and pH.
+
+```{r}
+soils_full <- downloadSoilData(
+  startYrMo = "2017-07", endYrMo = "2017-07", 
+  sites = c("CPER", "KONZ", "NOGP")
+)
+select_columns <- c("domainID", "siteID", "plotID", "plotType", "nlcdClass", "collectDate", 
+                    "sampleTiming", "standingWaterDepth", "sampleID", 
+                    "horizon", "soilTemp", "litterDepth", "sampleTopDepth", "sampleBottomDepth", 
+                    "geneticSampleID", "soilInCaClpH")
+soils <- soils_full[, select_columns]
+sampledata <- merge(meta, soils, all.x=T, by = "geneticSampleID")
+
+# Add rownames to sample data table 
+rownames(sampledata) <- sampledata$dnaSampleID
+```
+
+Large Phyloseq objects can use a lot of memory. Here, we remove samples and taxa that didn't sequence well, to reduce the size of the output object.
+
+```{r}
+# Remove low-abundance taxa (optional)
+keep <- which(colSums(seqtab_orig) > 20)
+seqtab <- seqtab_orig[,keep]
+print(dim(seqtab))
+
+# Remove low-quality samples (optional)
+keep <- which(rowSums(seqtab) > 5000)
+seqtab <- seqtab[keep,]
+print(dim(seqtab))
+```
+
+The `phyloseq` R package uses row names to match up sequence data and sample data. If for some reason they do not match up, you may have to do some additional wrangling here. (For example, if not all DNA samples had an associated dnaSampleID, thus forcing you to use the fastq file names as the row names in the sequence table, then you may have to use the metadata to create a different shared identifier.) Here, we simply subset to the row names do match, and reorder them.
+
+```{r}
+# Subset to samples present in both dataframes
+common_samples <- intersect(rownames(sampledata), rownames(seqtab))
+sampledata <- sampledata[common_samples,]
+seqtab <- seqtab[common_samples,]
+
+# Check rowname agreement for phyloseq
+identical(rownames(seqtab), rownames(sampledata))
+```
+
+Now we put it all together into a phyloseq object!
+
+```{r}
+# Combine into phyloseq object
+ps <- phyloseq(otu_table(seqtab, taxa_are_rows=FALSE),
+               sample_data(sampledata),
+               tax_table(taxa_orig))
+
+# store the DNA sequences of our ASVs in the refseq slot of the phyloseq object,
+# and then rename our taxa to a short string
+dna <- Biostrings::DNAStringSet(taxa_names(ps))
+names(dna) <- taxa_names(ps)
+ps <- merge_phyloseq(ps, dna)
+taxa_names(ps) <- paste0("ASV", seq(ntaxa(ps)))
+
+# Print phyloseq summary.
+ps 
+```
+
+Don't forget to save! 
+
+```{r}
+saveRDS(ps, file.path(NEONMICROBE_DIR_OUTPUTS(), "phyloseq", "NEON_16S_phyloseq_greatplains.Rds"))
+```
+
+
+If the saved object still takes up too much memory, consider removing or consolidating additional taxa, using agglomeration functions in `dada2`. The `speedyseq` [package](https://github.com/mikemc/speedyseq) is also useful for manipulating large Phyloseq objects
+
+```{r}
+# Create a smaller subset
+# Remove taxa not seen more than 3 times in at least 10 of the samples. 
+# This protects against an OTU with small mean & trivially large C.V. 
+# (from phyloseq tutorial)
+ps_subset = filter_taxa(ps, function(x) sum(x > 3) > 10, TRUE)
+saveRDS(ps_subset, file.path(newest_outputs, "NEON_16S_phyloseq_greatplains_subset.Rds"))
+```

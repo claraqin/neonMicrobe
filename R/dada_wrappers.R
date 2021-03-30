@@ -439,7 +439,7 @@ qualityFilterITS <- function(fn, dir_out, meta, multithread = FALSE, ...){
 #' @param fn Base names of input fastq files. If inputs are not base names (i.e. if they include directory paths), the directory paths will be removed. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning.
 #' @param in_subdir Subdirectory name from which to retrieve input fastq files. Enter "raw" for raw sequence files, or any other character string to specify a subdirectory within \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S. To specify a directory outside \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S, use the 'in_explicitdir' argument.
 #' @param meta The output of \code{\link{downloadSequenceMetadata}}. Must be provided as either the data.frame returned by \code{\link{downloadSequenceMetadata}} or as a filepath to the csv file produced by \code{\link{downloadSequenceMetadata}}.
-#' @param out_seqtab,out_track File locations where copies of the sequence table and read-tracking table (respectively) will be saved as csv files. By default (NULL), these are \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S/3_seqtabs/asv_16s_[timestamp].csv and \code{\link{NEONMICROBE_DIR_TRACKREADS}}/16S/dada_16s_[timestamp].csv. If no copy should be saved, set the corresponding argument to FALSE.
+#' @param out_seqtab,out_track File locations where copies of the sequence table and read-tracking table (respectively) will be written. By default (NULL), these are \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S/3_seqtabs/asv_16s_[timestamp].Rds and \code{\link{NEONMICROBE_DIR_TRACKREADS}}/16S/dada_16s_[timestamp].csv. If no copy should be saved, set the corresponding argument to FALSE.
 #' @param in_explicitdir Directory name to use instead of 'in_subdir', if static directory name or directory outside of \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S is desired. Not recommended for use within processing batches.
 #' @param remove_chimeras (Optional) Default TRUE. Whether to remove chimeras from the sequence table. Currently only supports removal using \code{\link[dada2]{removeBimeraDenovo}} with the consensus method.
 #' @param multithread Default FALSE. Whether to use multithreading.
@@ -472,7 +472,7 @@ runDada16S <- function(fn, in_subdir, meta, out_seqtab = NULL, out_track = NULL,
   # Validate output arguments
   if(is.null(out_seqtab)) {
     out_seqtab <- file.path(NEONMICROBE_DIR_MIDPROCESS(), "16S", "3_seqtabs",
-                            paste0("asv_16s_", sub(" ", "_", gsub(":", "", Sys.time())), ".csv"))
+                            paste0("asv_16s_", sub(" ", "_", gsub(":", "", Sys.time())), ".Rds"))
   }
   if(is.null(out_track)) {
     out_track <- file.path(NEONMICROBE_DIR_TRACKREADS(), "16S",
@@ -583,9 +583,9 @@ runDada16S <- function(fn, in_subdir, meta, out_seqtab = NULL, out_track = NULL,
       message("Output directory created for sequence table: ", dirname(out_seqtab))
     }
     if(remove_chimeras) {
-      write.csv(seqtab.nochim, out_seqtab)
+      saveRDS(seqtab.nochim, out_seqtab)
     } else {
-      write.csv(seqtab, out_seqtab)
+      saveRDS(seqtab, out_seqtab)
     }
   }
   if(!identical(out_track, FALSE)) {
@@ -760,36 +760,6 @@ runDadaITS <- function(fn, meta, out_seqtab = "", out_track = "", remove_chimera
     return(invisible(
       list("seqtab" = seqtab,
            "track" = track)))
-  }
-}
-
-#' Combine 16S Read-Tracking Tables
-#'
-#' @param trim_table Read-tracking table output by \code{\link{trimPrimers16S}}.
-#' @param filter_table Read-tracking table output by \code{\link{qualityFilter16S}}.
-#' @param dada_table Read-tracking table output by \code{\link{runDada16S}}.
-#' @param out_file File location where a copy of the combined read-tracking table will be saved as a csv file. By default (NULL), this is \code{\link{NEONMICROBE_DIR_TRACKREADS}}/16S/track_16s_[timestamp].csv. If no copy should be saved, set to FALSE.
-#'
-#' @return No value is returned.
-#' @export
-combineReadTrackingTables16S <- function(trim_table, filter_table, dada_table, out_file = NULL) {
-  track <- Reduce(
-    function(x, y, ...) transform(merge(x, y, by = 0, all = TRUE, ...), row.names=Row.names, Row.names = NULL),
-    list(trim_table,
-         filter_table[,2,drop=FALSE],
-         dada_table)
-  )
-  names(track)[3] <- "filtered"
-  track[is.na(track)] <- 0
-
-  # optionally save the combined table
-  if(!identical(out_file, FALSE)) {
-    if(is.null(out_file)) {
-      out_file <- file.path(NEONMICROBE_DIR_TRACKREADS(), "16S",
-                            paste0("track_16s_", sub(" ", "_", gsub(":", "", Sys.time())), ".csv"))
-    }
-    write.csv(track, file = out_file)
-    message("Saved read-tracking table to ", out_file)
   }
 }
 

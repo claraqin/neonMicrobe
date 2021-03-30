@@ -27,7 +27,7 @@ Note that few of the code chunks in this .Rmd file are actually run, because DAD
 
 # Load libraries
 
-```{r, eva=FALSE}
+```{r, eval=FALSE}
 library(neonMicrobe)
 ```
 
@@ -66,15 +66,10 @@ meta$date_ymd <- as.Date(format(as.Date(meta$collectDate, format="%Y-%m-%d %H:%M
 
 # Process reads into ASV tables
 
-It is generally better to use DADA2 to process one sequencing run at a time, because different sequencing runs may have different error rates, and the dada sequence-calling algorithm assumes homogeneous error rates across input samples. We can retrieve all sequencing run IDs from the metadata:
+It is generally better to use DADA2 to process one sequencing run at a time, because different sequencing runs may have different error rates, and the dada sequence-calling algorithm assumes homogeneous error rates across input samples. Furthermore, it is simpler to show, for demonstration purposes, how you would process just one sequencing run. In practice, the part of this section titled "Denoise reads using the dada algorithm" may be enclosed within a `for` loop that cycles through all sequencing runs in the metadata.
 
 ```{r}
 unique_runs <- unique(meta$sequencerRunID)
-```
-
-For demonstration purposes, we show how you would process just one sequencing run. In practice, the remainder of this section may be enclosed within a `for` loop that cycles through all sequencing runs in the metadata.
-
-```{r}
 meta_onerun <- meta[which(meta$sequencerRunID==unique_runs[1]),]
 nrow(meta_onerun)
 ```
@@ -170,9 +165,9 @@ While `mergeSequenceTables()` checks for duplicate samples, it performs no ASV c
 
 ```{r, eval=FALSE}
 seqtab_joined_collapsed <- collapseNoMismatch(seqtab_joined)
-write.csv(seqtab_joined_collapse, 
-          file.path(NEONMICROBE_PATH_MIDPROCESS(), "16S", "4_collapsed",
-                    paste0("asv_16s_collapsed_", sub(" ", "_", gsub(":", "", Sys.time())), ".csv")))
+saveRDS(seqtab_joined_collapse, 
+        file.path(NEONMICROBE_PATH_MIDPROCESS(), "16S", "4_collapsed",
+                  "NEON_16S_seqtab_nochim_grasslands_COLLAPSED.Rds"))
 ```
 
 
@@ -209,9 +204,9 @@ tax <- assignTaxonomy(
 Save the taxonomy table to file:
 
 ```{r, eval=FALSE}
-write.csv(tax, 
-          file.path(NEONMICROBE_DIR_OUTPUTS(), "16S", "5_tax", 
-                    paste0("tax_16s_collapsed_", sub(" ", "_", gsub(":", "", Sys.time())), ".csv")))
+saveRDS(tax, 
+        file.path(NEONMICROBE_DIR_OUTPUTS(), "16S", "5_tax", 
+                  "NEON_16S_tax_grasslands_COLLAPSED.Rds"))
 ```
 
 
