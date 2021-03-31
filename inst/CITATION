@@ -1,0 +1,4 @@
+bibentry(bibtype="article", title="From DNA sequences to microbial ecology: Wrangling NEON soil microbe data with the neonMicrobe R package", author=c("Clara Qin", "Ryan Bartelme", "Y. Anny Chung", "Dawson Fairbanks", "Yang Lin", "Daniel Liptzin", "Chance Muscarella", "Kusum Naithani", "Kabir Peay", "Ayanna St Rose", "Lee Stanish", "Peter Pellitier", "Zoey Werbin", "Kai Zhu"), journal="", volume=0, pages="", year=2021, doi="")
+
+
+
