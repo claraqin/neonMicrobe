@@ -107,11 +107,11 @@ Occasionally, sequencing runs will produce reads in mixed orientation, meaning t
 ```{r, eval=FALSE}
 trimPrimersITS(
   fl_nm, in_subdir = "1_filtN", out_subdir = "2_trimmed_once", 
-  meta = seqmeta_greatplains_its, multithread = TRUE
+  meta = seqmeta_greatplains_its, cutadapt_path = "[insert path here]"
 )
 trimPrimersITS(
   fl_nm, in_subdir = "2_trimmed_once", out_subdir = "2_trimmed", 
-  meta = seqmeta_greatplains_its, multithread = TRUE,
+  meta = seqmeta_greatplains_its, cutadapt_path = "[insert path here]",
   primer_ITS_fwd = "GCTGCGTTCTTCATCGATGC", # swapping the primers
   primer_ITS_rev = "CTTGGTCATTTAGAGGAAGTAA"
 )
