@@ -105,11 +105,11 @@ The following function performs basic QAQC checks on sequence metadata prior to 
 Specifically, this function will remove duplicates, quality-flagged samples, and (optionally) any R1 fastq files without corresponding R2 files.
 
 ```{r}
-meta_16s_qc <- qcMetadata(meta_16s, pairedReads = "Y")
+meta_16s_qc <- qcMetadata(meta_16s, pairedReads = "Y", rmFlagged = "Y")
 ```
 
 ```{r}
-meta_its_qc <- qcMetadata(meta_its, pairedReads = "N")
+meta_its_qc <- qcMetadata(meta_its, pairedReads = "N", rmFlagged = "Y")
 ```
 
 

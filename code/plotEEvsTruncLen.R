@@ -5,25 +5,14 @@ library(tidyr)
 library(ggplot2)
 library(dplyr)
 
-source("R/utils.R") # load the plotEEProfile function
-source("code/params.R")
+devtools::load_all() # TODO: Replace with library(neonMicrobe) after publishing
 
-# runIDs <- c("runC5B2R", "runCBTWG", "runBFDG8")
-runIDs <-  c("runB69PP", "runB69RN", "runB9994", "runBDNB6", "runBF462", "runBFDG8", "runBNMJ5", "runBNMWB", "runBRPH4", "runC24VW", "runC25T6", "runC5B2R", "runC7WK3", "runC8VMV", "runC977L", "runC983L", "runCBJYB", "runCBTWG", "runCDHG2", "runCDJ5J")
-
-if(is.null(PRESET_OUTDIR_SEQUENCE) | PRESET_OUTDIR_SEQUENCE == "") {
-  PATH_16S <- file.path(PRESET_OUTDIR, "raw_sequence", "16S")
-} else {
-  PATH_16S <- file.path(PRESET_OUTDIR, PRESET_OUTDIR_SEQUENCE, "16S")
-}
-PATH_RAW <- file.path(PATH_16S, "0_raw")
-
-PATH_OUTPUT <- file.path(PATH_16S, "qf_test_1-13-2021", "results")
+runIDs <-  c("B69PP", "B69RN", "B9994", "BDNB6", "BF462", "BFDG8", "BNMJ5", "BNMWB", "BRPH4", "C24VW", "C25T6", "C5B2R", "C7WK3", "C8VMV", "C977L", "C983L", "CBJYB", "CBTWG", "CDHG2", "CDJ5J")
 
 rawFs <- rawRs <- list()
 for(i in 1:length(runIDs)) {
-  rawFs[[i]] <- list.files(PATH_RAW, pattern=paste0(runIDs[[i]], ".*_R1\\.fastq"), full.names=TRUE)
-  rawRs[[i]] <- list.files(PATH_RAW, pattern=paste0(runIDs[[i]], ".*_R2\\.fastq"), full.names=TRUE)
+  rawFs[[i]] <- list.files(file.path(NEONMICROBE_DIR_SEQUENCE(), "16S"), pattern=paste0(runIDs[[i]], ".*_R1\\.fastq"), full.names=TRUE)
+  rawRs[[i]] <- list.files(file.path(NEONMICROBE_DIR_SEQUENCE(), "16S"), pattern=paste0(runIDs[[i]], ".*_R2\\.fastq"), full.names=TRUE)
 }
 
 # Use only first 10 samples from each run ID

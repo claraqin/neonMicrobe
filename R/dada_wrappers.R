@@ -387,7 +387,7 @@ qualityFilterITS <- function(fn, in_subdir, out_subdir, meta, in_explicitdir = N
   meta <- readSequenceMetadata(meta)
 
   # Validate input and output arguments
-  validated_args <- validateIO(fn, in_subdir, out_subdir, in_explicitdir, out_explicitdir, targetGene="16S")
+  validated_args <- validateIO(fn, in_subdir, out_subdir, in_explicitdir, out_explicitdir, targetGene="ITS")
   fn <- validated_args$fn
   fn_out <- validated_args$fn_out
   in_dir <- validated_args$in_dir
@@ -650,7 +650,7 @@ runDadaITS <- function(fn, in_subdir, meta, out_seqtab = NULL, out_track = NULL,
   meta <- readSequenceMetadata(meta)
 
   # Validate input arguments
-  validated_args <- validateIO(fn, in_subdir=in_subdir, in_explicitdir=in_explicitdir, targetGene="16S",
+  validated_args <- validateIO(fn, in_subdir=in_subdir, in_explicitdir=in_explicitdir, targetGene="ITS",
                                validate_input_only=TRUE)
   fn <- validated_args$fn
   if(length(fn) == 0) {

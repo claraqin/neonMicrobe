@@ -2,7 +2,7 @@ Package: neonMicrobe
 Title: Downloading, Pre-processing, and Assembling NEON Soil Microbe Marker Gene Sequence Data
 Version: 0.0.0.9000
 Authors@R: c(
-          person(given = "Clara", family = "Qin", role = c("cre", "aut"), email = "claraqin@ucsc.edu", comment = c(ORCID = "0000-0002-9561-4704")),
+          person(given = "Clara", family = "Qin", role = c("cre", "aut"), email = "claralqin@gmail.com", comment = c(ORCID = "0000-0002-9561-4704")),
           person(given = "Lee", family = "Stanish", role = "aut", email = "lstanish@gmail.com"),
           person(given = "Zoey", family = "Werbin", role = "aut", email = "zrwerbin@bu.edu"),
           person(given = "Ryan", family = "Bartelme", role = "ctb", email = "rbartelme@arizona.edu"),
