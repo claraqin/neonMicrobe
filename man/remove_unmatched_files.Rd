@@ -2,21 +2,31 @@
 % Please edit documentation in R/utils.R
 \name{remove_unmatched_files}
 \alias{remove_unmatched_files}
-\title{Remove Unmatched Fastq Files}
+\title{Remove Unmatched Fastq Files (DEPRECATED)}
 \usage{
-remove_unmatched_files(fnFs, fnRs, post_samplename_pattern = "_R")
+remove_unmatched_files(
+  fnFs,
+  fnRs,
+  post_samplename_pattern = "_R(1|2).*\\\\.fastq",
+  verbose = FALSE
+)
 }
 \arguments{
 \item{fnFs}{Full name(s) of fastq file(s) containing forward-read sequence data.}
 
 \item{fnRs}{Full name(s) of fastq file(s) containing reverse-read sequence data.}
 
-\item{post_samplename_pattern}{(Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.}
+\item{post_samplename_pattern}{(Optional) Character pattern within the filename which immediately follows the end of the sample name. Defaults to "_R(1|2).*\\.fastq", as NEON fastq files typically consist of a sample name followed by "_R1.fastq" or "_R2.fastq", etc.}
+
+\item{verbose}{Whether to print messages regarding which files are matched and which are unmatched.}
 }
 \value{
 List of length 2. The first element is a vector of forward-read files that have reverse-read counterparts; the second element is a vector of reverse-read files that have forward-read counterparts.
 }
 \description{
+NOTE: This function is now deprecated in favor of \code{\link{getPairedFastqFiles}} and \code{\link{removeUnpairedFastqFiles}}.
+}
+\details{
 Removes any forward-read files that do not have reverse-read counterparts, and vise versa.
 This function is necessary because dada2::filterAndTrim() will throw an error
 if the forward-read files and the reverse-read files are mismatched.
