@@ -3,7 +3,7 @@
 title: "Sensitivity Analysis for Quality Filtering Parameters"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{sensitivity-analysis}
+  %\VignetteIndexEntry{Sensitivity Analysis for Quality Filtering Parameters}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

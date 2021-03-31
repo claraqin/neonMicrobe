@@ -18,7 +18,28 @@
 #' downloadSequenceMetadata(startYrMo = "2017-07", endYrMo = "2017-07",
 #' sites = c("KONZ", "CPER", "NOGP"),
 #' targetGene = "16S", outDir=FALSE)
-"seqmeta_greatplains"
+"seqmeta_greatplains_16s"
+
+#' ITS Sequence Metadata for NEON Great Plains Sites
+#'
+#' A subset of the NEON ITS sequence metadata for three
+#' terrestrial NEON sites in the Great Plains: KONZ,
+#' CPER, and NOGP. This sequence metadata contains
+#' all records of ITS soil marker gene sequence data
+#' collected from these sites in July 2017. This
+#' sequence metadata has not been QCd using
+#' \code{\link{qcMetadata}}.
+#'
+#' @format A data frame with 172 rows and 86 variables.
+#' For variable definitions, see NEON soil microbe
+#' marker gene sequences data product:
+#' \url{https://data.neonscience.org/data-products/DP1.10108.001}
+#'
+#' @source
+#' downloadSequenceMetadata(startYrMo = "2017-07", endYrMo = "2017-07",
+#' sites = c("KONZ", "CPER", "NOGP"),
+#' targetGene = "ITS", outDir=FALSE)
+"seqmeta_greatplains_its"
 
 
 #' 16S Sequence Abundance Table for NEON Great Plains Sites

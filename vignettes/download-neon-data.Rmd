@@ -125,5 +125,5 @@ downloadRawSequenceData(meta_16s_qc)
 downloadRawSequenceData(meta_its_qc)
 ```
 
-And with that, you've downloaded some fastq files! To learn how to process these fastq files into ASV tables using the DADA2 pipeline, while taking advantage of `neonMicrobe`'s organizational structure, see the vignette "Process 16S Sequences" or "Process ITS Sequences".
+And with that, you've downloaded some fastq files! To learn how to process these fastq files into ASV tables using the DADA2 pipeline, while taking advantage of `neonMicrobe`'s organizational structure, see the vignette "Process 16S Sequences" or the vignette "Process ITS Sequences".
 

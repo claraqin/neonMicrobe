@@ -1,9 +1,9 @@
 
 test_that("fastq in extdata are loadable", {
-  fl_nm <- c("BMI_Plate23WellE7_16S_BDNB6_R1.fastq.gz",
-             "BMI_Plate23WellE7_16S_BDNB6_R2.fastq.gz",
-             "BMI_Plate37WellA12_16S_BJ8RK_R1.fastq.gz",
-             "BMI_Plate37WellA12_16S_BJ8RK_R2.fastq.gz")
+  fl_nm <- file.path("16S",c("BMI_Plate23WellE7_16S_BDNB6_R1.fastq.gz",
+                             "BMI_Plate23WellE7_16S_BDNB6_R2.fastq.gz",
+                             "BMI_Plate37WellA12_16S_BJ8RK_R1.fastq.gz",
+                             "BMI_Plate37WellA12_16S_BJ8RK_R2.fastq.gz"))
   files <- system.file("extdata", fl_nm, package="neonMicrobe")
   expect_equal(length(files), 4)
   expect_true(all(file.exists(files)))

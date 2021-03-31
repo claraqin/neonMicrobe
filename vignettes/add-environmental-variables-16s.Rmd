@@ -19,7 +19,7 @@ knitr::opts_knit$set(
 )
 ```
 
-The goal of this vignette is to merge various NEON data products to link the outputs of the DADA2 pipeline (e.g. non-chimeric sequence table, taxonomic table) to environmental/sample data. 
+The goal of this vignette is to merge various NEON data products to link the outputs of the DADA2 pipeline (e.g. non-chimeric sequence table, taxonomic table) to environmental/sample data.
 
 It is assumed that you have already completed the steps in the "Download NEON Data" vignette and "Process 16S Sequences" vignette, so that there is an ASV table in your file system.
 
@@ -35,7 +35,18 @@ library(dplyr)
 library(ggplot2)
 ```
 
-# Load outputs from DADA2 
+
+# Set base directory
+
+Setting the base directory using `setBaseDirectory()` will create a point of reference for the `neonMicrobe` package, so that it knows where to look for the raw sequence files, and where to save the processed data. This should be the same base directory that you used in the "Download NEON Data" vignette and "Process 16 Sequences" vignette. If you're continuing to use the same R session, then you don't have to run this again.
+
+```{r}
+print(getwd())
+setBaseDirectory()
+```
+
+
+# Load outputs from DADA2
 
 Load in the outputs from dada2.
 
@@ -49,8 +60,8 @@ taxa_orig <- readRDS(file.path(NEONMICROBE_DIR_OUTPUTS(), "16S", "5_tax",
 Now, we add sequence metadata, and subset to some columns of interest.
 
 ```{r}
-data("seqmeta_greatplains")
-meta <- seqmeta_greatplains %>% distinct(dnaSampleID, .keep_all = T) %>% 
+data("seqmeta_greatplains_16s")
+meta <- seqmeta_greatplains_16s %>% distinct(dnaSampleID, .keep_all = T) %>% 
 	dplyr::select(sequencerRunID, dnaSampleID, dataQF.rawFiles, internalLabID.seq,
 				 siteID, collectDate, plotID, deprecatedVialID, geneticSampleID)
 meta$date_ymd <- as.Date(format(as.Date(meta$collectDate, format="%Y-%m-%d %H:%M:%S"), "%Y-%m-%d"))
@@ -88,7 +99,7 @@ seqtab <- seqtab[keep,]
 print(dim(seqtab))
 ```
 
-The `phyloseq` R package uses row names to match up sequence data and sample data. If for some reason they do not match up, you may have to do some additional wrangling here. (For example, if not all DNA samples had an associated dnaSampleID, thus forcing you to use the fastq file names as the row names in the sequence table, then you may have to use the metadata to create a different shared identifier.) Here, we simply subset to the row names do match, and reorder them.
+The `phyloseq` R package uses row names to match up sequence data and sample data. If for some reason they do not match up, you may have to do some additional wrangling here. (For example, if not all DNA samples had an associated dnaSampleID, thus forcing you to use the fastq file names as the row names in the sequence table, then you may have to use the metadata to create a different shared identifier.) Here, we simply subset to the row names that do match, and reorder them.
 
 ```{r}
 # Subset to samples present in both dataframes
@@ -119,12 +130,11 @@ taxa_names(ps) <- paste0("ASV", seq(ntaxa(ps)))
 ps 
 ```
 
-Don't forget to save! 
+Don't forget to save!
 
 ```{r}
 saveRDS(ps, file.path(NEONMICROBE_DIR_OUTPUTS(), "phyloseq", "NEON_16S_phyloseq_greatplains.Rds"))
 ```
-
 
 If the saved object still takes up too much memory, consider removing or consolidating additional taxa, using agglomeration functions in `dada2`. The `speedyseq` [package](https://github.com/mikemc/speedyseq) is also useful for manipulating large Phyloseq objects
 

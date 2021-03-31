@@ -370,15 +370,18 @@ qualityFilter16S <- function(fn, in_subdir, out_subdir, meta, in_explicitdir = N
 #' Applies a quality filter to ITS sequence fastq files via the \code{\link[dada2]{filterAndTrim}} function.
 #' Currently only supports filtering forward-read (R1) sequences. If reverse reads are included, they will be ignored.
 #'
-#' @param fn Full names of input fastq files, including directory. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning. It is assumed that these are R1 (forward-read) files only.
-#' @param dir_out Directory where filtered fastq files will be written.
+#' @param fn Base names of input fastq files. If inputs are not base names (i.e. if they include directory paths), the directory paths will be removed. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning.
+#' @param in_subdir Subdirectory name from which to retrieve input fastq files. Enter "raw" for raw sequence files, or any other character string to specify a subdirectory within \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S. To specify a directory outside \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S, use the 'in_explicitdir' argument.
+#' @param out_subdir Subdirectory name where output fastq files will be written. Enter any character string to specify a subdirectory within \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S. If the directory does not exist, it will be created. To specify a directory outside \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S, use the 'out_explicitdir' argument.
 #' @param meta The output of \code{\link{downloadSequenceMetadata}}. Must be provided as either the data.frame returned by \code{\link{downloadSequenceMetadata}} or as a filepath to the csv file produced by \code{\link{downloadSequenceMetadata}}.
+#' @param in_explicitdir,out_explicitdir Directory names to use instead of 'in_subdir' and 'out_subdir', if static directory names or directories outside of \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S are desired. Not recommended for use within processing batches.
 #' @param multithread Default FALSE. Whether to use multithreading. Note that Windows does not support multithreading in this function because it uses mclapply, so this argument must be set to FALSE on Windows systems.
 #' @param ... Other arguments to be passed to \code{\link[dada2]{filterAndTrim}}, such as maxEE, truncLen, and minLen. By default, uses \code{\link[dada2]{filterAndTrim}}'s default values. See documentation for \code{\link[dada2]{filterAndTrim}} for more details.
 #'
 #' @return (Invisibly) Two-column matrix displaying the number of reads in input vs. output for each file.
 #' @export
-qualityFilterITS <- function(fn, dir_out, meta, multithread = FALSE, ...){
+qualityFilterITS <- function(fn, in_subdir, out_subdir, meta, in_explicitdir = NULL, out_explicitdir = NULL,
+                             multithread = FALSE, ...){
   # Validate sequence metadata
   checkArgsAgainstBatchParams(meta = "SEQMETA_FILE")
   meta <- readSequenceMetadata(meta)
@@ -455,7 +458,7 @@ qualityFilterITS <- function(fn, dir_out, meta, multithread = FALSE, ...){
 #' seqtab.list <- runDada16S(c("sample1_R1.fastq", "sample1_R2.fastq", "sample2_R1.fastq", "sample2_R2.fastq"), meta, seed=1010100)
 #' }
 runDada16S <- function(fn, in_subdir, meta, out_seqtab = NULL, out_track = NULL, in_explicitdir = NULL,
-                        remove_chimeras = TRUE, multithread = FALSE, verbose = FALSE, seed = NULL, nbases=1e7) {
+                       remove_chimeras = TRUE, multithread = FALSE, verbose = FALSE, seed = NULL, nbases = 1e7) {
 
   # Validate sequence metadata
   checkArgsAgainstBatchParams(meta = "SEQMETA_FILE")
@@ -587,6 +590,7 @@ runDada16S <- function(fn, in_subdir, meta, out_seqtab = NULL, out_track = NULL,
     } else {
       saveRDS(seqtab, out_seqtab)
     }
+    message("Sequence table saved to ", out_seqtab)
   }
   if(!identical(out_track, FALSE)) {
     if(!dir.exists(dirname(out_track))) {
@@ -594,6 +598,7 @@ runDada16S <- function(fn, in_subdir, meta, out_seqtab = NULL, out_track = NULL,
       message("Output directory created for read tracking table: ", dirname(out_track))
     }
     write.csv(track, out_track)
+    message("Read tracking table saved to ", out_track)
   }
 
   if(remove_chimeras) {
@@ -619,9 +624,11 @@ runDada16S <- function(fn, in_subdir, meta, out_seqtab = NULL, out_track = NULL,
 #' This implementation is based on Ben Callahan's vignettes at \url{https://benjjneb.github.io/dada2/bigdata.html}
 #' and \url{https://benjjneb.github.io/dada2/ITS_workflow.html}.
 #'
-#' @param fn Full names of input fastq files, including directory. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning.
+#' @param fn Base names of input fastq files. If inputs are not base names (i.e. if they include directory paths), the directory paths will be removed. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning.
+#' @param in_subdir Subdirectory name from which to retrieve input fastq files. Enter "raw" for raw sequence files, or any other character string to specify a subdirectory within \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S. To specify a directory outside \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S, use the 'in_explicitdir' argument.
 #' @param meta The output of \code{\link{downloadSequenceMetadata}}. Must be provided as either the data.frame returned by \code{\link{downloadSequenceMetadata}} or as a filepath to the csv file produced by \code{\link{downloadSequenceMetadata}}.
-#' @param out_seqtab,out_track (Optional) File locations where sequence table and read-tracking table (respectively) will be saved as csv files. If blank (default), will not save to file.
+#' @param out_seqtab,out_track File locations where copies of the sequence table and read-tracking table (respectively) will be written. By default (NULL), these are \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S/3_seqtabs/asv_16s_[timestamp].Rds and \code{\link{NEONMICROBE_DIR_TRACKREADS}}/16S/dada_16s_[timestamp].csv. If no copy should be saved, set the corresponding argument to FALSE.
+#' @param in_explicitdir Directory name to use instead of 'in_subdir', if static directory name or directory outside of \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S is desired. Not recommended for use within processing batches.
 #' @param remove_chimeras (Optional) Default TRUE. Whether to remove chimeras from the sequence table. Currently only supports removal using \code{\link[dada2]{removeBimeraDenovo}} with the consensus method.
 #' @param multithread Default FALSE. Whether to use multithreading.
 #' @param verbose Default FALSE. Whether to print messages regarding the samples being processed, dimensions of the resulting sequence table, and the distribution of sequence lengths.
@@ -635,7 +642,9 @@ runDada16S <- function(fn, in_subdir, meta, out_seqtab = NULL, out_track = NULL,
 #' \dontrun{
 #' seqtab.list <- runDada16S(c("sample1_R1.fastq", "sample1_R2.fastq", "sample2_R1.fastq", "sample2_R2.fastq"), meta, seed=1010100)
 #' }
-runDadaITS <- function(fn, meta, out_seqtab = "", out_track = "", remove_chimeras = TRUE, multithread = FALSE, verbose = FALSE, seed = NULL, nbases=1e7){
+runDadaITS <- function(fn, in_subdir, meta, out_seqtab = NULL, out_track = NULL, in_explicitdir = NULL,
+                       remove_chimeras = TRUE, multithread = FALSE, verbose = FALSE, seed = NULL, nbases = 1e7) {
+
   # Validate sequence metadata
   checkArgsAgainstBatchParams(meta = "SEQMETA_FILE")
   meta <- readSequenceMetadata(meta)
@@ -651,11 +660,11 @@ runDadaITS <- function(fn, meta, out_seqtab = "", out_track = "", remove_chimera
   # Validate output arguments
   if(is.null(out_seqtab)) {
     out_seqtab <- file.path(NEONMICROBE_DIR_MIDPROCESS(), "16S", "3_seqtabs",
-                            paste0("asv_16s_", sub(" ", "_", gsub(":", "", Sys.time())), ".csv"))
+                            paste0("asv_its_", sub(" ", "_", gsub(":", "", Sys.time())), ".Rds"))
   }
   if(is.null(out_track)) {
     out_track <- file.path(NEONMICROBE_DIR_TRACKREADS(), "16S",
-                           paste0("dada_16s_", sub(" ", "_", gsub(":", "", Sys.time())), ".csv"))
+                           paste0("dada_its_", sub(" ", "_", gsub(":", "", Sys.time())), ".csv"))
   }
 
   # Reference metadata to retrieve R1 files
@@ -739,10 +748,11 @@ runDadaITS <- function(fn, meta, out_seqtab = "", out_track = "", remove_chimera
       message("Output directory created for sequence table: ", dirname(out_seqtab))
     }
     if(remove_chimeras) {
-      write.csv(seqtab.nochim, out_seqtab)
+      saveRDS(seqtab.nochim, out_seqtab)
     } else {
-      write.csv(seqtab, out_seqtab)
+      saveRDS(seqtab, out_seqtab)
     }
+    message("Sequence table saved to ", out_seqtab)
   }
   if(!identical(out_track, FALSE)) {
     if(!dir.exists(dirname(out_track))) {
@@ -750,6 +760,7 @@ runDadaITS <- function(fn, meta, out_seqtab = "", out_track = "", remove_chimera
       message("Output directory created for read tracking table: ", dirname(out_track))
     }
     write.csv(track, out_track)
+    message("Read tracking table saved to ", out_track)
   }
 
   if(remove_chimeras) {

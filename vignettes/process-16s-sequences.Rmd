@@ -13,12 +13,13 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 devtools::load_all() # TODO: Switch this to library(neonMicrobe) before publishing
+setBaseDirectory(dirname(getwd()))
 knitr::opts_knit$set(
   root.dir = NEONMICROBE_DIR_BASE()
 )
 ```
 
-This vignette demonstrates how to use the functions and parameters in this package to process the raw NEON 16S sequence data into ASV tables using the DADA2 workflow.
+This vignette demonstrates how to use the functions and parameters in this package to process the raw NEON 16S sequence data into ASV tables using the DADA2 workflow. It is based on the [DADA2 Pipeline Tutorial (1.16)](https://benjjneb.github.io/dada2/tutorial.html).
 
 It is assumed that you have already completed the steps in the "Download NEON Data" vignette, so that there are raw sequence files in the appropriate data directory.
 
@@ -40,16 +41,13 @@ library(ggplot2)
 ```
 
 
-# Set up base directory
+# Set base directory
 
-Setting the base directory using `setBaseDirectory()` will create a point of reference for the `neonMicrobe` package, so that it knows where to look for the raw sequence files, and where to save the processed data. This should be the same base directory that you used in the "Download NEON Data" vignette.
-
-```{r}
-print(dirname(getwd()))
-```
+Setting the base directory using `setBaseDirectory()` will create a point of reference for the `neonMicrobe` package, so that it knows where to look for the raw sequence files, and where to save the processed data. This should be the same base directory that you used in the "Download NEON Data" vignette. If you're continuing to use the same R session, then you don't have to run this again.
 
 ```{r}
-setBaseDirectory(dirname(getwd()))
+print(getwd())
+setBaseDirectory()
 ```
 
 
@@ -58,15 +56,15 @@ setBaseDirectory(dirname(getwd()))
 As explained in the "Download NEON Data" vignette, `neonMicrobe` is a *metadata-first* processing pipeline. So we begin by retrieving sequence metadata. Any fastq files that are represented in the metadata will be processed by the functions in the next section, and any fastq files that are *not* represented in the metadata will be ignored. Therefore, it is recommended that you use the same metadata you used to download the files in the first place, lest you end up with fewer or more processed samples than intended.
 
 ```{r}
-data("seqmeta_greatplains")
-meta <- seqmeta_greatplains
+data("seqmeta_greatplains_16s")
+meta <- seqmeta_greatplains_16s
 meta$date_ymd <- as.Date(format(as.Date(meta$collectDate, format="%Y-%m-%d %H:%M:%S"), "%Y-%m-%d"))
 ```
 
 
 # Process reads into ASV tables
 
-It is generally better to use DADA2 to process one sequencing run at a time, because different sequencing runs may have different error rates, and the dada sequence-calling algorithm assumes homogeneous error rates across input samples. Furthermore, it is simpler to show, for demonstration purposes, how you would process just one sequencing run. In practice, the part of this section titled "Denoise reads using the dada algorithm" may be enclosed within a `for` loop that cycles through all sequencing runs in the metadata.
+It is generally better to use DADA2 to process one sequencing run at a time, because different sequencing runs may have different error rates, and the dada denoising algorithm assumes homogeneous error rates across input samples. Furthermore, it is simpler to show, for demonstration purposes, how you would process just one sequencing run. In practice, the part of this section titled "Denoise reads using the dada algorithm" may be enclosed within a `for` loop that cycles through all sequencing runs in the metadata.
 
 ```{r}
 unique_runs <- unique(meta$sequencerRunID)
@@ -85,18 +83,22 @@ head(fl_nm)
 
 `trimPrimers16S()` trims primer sequences from 16S reads by using the `dada2` function `filterAndTrim()`. `trimPrimers16S()` assumes that each read begins with its full primer sequence and operates by truncating the beginning of each read by the length of its primer sequence. Should this aspect of the NEON 16S sequence data change, this step will need to be modified.
 
-In `trimPrimers16S()`, the argument `in_subdir` is "raw" -- a reserved value that tells the function to look for the input files in a special subdirectory of `NEONMICROBE_DIR_SEQUENCE()`. Any other value passed to `in_subdir` would tell it to look for the input files in the corresponding subdirectory of `NEONMICROBE_DIR_MIDPROCESS()`. To override this behavior and specify an input directory explicitly, pass a directory path to `in_explicitdir`. The same rules apply for `out_subdir` (which can be overridden with `out_explicitdir`), except that it has no specially reserved values.
+In `trimPrimers16S()`, the argument `in_subdir` is "raw" -- a reserved value that tells the function to look for the input files in a special subdirectory of `NEONMICROBE_DIR_SEQUENCE()`. Any other value passed to `in_subdir` would tell it to look for the input files in the corresponding subdirectory of `NEONMICROBE_DIR_MIDPROCESS()`. To override this behavior and specify an input directory explicitly, pass a directory path to `in_explicitdir`. The same rules apply for `out_subdir` (which can be overridden with `out_explicitdir`), except that it has no specially reserved values. 
+
+By default, `trimPrimers16S()` assumes NEON's standard use of 16S primers Pro341F and Pro805R to be the forward and reverse primers, respectively. If this needs to be changed, new primers can be specified using the `primer_16s_fwd` and `primer_16s_rev` arguments.
 
 `trimPrimers16S()` additionally returns an integer matrix denoting the number of reads remaining after primer-trimming for each input file.
 
 ```{r, eval=FALSE}
-trim_trackReads <- trimPrimers16S(fl_nm, in_subdir = "raw", out_subdir = "1_trimmed", 
-                                  meta = seqmeta_greatplains)
+trim_trackReads <- trimPrimers16S(
+  fl_nm, in_subdir = "raw", out_subdir = "1_trimmed", meta = seqmeta_greatplains_16s, 
+  multithread = TRUE # set multithread = FALSE on Windows computers though
+)
 ```
 
 ## Filter the 16S sequences
 
-`qualityFilter16S()` filters 16S reads by their quality scores, also by using `filterAndTrim()`. The argument structure of `qualityFilter16S()` is similar to that of `trimPrimers16S()`, except for its optional arguments related to quality filtering parameters, which are passed to `filterAndTrim()`. You can learn more about these quality filtering parameters at `?dada2::filterAndTrim`. Here are the definitions of some of the most commonly used parameters:
+`qualityFilter16S()` filters 16S reads, also by using `filterAndTrim()`. The argument structure of `qualityFilter16S()` is similar to that of `trimPrimers16S()`, except for its optional arguments related to quality filtering parameters, which are passed to `filterAndTrim()`. You can learn more about these quality filtering parameters at `?dada2::filterAndTrim`. Here are the definitions of some of the most commonly used parameters:
 
 - `truncLen`: Default 0 (no truncation). Truncate reads after `truncLen` bases. Reads shorter than this are discarded.
 - `minLen`: Default 20. Remove reads with length less than `minLen`. `minLen` is enforced after trimming and truncation.
@@ -104,11 +106,18 @@ trim_trackReads <- trimPrimers16S(fl_nm, in_subdir = "raw", out_subdir = "1_trim
 
 How do you decide what quality filtering parameters to use? One way is to use the `dada2` function `plotQualityProfile()` to visually inspect the quality profiles of a collection of reads. `neonMicrobe` also offers an extension of `plotQualityProfile()` called `plotEEProfile()`, which translates quality scores of reads into cumulative expected errors. This is particularly useful for understanding how `truncLen` and `maxEE` interact to affect the read retention rate.
 
-```{r, fig.width=6, fig.height=6}
-files_to_plot <- list.files(file.path(NEONMICROBE_DIR_SEQUENCE(), "16S"), full.names=TRUE,
-                            pattern="fastq")
-plotEEProfile(files_to_plot, aggregate=FALSE) 
-# set aggregate = TRUE to produce one plot combining all reads across files
+R1 reads:
+
+```{r, fig.width=3, fig.height=3}
+r1_files <- list.files(file.path(NEONMICROBE_DIR_SEQUENCE(), "16S"), full.names=TRUE, pattern="_R1")
+plotEEProfile(r1_files, aggregate = TRUE) 
+```
+
+R2 reads:
+
+```{r, fig.width=3, fig.height=3}
+r2_files <- list.files(file.path(NEONMICROBE_DIR_SEQUENCE(), "16S"), full.names=TRUE, pattern="_R2")
+plotEEProfile(r2_files, aggregate = TRUE) 
 ```
 
 The reads in these samples are of reasonably high quality, but as is typical with the Illumina MiSeq platform, the reverse reads are lower in quality than the forward reads. We can set different parameters for the forward and reverse reads by entering a vector of two numbers into each of the quality filtering arguments we wish to specify, `c([forward-read value], [reverse-read value])`.
@@ -116,7 +125,9 @@ The reads in these samples are of reasonably high quality, but as is typical wit
 ```{r, eval=FALSE}
 filter_trackReads <- qualityFilter16S(
   fl_nm, in_subdir = "1_trimmed", out_subdir = "2_filtered",
-  meta = seqmeta_greatplains, truncLen = c(250, 230), maxEE = c(2, 8))
+  meta = seqmeta_greatplains_16s, truncLen = c(250, 230), maxEE = c(2, 8),
+  multithread = TRUE
+)
 ```
 
 ## Denoise reads using the dada algorithm
@@ -125,12 +136,13 @@ filter_trackReads <- qualityFilter16S(
 
 `runDada16s()` is actually a wrapper for four different `dada2` functions that carry out the process just outlined: `learnErrors()`, `derepFastq()`, `dada()`, and `mergePairs()`. Since so many functions are wrapped by `runDada16S()`, it may be worth familiarizing yourself with the source code for `runDada16()`, as well as the documentation for the wrapped functions, to ensure it is behaving as expected.
 
-The arguments to `runDada16S()` follow the same conventions as `trimPrimers16S()` and `qualityFilter16S()` for the input variables, but `runDada16S()` requires output file names instead of directory names. `out_seqtab` is the file path where the ASV table will be written, and `out_track` is the file path where the read tracking table will be written. By default, these refer to special subdirectories in `NEONMICROBE_DIR_MIDPROCESS()` and `NEONMICROBE_DIR_TRACKREADS()`, respectively, and the file-writing behavior can be suppressed by setting the corresponding argument to `FALSE`. These ASV table and read-tracking table will also be returned by this `runDada16S()`, but since `runDada16S()` takes so long to run, forgetting to assign its output to a variable could result in a lot of lost time... hence, these output file name arguments.
+The arguments to `runDada16S()` follow the same conventions as `trimPrimers16S()` and `qualityFilter16S()` for the input variables, but `runDada16S()` requires output file names instead of directory names. `out_seqtab` is the file path ending in ".Rds" where the ASV table will be written, and `out_track` is the file path ending in ".csv" where the read tracking table will be written. By default, these refer to special subdirectories in `NEONMICROBE_DIR_MIDPROCESS()` and `NEONMICROBE_DIR_TRACKREADS()`, respectively, and the file-writing behavior can be suppressed by setting the corresponding argument to `FALSE`. These ASV table and read-tracking table will also be returned by this `runDada16S()`, but since `runDada16S()` takes so long to run, forgetting to assign its output to a variable could result in a lot of lost time... hence, these output file name arguments.
 
 ```{r, eval=FALSE} 
 dada_out <- runDada16S(
-  fl_nm, in_subdir = "2_filtered", meta = seqmeta_greatplains, verbose = FALSE,
-  multithread = TRUE) # set multithread = FALSE on Windows computers though
+  fl_nm, in_subdir = "2_filtered", meta = seqmeta_greatplains_16s, 
+  verbose = FALSE, multithread = TRUE
+) 
 ```
 
 **And there you have it: You've created an ASV table from the NEON 16S sequences!**
@@ -138,10 +150,12 @@ dada_out <- runDada16S(
 
 ## Combine the read-tracking tables
 
-It can be useful to track the loss of reads at each step in the processing pipeline, as it may allow you to pinpoint where something went wrong. Each of the processing functions shown above (`trimPrimers16S()`, `qualityFilter16S()`, and `runDada16S()`) returns a read-tracking table. The tables can be combined using the following function. Setting `out_file = NULL` tells the function to save the combined read-tracking table in the specialized directory within `NEONMICROBE_DIR_TRACKREADS()` -- a behavior that can be suppressed by setting `out_file = FALSE`.
+It can be useful to track the loss of reads at each step in the processing pipeline, as it may allow you to pinpoint where something went wrong. Each of the processing functions shown above (`trimPrimers16S()`, `qualityFilter16S()`, and `runDada16S()`) returns a read-tracking table. The tables can be combined using the following function.
 
 ```{r, eval=FALSE}
-combineReadTrackingTables16S(trim_trackReads, filter_trackReads, dada_out$track, out_file = NULL)
+track <- combineReadTrackingTables16S(trim_trackReads, filter_trackReads, dada_out$track)
+write.csv(track, file.path(NEONMICROBE_DIR_TRACKREADS(), "16S",
+                           paste0("track_16s_", sub(" ", "_", gsub(":", "", Sys.time())), ".csv")))
 ```
 
 At this point, it is safe to clear some variables from the R environment, freeing up memory. This is especially important when processing multiple sequencing runs one after another.
@@ -198,15 +212,18 @@ Assign taxonomy using the SILVA reference database:
 ```{r, eval=FALSE}
 tax <- assignTaxonomy(
   seqtab_joined_collapsed, file.path(NEONMICROBE_DIR_TAXREF(), basename(silva.url)), 
-  verbose = TRUE, multithread = TRUE) # set multithread = FALSE on Windows computers though
+  verbose = TRUE, multithread = TRUE
+)
 ```
 
 Save the taxonomy table to file:
 
 ```{r, eval=FALSE}
-saveRDS(tax, 
-        file.path(NEONMICROBE_DIR_OUTPUTS(), "16S", "5_tax", 
-                  "NEON_16S_tax_grasslands_COLLAPSED.Rds"))
+saveRDS(
+  tax, 
+  file.path(NEONMICROBE_DIR_OUTPUTS(), "16S", "5_tax", 
+            "NEON_16S_tax_grasslands_COLLAPSED.Rds")
+)
 ```
 
-
+And you're done! To learn how to link together the ASV table and the taxonomy table, as well as some abiotic soil data, view the next vignette in this series: "Add Environmental Variables to 16S Data".

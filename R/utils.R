@@ -347,11 +347,13 @@ readSequenceMetadata <- function(metadata) {
 #' @param trim_table Read-tracking table output by \code{\link{trimPrimers16S}}.
 #' @param filter_table Read-tracking table output by \code{\link{qualityFilter16S}}.
 #' @param dada_table Read-tracking table output by \code{\link{runDada16S}}.
-#' @param out_file File location where a copy of the combined read-tracking table will be saved as a csv file. By default (NULL), this is \code{\link{NEONMICROBE_DIR_TRACKREADS}}/16S/track_16s_[timestamp].csv. If no copy should be saved, set to FALSE.
 #'
 #' @return No value is returned.
-#' @export
-combineReadTrackingTables16S <- function(trim_table, filter_table, dada_table, out_file = NULL) {
+#' @export An integer matrix with columns representing each step in the DADA2
+#' 16S processing pipeline, and rows representing each input sample,
+#' with values representing the read counts remaining at that step
+#' for each sample.
+combineReadTrackingTables16S <- function(trim_table, filter_table, dada_table) {
   track <- Reduce(
     function(x, y, ...) transform(merge(x, y, by = 0, all = TRUE, ...), row.names=Row.names, Row.names = NULL),
     list(trim_table,
@@ -361,13 +363,42 @@ combineReadTrackingTables16S <- function(trim_table, filter_table, dada_table, o
   names(track)[3] <- "filtered"
   track[is.na(track)] <- 0
 
-  # optionally save the combined table
-  if(!identical(out_file, FALSE)) {
-    if(is.null(out_file)) {
-      out_file <- file.path(NEONMICROBE_DIR_TRACKREADS(), "16S",
-                            paste0("track_16s_", sub(" ", "_", gsub(":", "", Sys.time())), ".csv"))
-    }
-    write.csv(track, file = out_file)
-    message("Saved read-tracking table to ", out_file)
-  }
+  # # optionally save the combined table
+  # if(!identical(out_file, FALSE)) {
+  #   if(is.null(out_file)) {
+  #     out_file <- file.path(NEONMICROBE_DIR_TRACKREADS(), "16S",
+  #                           paste0("track_16s_", sub(" ", "_", gsub(":", "", Sys.time())), ".csv"))
+  #   }
+  #   write.csv(track, file = out_file)
+  #   message("Saved read-tracking table to ", out_file)
+  # }
+  return(track)
+}
+
+#' Combine ITS Read-Tracking Tables
+#'
+#' Convenience function for combining the read-tracking tables
+#' across the trimming, filtering, and DADA steps of the ITS
+#' processing pipeline.
+#'
+#' @param trim_table Read-tracking table output by \code{\link{trimPrimersITS}}.
+#' @param filter_table Read-tracking table output by \code{\link{qualityFilterITS}}.
+#' @param dada_table Read-tracking table output by \code{\link{runDadaITS}}.
+#'
+#' @return No value is returned.
+#' @export An integer matrix with columns representing each step in the DADA2
+#' ITS processing pipeline, and rows representing each input sample,
+#' with values representing the read counts remaining at that step
+#' for each sample.
+combineReadTrackingTablesITS <- function(prefilter_table, filter_table, dada_table) {
+  track <- Reduce(
+    function(x, y, ...) transform(merge(x, y, by=0, all = TRUE, ...), row.names=Row.names, Row.names=NULL),
+    list(prefilter_table,
+         filter_table,
+         dada_table)
+  )
+  names(track)[1:4] <- c("reads.in", "prefiltered", "trimmed", "filtered")
+  track[is.na(track)] <- 0
+
+  return(track)
 }
