@@ -236,7 +236,7 @@ Save the taxonomy table to file:
 ```{r, eval=FALSE}
 saveRDS(
   tax, 
-  file.path(NEONMICROBE_DIR_OUTPUTS(), "ITS", "5_tax", 
+  file.path(NEONMICROBE_DIR_MIDPROCESS(), "ITS", "5_tax", 
             "NEON_ITS_tax_grasslands.Rds")
 )
 ```

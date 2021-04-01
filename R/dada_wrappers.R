@@ -659,7 +659,7 @@ runDadaITS <- function(fn, in_subdir, meta, out_seqtab = NULL, out_track = NULL,
 
   # Validate output arguments
   if(is.null(out_seqtab)) {
-    out_seqtab <- file.path(NEONMICROBE_DIR_MIDPROCESS(), "16S", "3_seqtabs",
+    out_seqtab <- file.path(NEONMICROBE_DIR_MIDPROCESS(), "16S", "4_seqtabs",
                             paste0("asv_its_", sub(" ", "_", gsub(":", "", Sys.time())), ".Rds"))
   }
   if(is.null(out_track)) {
