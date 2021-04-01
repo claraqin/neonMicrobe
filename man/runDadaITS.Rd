@@ -6,9 +6,11 @@
 \usage{
 runDadaITS(
   fn,
+  in_subdir,
   meta,
-  out_seqtab = "",
-  out_track = "",
+  out_seqtab = NULL,
+  out_track = NULL,
+  in_explicitdir = NULL,
   remove_chimeras = TRUE,
   multithread = FALSE,
   verbose = FALSE,
@@ -17,11 +19,15 @@ runDadaITS(
 )
 }
 \arguments{
-\item{fn}{Full names of input fastq files, including directory. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning.}
+\item{fn}{Base names of input fastq files. If inputs are not base names (i.e. if they include directory paths), the directory paths will be removed. Files that do not exist will be ignored; however, if all files do not exist, this function will issue a warning.}
+
+\item{in_subdir}{Subdirectory name from which to retrieve input fastq files. Enter "raw" for raw sequence files, or any other character string to specify a subdirectory within \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S. To specify a directory outside \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S, use the 'in_explicitdir' argument.}
 
 \item{meta}{The output of \code{\link{downloadSequenceMetadata}}. Must be provided as either the data.frame returned by \code{\link{downloadSequenceMetadata}} or as a filepath to the csv file produced by \code{\link{downloadSequenceMetadata}}.}
 
-\item{out_seqtab, out_track}{(Optional) File locations where sequence table and read-tracking table (respectively) will be saved as csv files. If blank (default), will not save to file.}
+\item{out_seqtab, out_track}{File locations where copies of the sequence table and read-tracking table (respectively) will be written. By default (NULL), these are \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S/3_seqtabs/asv_16s_\link{timestamp}.Rds and \code{\link{NEONMICROBE_DIR_TRACKREADS}}/16S/dada_16s_\link{timestamp}.csv. If no copy should be saved, set the corresponding argument to FALSE.}
+
+\item{in_explicitdir}{Directory name to use instead of 'in_subdir', if static directory name or directory outside of \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S is desired. Not recommended for use within processing batches.}
 
 \item{remove_chimeras}{(Optional) Default TRUE. Whether to remove chimeras from the sequence table. Currently only supports removal using \code{\link[dada2]{removeBimeraDenovo}} with the consensus method.}
 

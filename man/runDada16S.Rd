@@ -25,7 +25,7 @@ runDada16S(
 
 \item{meta}{The output of \code{\link{downloadSequenceMetadata}}. Must be provided as either the data.frame returned by \code{\link{downloadSequenceMetadata}} or as a filepath to the csv file produced by \code{\link{downloadSequenceMetadata}}.}
 
-\item{out_seqtab, out_track}{File locations where copies of the sequence table and read-tracking table (respectively) will be saved as csv files. By default (NULL), these are \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S/3_seqtabs/asv_16s_\link{timestamp}.csv and \code{\link{NEONMICROBE_DIR_TRACKREADS}}/16S/dada_16s_\link{timestamp}.csv. If no copy should be saved, set the corresponding argument to FALSE.}
+\item{out_seqtab, out_track}{File locations where copies of the sequence table and read-tracking table (respectively) will be written. By default (NULL), these are \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S/3_seqtabs/asv_16s_\link{timestamp}.Rds and \code{\link{NEONMICROBE_DIR_TRACKREADS}}/16S/dada_16s_\link{timestamp}.csv. If no copy should be saved, set the corresponding argument to FALSE.}
 
 \item{in_explicitdir}{Directory name to use instead of 'in_subdir', if static directory name or directory outside of \code{\link{NEONMICROBE_DIR_MIDPROCESS}}/16S is desired. Not recommended for use within processing batches.}
 

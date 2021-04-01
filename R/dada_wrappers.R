@@ -672,7 +672,7 @@ runDadaITS <- function(fn, in_subdir, meta, out_seqtab = NULL, out_track = NULL,
   fnFs <- fn[grep("R1", meta_ext$rawDataFileDescription)]
 
   # Confirm target gene
-  if(any(!grepl("16S", meta_ext$targetGene))) warning("You are using runDada16S() on some non-16S files. Did you mean to use runDadaITS()?")
+  if(any(!grepl("16S", meta_ext$targetGene))) warning("You are using runDadaITS() on some non-ITS files. Did you mean to use runDada16S()?")
 
   # Attempt to get DNA sample IDs to use as row names
   dnaSampleIDs <- as.character(meta_ext$dnaSampleID[match(fnFs, meta_ext$file)])
