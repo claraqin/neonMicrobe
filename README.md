@@ -4,7 +4,7 @@
 
 ## Installation
 
-`neonMicrobe` is currently still in development, but it will soon be installable from GitHub using this code:
+The development version of `neonMicrobe` can be installed directly from this GitHub repo using this code:
 
 ```
 install.packages("devtools")
@@ -15,8 +15,8 @@ devtools::install_github("claraqin/neonMicrobe")
 
 In addition to the R package dependencies which are installed alongside `neonMicrobe`, users may also need to complete the following requirements before using some functions in `neonMicrobe`:
 
-1. **For taxonomic assignment via DADA2**, you will need to install the latest taxonomic reference datasets for ITS or 16S sequences. Consult the [DADA2 taxonomic reference data webpage](https://benjjneb.github.io/dada2/training.html) for more information. The `params/user.R` file contains optional parameter slots for specifying the file path to the UNITE and SILVA reference datasets, respectively.
-2. **For trimming of ITS sequence primers**, you will need to install `cutadapt`. Installation instructions can be found [here](https://cutadapt.readthedocs.io/en/stable/installation.html). Once installed, you can tell `neonMicrobe` where to look for it by specifying the `cutadapt_path` argument each time you use the `trimPrimerITS` function.
+1. **For taxonomic assignment via DADA2**, you will need to install the latest taxonomic reference datasets for ITS or 16S sequences. Consult the [DADA2 taxonomic reference data webpage](https://benjjneb.github.io/dada2/training.html) for more information. For organizational purposes, we recommend keeping these files in the `data/tax_ref` subdirectory that is created after you run `makeDataDirectories()` (see "Input data" below).
+2. **For trimming of ITS sequence primers**, you will need to install `cutadapt`. Installation instructions can be found [here](https://cutadapt.readthedocs.io/en/stable/installation.html). Once installed, you can tell `neonMicrobe` where to look for it by specifying the `cutadapt_path` argument each time you use the `trimPrimerITS` function. For an example, see the "Process 16S Sequences" vignette or the "Process ITS Sequences" vignette.
 
 ## Overview
 
@@ -33,7 +33,7 @@ Tutorials for `neonMicrobe` are available in the `vignettes` directory.
 
 ### Input data
 
-The **Download NEON Data** vignette demonstrates how to download NEON data, optionally writing to the file system. By default, the input data is downloaded into the following structure:
+The **Download NEON Data** vignette demonstrates how to download NEON data, optionally writing to the file system. By default, the input data is downloaded into the following structure, which is created in the working directory after running `makeDataDirectories()`:
 
 ![NEON Ecosphere MS Figure-Making Workspace (10)](https://user-images.githubusercontent.com/12421420/113089173-f3badc00-919b-11eb-84e6-b7f9a2abbb72.png)
 
@@ -48,7 +48,7 @@ The **Process Sequences** and **Add Environmental Variables** vignettes demonstr
 
 ## Methods paper
 
-A methods paper describing the use of `neonMicrobe` is currently in preparation.
+A methods paper describing the use of `neonMicrobe` is currently in review.
 
 # Quick Start
 
@@ -62,6 +62,17 @@ library(plyr)
 library(dplyr)
 library(neonUtilities)
 library(neonMicrobe)
+
+# On load, neonMicrobe says:
+# neonMicrobe relies on a pre-generated directory structure. If this 
+# is your first time using neonMicrobe, or you want to create a new 
+# directory structure, first set your working directory to the location 
+# where you would like to create this structure, and then run 
+# makeDataDirectories(). Learn more in the vignette 'Download NEON Data'.
+
+# neonMicrobe generates default output directories based on the current 
+# working directory. To hold this constant, set a 'base directory' using
+# setBaseDirectory().
 
 setBaseDirectory()
 makeDataDirectories()
