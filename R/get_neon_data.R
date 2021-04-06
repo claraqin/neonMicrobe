@@ -856,15 +856,6 @@ downloadSoilData <- function(sites='all', startYrMo = NA, endYrMo = NA,
 #'
 #' @seealso \code{\link{downloadSoilData}}
 #'
-#' @param sites
-#' @param startYrMo
-#' @param endYrMo
-#' @param dpID
-#' @param outDir
-#' @param rmSamplingImpractical
-#' @param rmNTransBouts
-#' @param rmFailedCNDataQF
-#'
 #' @export
 downloadRawSoilData <- function(sites='all', startYrMo = NA, endYrMo = NA,
                              dpID = c("DP1.10086.001"), outDir=NEONMICROBE_DIR_SOIL(),

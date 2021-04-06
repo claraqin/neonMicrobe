@@ -24,7 +24,7 @@ terrestrial NEON sites in the Great Plains: KONZ,
 CPER, and NOGP. This sequence metadata contains
 all records of ITS soil marker gene sequence data
 collected from these sites in July 2017. This
-sequence metadata has not been QCd using
-\code{\link{qcMetadata}}.
+sequence metadata has NOT been quality-controlled
+using \code{\link{qcMetadata}}.
 }
 \keyword{datasets}

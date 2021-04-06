@@ -10,6 +10,8 @@
 #' @seealso \code{\link{makeDataDirectories}}
 #'
 #' @examples
+#' setBaseDirectory() # sets current working directory as base directory
+#' setBaseDirectory(dirname(getwd())) # sets parent directory as base directory
 setBaseDirectory <- function(dir = getwd()) {
   if(dir.exists(dir)) {
     assign("NEONMICROBE_DIR_BASE", dir, envir = neonmicrobe_env)
@@ -107,8 +109,6 @@ makeDataDirectories <- function(check_location = TRUE) {
 #'
 #' @return Directory path (character).
 #' @export
-#'
-#' @examples
 NEONMICROBE_DIR_BASE <- function() {
   if("NEONMICROBE_DIR_BASE" %in% ls(envir = neonmicrobe_env)) {
     get("NEONMICROBE_DIR_BASE", envir = neonmicrobe_env)

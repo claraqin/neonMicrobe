@@ -14,7 +14,10 @@ combineReadTrackingTablesITS(prefilter_table, filter_table, dada_table)
 \item{trim_table}{Read-tracking table output by \code{\link{trimPrimersITS}}.}
 }
 \value{
-No value is returned.
+An integer matrix with columns representing each step in the DADA2
+ITS processing pipeline, and rows representing each input sample,
+with values representing the read counts remaining at that step
+for each sample.
 }
 \description{
 Convenience function for combining the read-tracking tables

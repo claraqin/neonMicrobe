@@ -15,6 +15,10 @@ No value is returned.
 \description{
 Sets the specified directory as the workspace for the neonMicrobe pipeline. This base directory persists until the end of the R session. If data directories have not yet been generated within the base directory, use \code{\link{makeDataDirectories}} to do so.
 }
+\examples{
+setBaseDirectory() # sets current working directory as base directory
+setBaseDirectory(dirname(getwd())) # sets parent directory as base directory
+}
 \seealso{
 \code{\link{makeDataDirectories}}
 }

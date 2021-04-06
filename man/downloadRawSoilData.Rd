@@ -15,9 +15,6 @@ downloadRawSoilData(
   rmFailedCNDataQF = TRUE
 )
 }
-\arguments{
-\item{rmFailedCNDataQF}{}
-}
 \description{
 This function name is deprecated.
 }

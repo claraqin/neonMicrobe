@@ -32,7 +32,7 @@ remove_unmatched_files <- function(fnFs, fnRs, post_samplename_pattern = "_R(1|2
   basefilenames_Rs <- sapply(strsplit(fnRs, post_samplename_pattern), `[`, 1)
   rm_from_fnFs <- which(!(basefilenames_Fs %in% basefilenames_Rs))
   rm_from_fnRs <- which(!(basefilenames_Rs %in% basefilenames_Fs))
-  
+
   if (length(c(rm_from_fnFs, rm_from_fnRs)) == 0){
     if(verbose == TRUE) message("All R1/R2 files had counterparts.\n")
   } else {
@@ -78,7 +78,7 @@ getPairedFastqFiles <- function(fn, meta, value=TRUE, verbose=TRUE) {
   meta_ext$orientation <- if_else(grepl("R1", meta_ext$rawDataFileDescription), "R1",
                                   if_else(grepl("R2", meta_ext$rawDataFileDescription), "R2",
                                           NA_character_))
-  
+
   meta_ext %>%
     dplyr::filter(!is.na(uid.rawFiles)) %>%
     dplyr::group_by(sequencerRunID, dnaSampleID) %>%
@@ -90,7 +90,7 @@ getPairedFastqFiles <- function(fn, meta, value=TRUE, verbose=TRUE) {
   } else {
     matched_ids <- meta_summ$dnaSampleID[meta_summ$n_orientations==2]
   }
-  
+
   if(value==TRUE) {
     return(list(
       meta_ext$file[meta_ext$orientation=="R1" & meta_ext$dnaSampleID %in% matched_ids],
@@ -132,7 +132,7 @@ getPairedFastqFiles <- function(fn, meta, value=TRUE, verbose=TRUE) {
 removeUnpairedFastqFiles <- function(fnFs, fnRs, meta, value=TRUE, verbose=TRUE) {
   meta_ext <- matchFastqToMetadata(c(fnFs, fnRs), meta, verbose=verbose)
   meta_ext$orientation <- c(rep("R1", length(fnFs)), rep("R2", length(fnRs)))
-  
+
   meta_ext %>%
     dplyr::filter(!is.na(uid.rawFiles)) %>%
     dplyr::group_by(sequencerRunID, dnaSampleID) %>%
@@ -143,7 +143,7 @@ removeUnpairedFastqFiles <- function(fnFs, fnRs, meta, value=TRUE, verbose=TRUE)
   } else {
     matched_ids <- meta_summ$dnaSampleID[meta_summ$n_orientations==2]
   }
-  
+
   if(value==TRUE) {
     return(list(
       meta_ext$file[meta_ext$orientation=="R1" & meta_ext$dnaSampleID %in% matched_ids],
@@ -181,13 +181,13 @@ removeUnpairedFastqFiles <- function(fnFs, fnRs, meta, value=TRUE, verbose=TRUE)
 matchFastqToMetadata <- function(fn, meta, verbose=TRUE) {
   # Get basenames of fn
   fn_base <- basename(fn)
-  
+
   # Remove runID if appended to beginning of filename
   key <- sub("^run[A-Za-z0-9]*_", "", fn_base)
-  
+
   # Append ".gz" to end of filename if missing
   key[!grepl(".gz$", key)] <- paste0(key[!grepl(".gz$", key)], ".gz")
-  
+
   key_match <- match(key, as.character(meta$rawDataFileName))
   if(any(is.na(key_match))) {
     if(verbose) {
@@ -227,21 +227,21 @@ getTruncationLength <-function (fl, qscore = 30, n = 5e+05, verbose = TRUE){
     lowqual <- which(means < qscore)
     n_lowqual_in_first_20 <- sum(lowqual <= 20)
     first_lowqual_after_20 <- lowqual[lowqual > 20][1]
-    
+
     trunc_lengths <- rbind(trunc_lengths, data.frame(file = f,
                                                      early_lowqual = n_lowqual_in_first_20,
                                                      trunc_length = ifelse(is.na(first_lowqual_after_20), length(means), first_lowqual_after_20)))
-    
+
     if (verbose == TRUE) {
       if(lowqual_in_first_20 > 0){
         cat(paste0("Note: for sample ", basename(f),': ', n_lowqual_in_first_20, ' base(s) within first 20 bases are below your quality score. Consider trimming left.\n'))
       }
       if (is.na(lowqual_after_20)){
         cat(paste0(basename(f), ': After first 20 bases, no bases with a mean under your quality score found. Truncate at end of read, base: ', length(means),'\n'))
-        
+
       } else if (!is.na(lowqual_after_20)){
         cat(paste0(basename(f),': After first 20 bases, first mean below your quality score is base: ',first_lowqual_after_20,'\n'))
-        
+
       } else "Something's wrong. Inspect function/reads."
     } # end printing to console
   } # end loop
@@ -275,8 +275,6 @@ getN <- function(x) {
 #'
 #' @return Character vector; sample names of the input fastq filenames.
 #' @export
-#'
-#' @examples
 getSampleName <- function(fn, post_samplename_pattern1 = "_R1.*\\.fastq", post_samplename_pattern2 = "_R2.*\\.fastq") {
   message("getSampleName() is deprecated. Please retrieve dnaSampleID from sequence metadata instead.")
   sapply(strsplit(basename(fn), paste0("(",post_samplename_pattern1,")|(",post_samplename_pattern2, ")")), `[`, 1)
@@ -348,11 +346,11 @@ readSequenceMetadata <- function(metadata) {
 #' @param filter_table Read-tracking table output by \code{\link{qualityFilter16S}}.
 #' @param dada_table Read-tracking table output by \code{\link{runDada16S}}.
 #'
-#' @return No value is returned.
-#' @export An integer matrix with columns representing each step in the DADA2
+#' @return An integer matrix with columns representing each step in the DADA2
 #' 16S processing pipeline, and rows representing each input sample,
 #' with values representing the read counts remaining at that step
 #' for each sample.
+#' @export
 combineReadTrackingTables16S <- function(trim_table, filter_table, dada_table) {
   track <- Reduce(
     function(x, y, ...) transform(merge(x, y, by = 0, all = TRUE, ...), row.names=Row.names, Row.names = NULL),
@@ -362,7 +360,7 @@ combineReadTrackingTables16S <- function(trim_table, filter_table, dada_table) {
   )
   names(track)[3] <- "filtered"
   track[is.na(track)] <- 0
-  
+
   # # optionally save the combined table
   # if(!identical(out_file, FALSE)) {
   #   if(is.null(out_file)) {
@@ -385,11 +383,11 @@ combineReadTrackingTables16S <- function(trim_table, filter_table, dada_table) {
 #' @param filter_table Read-tracking table output by \code{\link{qualityFilterITS}}.
 #' @param dada_table Read-tracking table output by \code{\link{runDadaITS}}.
 #'
-#' @return No value is returned.
-#' @export An integer matrix with columns representing each step in the DADA2
+#' @return An integer matrix with columns representing each step in the DADA2
 #' ITS processing pipeline, and rows representing each input sample,
 #' with values representing the read counts remaining at that step
 #' for each sample.
+#' @export
 combineReadTrackingTablesITS <- function(prefilter_table, filter_table, dada_table) {
   track <- Reduce(
     function(x, y, ...) transform(merge(x, y, by=0, all = TRUE, ...), row.names=Row.names, Row.names=NULL),
@@ -399,6 +397,6 @@ combineReadTrackingTablesITS <- function(prefilter_table, filter_table, dada_tab
   )
   names(track)[1:4] <- c("reads.in", "prefiltered", "trimmed", "filtered")
   track[is.na(track)] <- 0
-  
+
   return(track)
 }

@@ -14,7 +14,10 @@ combineReadTrackingTables16S(trim_table, filter_table, dada_table)
 \item{dada_table}{Read-tracking table output by \code{\link{runDada16S}}.}
 }
 \value{
-No value is returned.
+An integer matrix with columns representing each step in the DADA2
+16S processing pipeline, and rows representing each input sample,
+with values representing the read counts remaining at that step
+for each sample.
 }
 \description{
 Convenience function for combining the read-tracking tables
