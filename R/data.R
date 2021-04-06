@@ -6,8 +6,8 @@
 #' CPER, and NOGP. This sequence metadata contains
 #' all records of 16S soil marker gene sequence data
 #' collected from these sites in July 2017. This
-#' sequence metadata has not been QCd using
-#' \code{\link{qcMetadata}}.
+#' sequence metadata has NOT been quality-controlled
+#' using \code{\link{qcMetadata}}.
 #'
 #' @format A data frame with 172 rows and 86 variables.
 #' For variable definitions, see NEON soil microbe
@@ -27,8 +27,8 @@
 #' CPER, and NOGP. This sequence metadata contains
 #' all records of ITS soil marker gene sequence data
 #' collected from these sites in July 2017. This
-#' sequence metadata has not been QCd using
-#' \code{\link{qcMetadata}}.
+#' sequence metadata has NOT been quality-controlled
+#' using \code{\link{qcMetadata}}.
 #'
 #' @format A data frame with 172 rows and 86 variables.
 #' For variable definitions, see NEON soil microbe
@@ -64,7 +64,7 @@
 #' are not standardized.
 #'
 #' @source See vignette "Analyze NEON Great Plains 16S".
-"seqtab_greatplains"
+"seqtab_greatplains_16s"
 
 
 #' Soil Physical and Chemical Properties for NEON Great Plains Sites

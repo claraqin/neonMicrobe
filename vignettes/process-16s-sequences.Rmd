@@ -23,7 +23,7 @@ This vignette demonstrates how to use the functions and parameters in this packa
 
 It is assumed that you have already completed the steps in the "Download NEON Data" vignette, so that there are raw sequence files in the appropriate data directory.
 
-Note that few of the code chunks in this .Rmd file are actually run, because DADA2 functions have relatively long runtimes. Therefore, outputs like the read tracking tables are not displayed.
+Note that some of the code chunks in this .Rmd file are not actually run, because some DADA2 functions have relatively long runtimes. Therefore, outputs like the taxonomy table are not displayed.
 
 
 # Load libraries
@@ -57,7 +57,7 @@ As explained in the "Download NEON Data" vignette, `neonMicrobe` is a *metadata-
 
 ```{r}
 data("seqmeta_greatplains_16s")
-meta <- seqmeta_greatplains_16s
+meta <- qcMetadata(seqmeta_greatplains_16s, pairedReads = "Y", rmFlagged = "Y")
 meta$date_ymd <- as.Date(format(as.Date(meta$collectDate, format="%Y-%m-%d %H:%M:%S"), "%Y-%m-%d"))
 ```
 
@@ -72,11 +72,11 @@ meta_onerun <- meta[which(meta$sequencerRunID==unique_runs[1]),]
 nrow(meta_onerun)
 ```
 
-Although you can specify filenames to process, here we'll just use all the filenames specified in this subset of the metadata. (Don't worry; any files that don't exist in the file system will be safely ignored.) Note that these filenames are just basenames, i.e. they contain no directory path information. This is fine, as we will see in the next code chunk.
+Although you can specify filenames to process, here we'll just use the filenames included in this subset of the metadata. (Don't worry; any files that don't exist in the file system will be safely ignored.) Note that these filenames are just basenames, i.e. they contain no directory path information. This is fine, as we will see in the subsections below. In addition, we will only use 4 fastq files (i.e. 2 samples) in order to speed up the computation in this RMarkdown document.
 
 ```{r}
-fl_nm <- meta_onerun$rawDataFileName
-head(fl_nm)
+fl_nm <- meta_onerun$rawDataFileName[1:4]
+fl_nm
 ```
 
 ## Trim primers from the 16S sequences
@@ -89,7 +89,7 @@ By default, `trimPrimers16S()` assumes NEON's standard use of 16S primers Pro341
 
 `trimPrimers16S()` additionally returns an integer matrix denoting the number of reads remaining after primer-trimming for each input file.
 
-```{r, eval=FALSE}
+```{r}
 trim_trackReads <- trimPrimers16S(
   fl_nm, in_subdir = "raw", out_subdir = "1_trimmed", meta = seqmeta_greatplains_16s, 
   multithread = TRUE # set multithread = FALSE on Windows computers though
@@ -109,20 +109,20 @@ How do you decide what quality filtering parameters to use? One way is to use th
 R1 reads:
 
 ```{r, fig.width=3, fig.height=3}
-r1_files <- list.files(file.path(NEONMICROBE_DIR_SEQUENCE(), "16S"), full.names=TRUE, pattern="_R1")
+r1_files <- file.path(NEONMICROBE_DIR_SEQUENCE(), "16S", grep("_R1", fl_nm, value=TRUE))
 plotEEProfile(r1_files, aggregate = TRUE) 
 ```
 
 R2 reads:
 
 ```{r, fig.width=3, fig.height=3}
-r2_files <- list.files(file.path(NEONMICROBE_DIR_SEQUENCE(), "16S"), full.names=TRUE, pattern="_R2")
+r2_files <- file.path(NEONMICROBE_DIR_SEQUENCE(), "16S", grep("_R2", fl_nm, value=TRUE))
 plotEEProfile(r2_files, aggregate = TRUE) 
 ```
 
 The reads in these samples are of reasonably high quality, but as is typical with the Illumina MiSeq platform, the reverse reads are lower in quality than the forward reads. We can set different parameters for the forward and reverse reads by entering a vector of two numbers into each of the quality filtering arguments we wish to specify, `c([forward-read value], [reverse-read value])`.
 
-```{r, eval=FALSE}
+```{r}
 filter_trackReads <- qualityFilter16S(
   fl_nm, in_subdir = "1_trimmed", out_subdir = "2_filtered",
   meta = seqmeta_greatplains_16s, truncLen = c(250, 230), maxEE = c(2, 8),
@@ -138,7 +138,7 @@ filter_trackReads <- qualityFilter16S(
 
 The arguments to `runDada16S()` follow the same conventions as `trimPrimers16S()` and `qualityFilter16S()` for the input variables, but `runDada16S()` requires output file names instead of directory names. `out_seqtab` is the file path ending in ".Rds" where the ASV table will be written, and `out_track` is the file path ending in ".csv" where the read tracking table will be written. By default, these refer to special subdirectories in `NEONMICROBE_DIR_MIDPROCESS()` and `NEONMICROBE_DIR_TRACKREADS()`, respectively, and the file-writing behavior can be suppressed by setting the corresponding argument to `FALSE`. These ASV table and read-tracking table will also be returned by this `runDada16S()`, but since `runDada16S()` takes so long to run, forgetting to assign its output to a variable could result in a lot of lost time... hence, these output file name arguments.
 
-```{r, eval=FALSE} 
+```{r} 
 dada_out <- runDada16S(
   fl_nm, in_subdir = "2_filtered", meta = seqmeta_greatplains_16s, 
   verbose = FALSE, multithread = TRUE
@@ -152,15 +152,16 @@ dada_out <- runDada16S(
 
 It can be useful to track the loss of reads at each step in the processing pipeline, as it may allow you to pinpoint where something went wrong. Each of the processing functions shown above (`trimPrimers16S()`, `qualityFilter16S()`, and `runDada16S()`) returns a read-tracking table. The tables can be combined using the following function.
 
-```{r, eval=FALSE}
+```{r}
 track <- combineReadTrackingTables16S(trim_trackReads, filter_trackReads, dada_out$track)
 write.csv(track, file.path(NEONMICROBE_DIR_TRACKREADS(), "16S",
                            paste0("track_16s_", sub(" ", "_", gsub(":", "", Sys.time())), ".csv")))
+track
 ```
 
 At this point, it is safe to clear some variables from the R environment, freeing up memory. This is especially important when processing multiple sequencing runs one after another.
 
-```{r, eval=FALSE}
+```{r}
 rm(trim_trackReads)
 rm(filter_trackReads)
 rm(dada_out)

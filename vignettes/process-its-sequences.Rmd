@@ -23,7 +23,7 @@ This vignette demonstrates how to use the functions and parameters in this packa
 
 It is assumed that you have already completed the steps in the "Download NEON Data" vignette, so that there are raw sequence files in the appropriate data directory.
 
-Note that few of the code chunks in this .Rmd file are actually run, because DADA2 functions have relatively long runtimes. Therefore, outputs like the read tracking tables are not displayed.
+Note that some of the code chunks in this .Rmd file are not actually run, because some DADA2 functions have relatively long runtimes. Therefore, outputs like the taxonomy table are not displayed.
 
 
 # Load libraries
@@ -56,7 +56,7 @@ As explained in the "Download NEON Data" vignette, `neonMicrobe` is a *metadata-
 
 ```{r}
 data("seqmeta_greatplains_its")
-meta <- seqmeta_greatplains_its
+meta <- qcMetadata(seqmeta_greatplains_its, pairedReads = "N", rmFlagged = "Y")
 meta$date_ymd <- as.Date(format(as.Date(meta$collectDate, format="%Y-%m-%d %H:%M:%S"), "%Y-%m-%d"))
 ```
 
@@ -71,11 +71,11 @@ meta_onerun <- meta[which(meta$sequencerRunID==unique_runs[1]),]
 nrow(meta_onerun)
 ```
 
-Although you can specify filenames to process, here we'll just use all the filenames specified in this subset of the metadata. (Don't worry; any files that don't exist in the file system will be safely ignored.) Note that these filenames are just basenames, i.e. they contain no directory path information. This is fine, as we will see in the next code chunk.
+Although you can specify filenames to process, here we'll just use the filenames included in this subset of the metadata. (Don't worry; any files that don't exist in the file system will be safely ignored.) Note that these filenames are just basenames, i.e. they contain no directory path information. This is fine, as we will see in the subsections below. In addition, we will only use 4 fastq files (i.e. 2 samples) in order to speed up the computation in this RMarkdown document.
 
 ```{r}
-fl_nm <- meta_onerun$rawDataFileName
-head(fl_nm)
+fl_nm <- meta_onerun$rawDataFileName[1:4]
+fl_nm
 ```
 
 ## Pre-filter ITS sequences
@@ -104,14 +104,20 @@ By default, `trimPrimersITS()` assumes NEON's standard use of ITS primers ITS1f 
 
 Occasionally, sequencing runs will produce reads in mixed orientation, meaning that "R1" and "R2" may sometimes refer to *reverse* and *forward* reads, respectively (as opposed to *forward* and *reverse* reads). It can be prudent, then, to run `trimPrimersITS()` twice: once to remove the forward and reverse primers as expected, and another time to remove the reverse primers from R1 reads and the forward primers from R2 reads.
 
-```{r, eval=FALSE}
+First, install Cutadapt, and replace the following variable with the location of the downloaded `cutadapt` file. I installed Cutadapt through Anaconda, so it ended up here:
+
+```{r}
+cutadapt <- "/raid/users/claraqin/anaconda3/envs/cutadaptenv/bin/cutadapt" # insert your path here
+```
+
+```{r}
 trimPrimersITS(
   fl_nm, in_subdir = "1_filtN", out_subdir = "2_trimmed_once", 
-  meta = seqmeta_greatplains_its, cutadapt_path = "[insert path here]"
+  meta = seqmeta_greatplains_its, cutadapt_path = cutadapt
 )
 trimPrimersITS(
   fl_nm, in_subdir = "2_trimmed_once", out_subdir = "2_trimmed", 
-  meta = seqmeta_greatplains_its, cutadapt_path = "[insert path here]",
+  meta = seqmeta_greatplains_its, cutadapt_path = cutadapt,
   primer_ITS_fwd = "GCTGCGTTCTTCATCGATGC", # swapping the primers
   primer_ITS_rev = "CTTGGTCATTTAGAGGAAGTAA"
 )
@@ -130,14 +136,14 @@ How do you decide what quality filtering parameters to use? One way is to use th
 R1 reads:
 
 ```{r, fig.width=3, fig.height=3}
-r1_files <- list.files(file.path(NEONMICROBE_DIR_SEQUENCE(), "ITS"), full.names=TRUE, pattern="_R1")
+r1_files <- file.path(NEONMICROBE_DIR_SEQUENCE(), "ITS", grep("_R1", fl_nm, value=TRUE))
 plotEEProfile(r1_files, aggregate = TRUE) 
 ```
 
 R2 reads:
 
 ```{r, fig.width=3, fig.height=3}
-r2_files <- list.files(file.path(NEONMICROBE_DIR_SEQUENCE(), "ITS"), full.names=TRUE, pattern="_R2")
+r2_files <- file.path(NEONMICROBE_DIR_SEQUENCE(), "ITS", grep("_R2", fl_nm, value=TRUE))
 plotEEProfile(r2_files, aggregate = TRUE) 
 ```
 
@@ -147,7 +153,7 @@ In typical practice, only the forward ITS reads from Illumina MiSeq are used for
 
 Here, we require that ITS reads have a minimum length of 50 bp and a maximum of 2 expected errors.
 
-```{r, eval=FALSE}
+```{r}
 filter_trackReads <- qualityFilterITS(
   fl_nm, in_subdir = "2_trimmed", out_subdir = "3_filtered",
   meta = seqmeta_greatplains_its, minLen = 50, maxEE = 2
@@ -162,7 +168,7 @@ filter_trackReads <- qualityFilterITS(
 
 The arguments to `runDadaITS()` follow the same conventions as `trimPrimersITS()` and `qualityFilterITS()` for the input variables, but `runDadaITS()` requires output file names instead of directory names. `out_seqtab` is the file path ending in ".Rds" where the ASV table will be written, and `out_track` is the file path ending in ".csv" where the read tracking table will be written. By default, these refer to special subdirectories in `NEONMICROBE_DIR_MIDPROCESS()` and `NEONMICROBE_DIR_TRACKREADS()`, respectively, and the file-writing behavior can be suppressed by setting the corresponding argument to `FALSE`. These ASV table and read-tracking table will also be returned by this `runDadaITS()`, but since `runDadaITS()` takes so long to run, forgetting to assign its output to a variable could result in a lot of lost time... hence, these output file name arguments.
 
-```{r, eval=FALSE} 
+```{r} 
 dada_out <- runDadaITS(
   fl_nm, in_subdir = "3_filtered", meta = seqmeta_greatplains_its, 
   verbose = FALSE, multithread = TRUE
@@ -176,15 +182,16 @@ dada_out <- runDadaITS(
 
 It can be useful to track the loss of reads at each step in the processing pipeline, as it may allow you to pinpoint where something went wrong. Each of the processing functions shown above (`trimPrimers16S()`, `qualityFilter16S()`, and `runDada16S()`) returns a read-tracking table. The tables can be combined using the following function.
 
-```{r, eval=FALSE}
+```{r}
 track <- combineReadTrackingTablesITS(prefilter_trackReads, filter_trackReads, dada_out$track)
 write.csv(track, file.path(NEONMICROBE_DIR_TRACKREADS(), "ITS",
                            paste0("track_its_", sub(" ", "_", gsub(":", "", Sys.time())), ".csv")))
+track
 ```
 
 At this point, it is safe to clear some variables from the R environment, freeing up memory. This is especially important when processing multiple sequencing runs one after another.
 
-```{r, eval=FALSE}
+```{r}
 rm(prefilter_trackReads)
 rm(filter_trackReads)
 rm(dada_out)

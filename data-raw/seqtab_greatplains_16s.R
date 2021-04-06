@@ -116,8 +116,8 @@ seqtab_joined <- mergeSequenceTables(tables = seqtab_filenames)
 # Collapses NEON 16S ASV table
 
 t0 <- Sys.time()
-seqtab_collapse <- collapseNoMismatch(seqtab_joined) # Took 6.93 hours on socs-stats.ucsc.edu
-saveRDS(seqtab_collapse, file="data/seqtab_greatplains.rda")
+seqmeta_greatplains_16s <- collapseNoMismatch(seqtab_joined) # Took 6.93 hours on socs-stats.ucsc.edu
+usethis::use_data(seqmeta_greatplains_16s, overwrite=TRUE)
 t1 <- Sys.time()
 
 t1 - t0

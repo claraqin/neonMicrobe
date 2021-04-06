@@ -1,3 +1,8 @@
 ^neonMicrobe\.Rproj$
 ^\.Rproj\.user$
 ^data-raw$
+^vignettes/sensitivity.*$
+^vignettes/ARCHIVE.*$
+^vignettes/add-environmental-variables-its.Rmd$
+^doc$
+^Meta$
