@@ -4,5 +4,6 @@
 ^vignettes/sensitivity.*$
 ^vignettes/ARCHIVE.*$
 ^vignettes/add-environmental-variables-its.Rmd$
+^vignettes/process-its-sequences.Rmd$
 ^doc$
 ^Meta$
