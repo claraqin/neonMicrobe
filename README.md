@@ -42,6 +42,7 @@ Tutorials for `neonMicrobe` are available in the `vignettes` directory, and some
 2. **[Process 16S Sequences](https://people.ucsc.edu/~claraqin/process-16s-sequences.html)** and **[Process ITS Sequences](https://people.ucsc.edu/~claraqin/process-its-sequences.html)** – how to use the functions in this package to add associated environmental variables to the ASV tables. Leverages the `dada2` [R package](https://github.com/benjjneb/dada2). The dada denoising algorithm partitions reads into amplicon sequence variants (ASVs), which are finer in resolution than OTUs.
 3. **[Add Environmental Variables to 16S Data](https://people.ucsc.edu/~claraqin/add-environmental-variables-16s.html)** – how to use the functions in this package to add associated environmental variables to the ASV tables. Joins the data together in the form of one or more Phyloseq objects.
 4. (Optional) **Sensitivity Analysis** – how to use the functions in this package to test the effects of quality filtering parameters and decisions on the resulting ecological inference. Can be used to test for an acceptable range of custom parameters.
+5. (Coming soon) **Processing Batches** - how to use the processing-batch feature to keep track of the parameters used to create various sets of output data.
 
 ![NEON Ecosphere MS Figure-Making Workspace (3)](https://user-images.githubusercontent.com/12421420/111393342-ce937d00-8675-11eb-8b63-530aced18352.png)
 
@@ -74,6 +75,8 @@ By default, output data from `neonMicrobe` is downloaded into the `outputs/` dir
 The `mid_process/` subdirectory contains files in the middle of being processed -- for example, fastq files that have been trimmed or filtered, and sequencing run-specific ASV tables that have not yet been joined together. Once the desired outputs have been created, you may choose to clear the contents of `mid_process/`, or leave them to retrace your processing steps. 
 
 The `track_reads/` subdirectory contains tables tracking the number of reads remaining at each step in the pipeline, from the "raw" sequence files downloaded from NEON to the ASV table. These tables can be useful for pinpointing steps and samples for which an unusual number of reads were lost.
+
+(Coming soon: When the processing batch feature is released, the default outputs directory will be switched to `batch_outputs`. More on this later!)
 
 ## Methods paper
 
