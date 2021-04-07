@@ -34,4 +34,5 @@ See related function: \code{\link{getPairedFastqFiles}}.
 fnFs <- matched_fn[[1]] # "sample1_R1.fastq" "sample3_R1.fastq"
 fnRs <- matched_fn[[2]] # "sample1_R2.fastq" "sample3_R2.fastq"
 }
+
 }

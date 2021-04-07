@@ -73,6 +73,7 @@ remove_unmatched_files <- function(fnFs, fnRs, post_samplename_pattern = "_R(1|2
 #' fnFs <- matched_fn[[1]] # "sample1_R1.fastq" "sample3_R1.fastq"
 #' fnRs <- matched_fn[[2]] # "sample1_R2.fastq" "sample3_R2.fastq"
 #' }
+#' @importFrom magrittr "%>%"
 getPairedFastqFiles <- function(fn, meta, value=TRUE, verbose=TRUE) {
   meta_ext <- matchFastqToMetadata(fn, meta, verbose=verbose)
   meta_ext$orientation <- if_else(grepl("R1", meta_ext$rawDataFileDescription), "R1",
@@ -129,6 +130,8 @@ getPairedFastqFiles <- function(fn, meta, value=TRUE, verbose=TRUE) {
 #' fnFs <- matched_fn[[1]] # "sample1_R1.fastq" "sample3_R1.fastq"
 #' fnRs <- matched_fn[[2]] # "sample1_R2.fastq" "sample3_R2.fastq"
 #' }
+#'
+#' @importFrom magrittr "%>%"
 removeUnpairedFastqFiles <- function(fnFs, fnRs, meta, value=TRUE, verbose=TRUE) {
   meta_ext <- matchFastqToMetadata(c(fnFs, fnRs), meta, verbose=verbose)
   meta_ext$orientation <- c(rep("R1", length(fnFs)), rep("R2", length(fnRs)))

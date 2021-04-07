@@ -17,10 +17,6 @@
 #' @export
 #'
 #' @examples
-#' \dontrun{
-#' meta <- downloadSequenceMetadataRev('all', '2015-01', '2016-01', '16S', outDir=FALSE) # metadata is not saved to local directory
-#' meta <- downloadSequenceMetadataRev('all', '2015-01', '2016-01', '16S', outDir='./data/') # metadata is saved to local directory
-#' }
 downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targetGene= "all",
                                      sequencingRuns = "", dpID = "DP1.10108.001", outDir = NULL) {
   # author: Lee Stanish
@@ -80,7 +76,7 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
 
 
   message("loading metadata...")
-  mmgL1 <- loadByProduct(dpID, sites, package = 'expanded', check.size = F, startdate = startYrMo, enddate = endYrMo) # output is a list of each metadata file
+  mmgL1 <- neonUtilities::loadByProduct(dpID, sites, package = 'expanded', check.size = F, startdate = startYrMo, enddate = endYrMo) # output is a list of each metadata file
 
 
   # for target data product and targetGene: extract lists into data.frames
@@ -190,7 +186,7 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
     } else {
       rawCleaned <- raw
     }
-    joinedTarget <- left_join(rawCleaned, seq, by=c('dnaSampleID', 'sequencerRunID'))
+    joinedTarget <- dplyr::left_join(rawCleaned, seq, by=c('dnaSampleID', 'sequencerRunID'))
     out <- joinedTarget[!is.na(joinedTarget$uid.y), ]
   }
   if(targetGene=="ITS") {
@@ -199,11 +195,11 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
     } else {
       rawCleaned <- raw
     }
-    joinedTarget <- left_join(rawCleaned, seq, by=c('dnaSampleID', 'sequencerRunID'))
+    joinedTarget <- dplyr::left_join(rawCleaned, seq, by=c('dnaSampleID', 'sequencerRunID'))
     out <- joinedTarget[!is.na(joinedTarget$uid.y), ]
   }
   if(targetGene=="all") {
-    joinedTarget <- left_join(raw, seq, by=c('dnaSampleID', 'sequencerRunID'))
+    joinedTarget <- dplyr::left_join(raw, seq, by=c('dnaSampleID', 'sequencerRunID'))
     out <- joinedTarget[!is.na(joinedTarget$uid.y), ]
     message(paste0(length(grep("16S", out$rawDataFileName)), " 16S records and ", length(grep("ITS", out$rawDataFileName)), " ITS records found."))
   }
@@ -213,7 +209,7 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
   names(out) <- gsub("\\.y", ".seq", names(out))
 
   # join with DNA extraction metadata
-  outDNA <- left_join(out, dna, by=c('plotID', 'dnaSampleID'))
+  outDNA <- dplyr::left_join(out, dna, by=c('plotID', 'dnaSampleID'))
   # clean up redundant column names
   names(outDNA) <- gsub("\\.x", ".seq", names(outDNA))
   names(outDNA) <- gsub("\\.y", ".dna", names(outDNA))
@@ -226,7 +222,7 @@ downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targ
   names(outDNA)[names(outDNA)=="dnaProcessedBy"] <- 'processedBy.dna'
 
   # join with PCR amplification metadata
-  outPCR <- left_join(outDNA, pcr, by=c('plotID', 'dnaSampleID', 'targetGene'))
+  outPCR <- dplyr::left_join(outDNA, pcr, by=c('plotID', 'dnaSampleID', 'targetGene'))
   names(outPCR)[names(outPCR)=="uid"] <- "uid.pcr"
   names(outPCR)[names(outPCR)=="processedDate"] <- "processedDate.pcr"
   names(outPCR)[names(outPCR)=="testProtocolVersion"] <- "testProtocolVersion.pcr"
@@ -637,7 +633,7 @@ organizeRawSequenceData <- function(fn, metadata, outdir_sequence = NEONMICROBE_
   # Gzip all non-gzipped fastq files
   for(i in 1:length(files_organized)) {
     if(!grepl(".gz$", files_organized[i])) {
-      gzip(files_organized[i])
+      R.utils::gzip(files_organized[i])
     }
   }
 
@@ -668,6 +664,8 @@ organizeRawSequenceData <- function(fn, metadata, outdir_sequence = NEONMICROBE_
 #'
 #' @return If return_data==TRUE, returns a dataframe consisting of joined soil data records from DP1.10086 ("Soil physical and chemical properties, periodic"). Otherwise, no value is returned.
 #' @export
+#'
+#' @importFrom magrittr "%>%"
 downloadSoilData <- function(sites='all', startYrMo = NA, endYrMo = NA,
                              dpID = c("DP1.10086.001"), outDir=NEONMICROBE_DIR_SOIL(),
                              rmSamplingImpractical=TRUE, rmNTransBouts=TRUE,
@@ -705,7 +703,7 @@ downloadSoilData <- function(sites='all', startYrMo = NA, endYrMo = NA,
   message("loading soil data...")
   for(i in 1:length(dpID)) {
     slsL1[[dpID[i]]] <- tryCatch({
-      loadByProduct(dpID[i], sites, package = 'expanded', check.size = F, startdate = startYrMo, enddate = endYrMo) # output is a list of lists of each soil data file
+      neonUtilities::loadByProduct(dpID[i], sites, package = 'expanded', check.size = F, startdate = startYrMo, enddate = endYrMo) # output is a list of lists of each soil data file
     }, error = function(e) {
       warning("No data was found for data product ", dpID[i], " at the specified sites and dates.")
       NA
@@ -793,14 +791,15 @@ downloadSoilData <- function(sites='all', startYrMo = NA, endYrMo = NA,
       # Need to collapse nitrogenPercent and organicCPercent values into the same rows. (They come in separate rows.)
       soilchem <- dplyr::select(slsL1[["DP1.10086.001"]]$"sls_soilChemistry", all_of(c(joining_cols, keep_cols))) %>%
         dplyr::rename(cnTestMethod=testMethod, cnInstrument=instrument) %>%
-        pivot_longer(c(nitrogenPercent, organicCPercent)) %>%
+        tidyr::pivot_longer(c(nitrogenPercent, organicCPercent)) %>%
         dplyr::filter(!is.na(value))
       if(rmFailedCNDataQF==TRUE) {
         soilchem <- dplyr::filter(soilchem, cnPercentQF == "OK" | is.na(cnPercentQF))
       }
       # Aggregate measurements of analytical replicates
-      soilchem_measurements <- pivot_wider(soilchem, id_cols = domainID:cnSampleID, names_from = name, names_sort = TRUE,
-                                           values_from = value, values_fn = mean)
+      soilchem_measurements <- tidyr::pivot_wider(soilchem, id_cols = domainID:cnSampleID,
+                                                  names_from = name, names_sort = TRUE,
+                                                  values_from = value, values_fn = mean)
       # Aggregation function to use for next pivot_wider calls
       indicateIfMixedAggregation <- function(x, value_if_mixed) {
         if(length(unique(x)) == 1) {
@@ -809,10 +808,16 @@ downloadSoilData <- function(sites='all', startYrMo = NA, endYrMo = NA,
           return(value_if_mixed)
         }
       }
-      soilchem_methods <- pivot_wider(soilchem, id_cols = domainID:cnSampleID, names_from = name, names_sort = TRUE, names_glue="{name}TestMethod",
-                                      values_from = cnTestMethod, values_fn = function(x) indicateIfMixedAggregation(x, "Aggregated from mixed methods"))
-      soilchem_QF <- pivot_wider(soilchem, id_cols = domainID:cnSampleID, names_from = name, names_sort = TRUE, names_glue="{name}QF",
-                                 values_from = cnPercentQF, values_fn = function(x) indicateIfMixedAggregation(x, "Aggregated from mixed quality flags"))
+      soilchem_methods <- tidyr::pivot_wider(soilchem, id_cols = domainID:cnSampleID, names_from = name,
+                                             names_sort = TRUE, names_glue="{name}TestMethod",
+                                             values_from = cnTestMethod, values_fn = function(x) {
+                                               indicateIfMixedAggregation(x, "Aggregated from mixed methods")
+                                               })
+      soilchem_QF <- tidyr::pivot_wider(soilchem, id_cols = domainID:cnSampleID, names_from = name,
+                                        names_sort = TRUE, names_glue="{name}QF",
+                                        values_from = cnPercentQF, values_fn = function(x) {
+                                          indicateIfMixedAggregation(x, "Aggregated from mixed quality flags")
+                                        })
       soilchem <- merge(merge(soilchem_measurements, soilchem_methods, all.x=TRUE), soilchem_QF, all.x=TRUE)
       # Collapsing complete
       # Now merge with the rest of soil data

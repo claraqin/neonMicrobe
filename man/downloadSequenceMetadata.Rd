@@ -38,9 +38,3 @@ with an option to download output by providing a valid output directory. This fu
 \details{
 Function by Lee F. Stanish and Clara Qin (2020). Currently available for testing only.
 }
-\examples{
-\dontrun{
-meta <- downloadSequenceMetadataRev('all', '2015-01', '2016-01', '16S', outDir=FALSE) # metadata is not saved to local directory
-meta <- downloadSequenceMetadataRev('all', '2015-01', '2016-01', '16S', outDir='./data/') # metadata is saved to local directory
-}
-}

@@ -19,3 +19,5 @@ neonmicrobe_env <- list2env(getDadaOpt())
 
 # Create custom package environment for storing batch-specific parameters
 batch_env <- new.env(parent=neonmicrobe_env)
+
+#' @importFrom magrittr "%>%"

@@ -53,8 +53,3 @@ composition (Pauvert et al., 2019).
 This implementation is based on Ben Callahan's vignettes at \url{https://benjjneb.github.io/dada2/bigdata.html}
 and \url{https://benjjneb.github.io/dada2/ITS_workflow.html}.
 }
-\examples{
-\dontrun{
-seqtab.list <- runDada16S(c("sample1_R1.fastq", "sample1_R2.fastq", "sample2_R1.fastq", "sample2_R2.fastq"), meta, seed=1010100)
-}
-}

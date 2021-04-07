@@ -28,6 +28,8 @@
 #' plot(p[[1]]) # expected errors profile
 #' plot(p[[2]]) # quality profile
 #' }
+#'
+#' @importFrom magrittr "%>%"
 plotEEProfile <- function(fn, n=5e+5, aggregate=FALSE, logEE=TRUE, include_quality_profile=FALSE) {
   if(length(fn) > 20 & missing(aggregate)) {
     message("More files than recommended for individual plotting. Setting aggregate = TRUE. ",

@@ -40,8 +40,3 @@ This function assumes that each read begins with its full primer sequence
 and operates by truncating the beginning of each read by the length of its
 primer sequence.
 }
-\examples{
-\dontrun{
-trimPrimers16S(c("sample1_R1.fastq", "sample1_R2.fastq", "sample2_R1.fastq", "sample2_R2.fastq"), "path/to/output", meta, "CCTACGGGNBGCASCAG", "GACTACNVGGGTATCTAATCC", multithread = TRUE)
-}
-}

@@ -43,8 +43,3 @@ No value is returned.
 \description{
 Trims primers from ITS sequences using cutadapt. Cutadapt must be installed in order for this to work. Currently only supports forward-read (R1) sequences. If reverse reads are included, they will be ignored.
 }
-\examples{
-\dontrun{
-trimPrimersITS(c("sample1_ITS_R1.fastq", "sample2_ITS_R1.fastq"), "path/to/input", "path/to/output", "CTTGGTCATTTAGAGGAAGTAA")
-}
-}

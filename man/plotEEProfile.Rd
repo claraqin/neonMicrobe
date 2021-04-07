@@ -47,4 +47,5 @@ p <- plotEEProfile(fnFs, aggregate=TRUE, include_quality_profile=TRUE) # produce
 plot(p[[1]]) # expected errors profile
 plot(p[[2]]) # quality profile
 }
+
 }
