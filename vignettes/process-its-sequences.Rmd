@@ -17,6 +17,8 @@ setBaseDirectory(dirname(getwd()))
 knitr::opts_knit$set(
   root.dir = NEONMICROBE_DIR_BASE()
 )
+
+makeDataDirectories(check_location = FALSE)
 ```
 
 This vignette demonstrates how to use the functions and parameters in this package to process the raw NEON ITS sequence data into ASV tables using the DADA2 workflow. It is based on the [DADA2 ITS Pipeline Tutorial (1.8)](https://benjjneb.github.io/dada2/ITS_workflow.html). The functions showcased in this vignette only support processing the forward ITS reads, following recommendations by [Pauvert et al. (2019)](https://doi.org/10.1016/j.funeco.2019.03.005).
@@ -71,11 +73,25 @@ meta_onerun <- meta[which(meta$sequencerRunID==unique_runs[1]),]
 nrow(meta_onerun)
 ```
 
-Although you can specify filenames to process, here we'll just use the filenames included in this subset of the metadata. (Don't worry; any files that don't exist in the file system will be safely ignored.) Note that these filenames are just basenames, i.e. they contain no directory path information. This is fine, as we will see in the subsections below. In addition, we will only use 4 fastq files (i.e. 2 samples) in order to speed up the computation in this RMarkdown document.
+Although you can specify filenames to process, here we'll just use the filenames included in this subset of the metadata. (Don't worry; any files that don't exist in the file system will be safely ignored.) Note that these filenames are just basenames, i.e. they contain no directory path information. This is fine, as we will see in the subsections below. In addition, we will only use 2 fastq files (i.e. 1 sample) in order to speed up the computation in this RMarkdown document.
 
 ```{r}
-fl_nm <- meta_onerun$rawDataFileName[1:4]
+fl_nm <- meta_onerun$rawDataFileName[which(
+  meta_onerun$rawDataFileName %in% 
+    c("BMI_Plate37WellB2_ITS_BNM6G_R1.fastq.gz",
+      "BMI_Plate37WellB2_ITS_BNM6G_R2.fastq.gz")
+  )]
 fl_nm
+```
+
+*Note for advanced users*: Behind the scenes in the RMarkdown file, we are moving fastq files from the an external data subdirectory into the raw sequences directory. This is necessary because when the vignettes are being built for package installation, the fastq files are not already in their expected locations. View the .Rmd file if you want to see this code; otherwise, feel free to ignore this.
+
+```{r, include=FALSE}
+ext_files <- file.path("ITS", c("BMI_Plate37WellB2_ITS_BNM6G_R1.fastq.gz",
+                                "BMI_Plate37WellB2_ITS_BNM6G_R1.fastq.gz"))
+files <- system.file("extdata", ext_files, package="neonMicrobe")
+
+file.copy(files, file.path(NEONMICROBE_DIR_SEQUENCE(), ext_files), overwrite=FALSE)
 ```
 
 ## Pre-filter ITS sequences
@@ -183,10 +199,18 @@ dada_out <- runDadaITS(
 It can be useful to track the loss of reads at each step in the processing pipeline, as it may allow you to pinpoint where something went wrong. Each of the processing functions shown above (`trimPrimers16S()`, `qualityFilter16S()`, and `runDada16S()`) returns a read-tracking table. The tables can be combined using the following function.
 
 ```{r}
-track <- combineReadTrackingTablesITS(prefilter_trackReads, filter_trackReads, dada_out$track)
-write.csv(track, file.path(NEONMICROBE_DIR_TRACKREADS(), "ITS",
-                           paste0("track_its_", sub(" ", "_", gsub(":", "", Sys.time())), ".csv")))
+track <- combineReadTrackingTablesITS(prefilter_trackReads, 
+                                      filter_trackReads, 
+                                      dada_out$track)
 track
+```
+
+```{r, eval=FALSE}
+write.csv(
+  track, 
+  file.path(NEONMICROBE_DIR_TRACKREADS(), "ITS",
+            paste0("track_its_", sub(" ", "_", gsub(":", "", Sys.time())), ".csv"))
+)
 ```
 
 At this point, it is safe to clear some variables from the R environment, freeing up memory. This is especially important when processing multiple sequencing runs one after another.

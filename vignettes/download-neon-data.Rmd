@@ -64,7 +64,7 @@ Set up the directory structure associated with the various NEON data products. T
 
 Each of these directories may contain yet more subdirectories, but let's not worry about them yet. We'll explore them more in future vignettes.
 
-```{r, eval=FALSE}
+```{r}
 makeDataDirectories()
 ```
 

@@ -17,6 +17,8 @@ setBaseDirectory(dirname(getwd()))
 knitr::opts_knit$set(
   root.dir = NEONMICROBE_DIR_BASE()
 )
+
+makeDataDirectories(check_location = FALSE)
 ```
 
 The goal of this vignette is to merge various NEON data products to link the outputs of the DADA2 pipeline (e.g. non-chimeric sequence table, taxonomic table) to environmental/sample data.
