@@ -4,16 +4,6 @@
 
 ## Installation
 
-**Temporary solution for beta-testers until this repo is made public:**
-
-1. Download the package bundle [here](https://drive.google.com/file/d/1jKvkSdbu23gbXMDMjbiaARHEHG74iV12/view?usp=sharing). It should be `neonMicrobe_0.0.0.9000.tar.gz`. Drag it into a directory that you can easily navigate to in R.
-2. In R, run the following:
-
-```
-setwd([directory containing the package bundle])
-install.packages("neonMicrobe_0.0.0.9000.tar.gz", repos = NULL, type = "source")
-```
-
 The development version of `neonMicrobe` can be installed directly from this GitHub repo using this code:
 
 ```
