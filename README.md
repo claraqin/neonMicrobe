@@ -13,7 +13,7 @@ devtools::install_github("claraqin/neonMicrobe")
 
 ## User-installed dependencies
 
-In addition to the R package dependencies which are installed alongside `neonMicrobe`, users may also need to complete the following requirements before using some functions in `neonMicrobe`:
+In addition to the R package dependencies which are installed alongside `neonMicrobe`, users may also need to complete the following requirements before using _some_ functions in `neonMicrobe`:
 
 1. **For taxonomic assignment via DADA2**, you will need to install the latest taxonomic reference datasets for ITS or 16S sequences. Consult the [DADA2 taxonomic reference data webpage](https://benjjneb.github.io/dada2/training.html) for more information. For organizational purposes, we recommend keeping these files in the `data/tax_ref` subdirectory that is created after you run `makeDataDirectories()` (see "Input data" below).
 2. **For trimming of ITS sequence primers**, you will need to install `cutadapt`. Installation instructions can be found [here](https://cutadapt.readthedocs.io/en/stable/installation.html). Once installed, you can tell `neonMicrobe` where to look for it by specifying the `cutadapt_path` argument each time you use the `trimPrimerITS` function. For an example, see the "Process 16S Sequences" vignette or the "Process ITS Sequences" vignette.
