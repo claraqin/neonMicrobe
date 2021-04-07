@@ -37,3 +37,15 @@ qualityFilterITS(
 Applies a quality filter to ITS sequence fastq files via the \code{\link[dada2]{filterAndTrim}} function.
 Currently only supports filtering forward-read (R1) sequences. If reverse reads are included, they will be ignored.
 }
+\examples{
+\dontrun {
+fl_nm <- c("BMI_Plate37WellB2_ITS_BNM6G_R1.fastq.gz", "BMI_Plate37WellB2_ITS_BNM6G_R2.fastq.gz")
+# R2 file will be ignored
+
+filter_trackReads <- qualityFilterITS(
+  fl_nm, in_subdir = "2_trimmed", out_subdir = "3_filtered",
+  meta = seqmeta_greatplains_its, minLen = 50, maxEE = 2,
+  multithread = TRUE # set multithread = FALSE on Windows computers though
+)
+}
+}

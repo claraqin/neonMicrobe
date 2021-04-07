@@ -43,6 +43,16 @@ qualityFilter16S(
 Applies a quality filter to 16S sequence fastq files via the \code{\link[dada2]{filterAndTrim}} function.
 It is assumed that both forward- and reverse-read files are included.
 }
+\examples{
+\dontrun {
+fl_nm <- c("BMI_Plate37WellA12_16S_BJ8RK_R1.fastq.gz", "BMI_Plate37WellA12_16S_BJ8RK_R2.fastq.gz")
+filter_trackReads <- qualityFilter16S(
+  fl_nm, in_subdir = "1_trimmed", out_subdir = "2_filtered",
+  meta = seqmeta_greatplains_16s, truncLen = c(250, 230), maxEE = c(2, 8),
+  multithread = TRUE # set multithread = FALSE on Windows computers though
+)
+}
+}
 \seealso{
 \code{\link[dada2]{filterAndTrim}}
 }

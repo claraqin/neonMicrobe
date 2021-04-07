@@ -17,6 +17,13 @@
 #' @export
 #'
 #' @examples
+#' \dontrun {
+#' meta_16s <- downloadSequenceMetadata(
+#'   startYrMo = "2017-07", endYrMo = "2017-07",
+#'   sites = c("KONZ", "CPER", "NOGP"),
+#'   targetGene = "16S"
+#' )
+#' }
 downloadSequenceMetadata <- function(sites='all', startYrMo=NA, endYrMo=NA, targetGene= "all",
                                      sequencingRuns = "", dpID = "DP1.10108.001", outDir = NULL) {
   # author: Lee Stanish

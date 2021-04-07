@@ -53,3 +53,18 @@ composition (Pauvert et al., 2019).
 This implementation is based on Ben Callahan's vignettes at \url{https://benjjneb.github.io/dada2/bigdata.html}
 and \url{https://benjjneb.github.io/dada2/ITS_workflow.html}.
 }
+\examples{
+\dontrun {
+fl_nm <- c("BMI_Plate37WellB2_ITS_BNM6G_R1.fastq.gz", "BMI_Plate37WellB2_ITS_BNM6G_R2.fastq.gz")
+# R2 file will be ignored
+
+dada_out <- runDadaITS(
+  fl_nm, in_subdir = "3_filtered", meta = seqmeta_greatplains_its,
+  verbose = FALSE,
+  multithread = TRUE # set multithread = FALSE on Windows computers though
+)
+
+dada_out$track # read-tracking table
+data_out$seqtab # ASV abundance table
+}
+}

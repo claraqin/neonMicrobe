@@ -38,8 +38,17 @@ trimPrimersITS(
 \item{discard_untrimmed}{Default FALSE. Whether to discard reads where a primer could not be found, leaving only those reads in which a primer has been trimmed.}
 }
 \value{
-No value is returned.
+No value is returned (unlike its 16S counterpart).
 }
 \description{
 Trims primers from ITS sequences using cutadapt. Cutadapt must be installed in order for this to work. Currently only supports forward-read (R1) sequences. If reverse reads are included, they will be ignored.
+}
+\examples{
+\dontrun {
+fl_nm <- c("BMI_Plate37WellB2_ITS_BNM6G_R1.fastq.gz", "BMI_Plate37WellB2_ITS_BNM6G_R2.fastq.gz")
+trimPrimersITS(
+  fl_nm, in_subdir = "1_filtN", out_subdir = "2_trimmed", meta = seqmeta_greatplains_its,
+  cutadapt_path = "your/path/here"
+)
+}
 }

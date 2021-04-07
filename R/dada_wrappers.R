@@ -99,6 +99,13 @@ validateIO <- function(fn, in_subdir, out_subdir, in_explicitdir, out_explicitdi
 #' @export
 #'
 #' @examples
+#' \dontrun{
+#' fl_nm <- c("BMI_Plate37WellA12_16S_BJ8RK_R1.fastq.gz", "BMI_Plate37WellA12_16S_BJ8RK_R2.fastq.gz")
+#' trim_trackReads <- trimPrimers16S(
+#'   fl_nm, in_subdir = "raw", out_subdir = "1_trimmed", meta = seqmeta_greatplains_16s,
+#'   multithread = TRUE # set multithread = FALSE on Windows computers though
+#' )
+#' }
 trimPrimers16S <- function(fn, in_subdir, out_subdir, meta, in_explicitdir = NULL, out_explicitdir = NULL, primer_16S_fwd = "CCTACGGGNBGCASCAG", primer_16S_rev = "GACTACNVGGGTATCTAATCC", multithread = FALSE) {
 
   # Validate sequence metadata
@@ -170,10 +177,17 @@ trimPrimers16S <- function(fn, in_subdir, out_subdir, meta, in_explicitdir = NUL
 #' @param very_verbose Default FALSE. Whether to print output from cutadapt.
 #' @param discard_untrimmed Default FALSE. Whether to discard reads where a primer could not be found, leaving only those reads in which a primer has been trimmed.
 #'
-#' @return No value is returned.
+#' @return No value is returned (unlike its 16S counterpart).
 #' @export
 #'
 #' @examples
+#' \dontrun {
+#' fl_nm <- c("BMI_Plate37WellB2_ITS_BNM6G_R1.fastq.gz", "BMI_Plate37WellB2_ITS_BNM6G_R2.fastq.gz")
+#' trimPrimersITS(
+#'   fl_nm, in_subdir = "1_filtN", out_subdir = "2_trimmed", meta = seqmeta_greatplains_its,
+#'   cutadapt_path = "your/path/here"
+#' )
+#' }
 trimPrimersITS <- function(fn, in_subdir, out_subdir, meta, cutadapt_path, in_explicitdir = NULL, out_explicitdir = NULL, primer_ITS_fwd = "CTTGGTCATTTAGAGGAAGTAA", primer_ITS_rev = "GCTGCGTTCTTCATCGATGC", very_verbose=FALSE, discard_untrimmed=FALSE) {
 
   # Validate sequence metadata
@@ -258,6 +272,16 @@ trimPrimersITS <- function(fn, in_subdir, out_subdir, meta, cutadapt_path, in_ex
 #'
 #' @return (Invisibly) Two-column matrix displaying the number of reads in input vs. output for each file.
 #' @export
+#'
+#' @examples
+#' \dontrun {
+#' fl_nm <- c("BMI_Plate37WellA12_16S_BJ8RK_R1.fastq.gz", "BMI_Plate37WellA12_16S_BJ8RK_R2.fastq.gz")
+#' filter_trackReads <- qualityFilter16S(
+#'   fl_nm, in_subdir = "1_trimmed", out_subdir = "2_filtered",
+#'   meta = seqmeta_greatplains_16s, truncLen = c(250, 230), maxEE = c(2, 8),
+#'   multithread = TRUE # set multithread = FALSE on Windows computers though
+#' )
+#' }
 qualityFilter16S <- function(fn, in_subdir, out_subdir, meta, in_explicitdir = NULL, out_explicitdir = NULL,
                              multithread = FALSE, verbose = FALSE, trunc_qscore = 23, ...){
 
@@ -375,6 +399,18 @@ qualityFilter16S <- function(fn, in_subdir, out_subdir, meta, in_explicitdir = N
 #'
 #' @return (Invisibly) Two-column matrix displaying the number of reads in input vs. output for each file.
 #' @export
+#'
+#' @examples
+#' \dontrun {
+#' fl_nm <- c("BMI_Plate37WellB2_ITS_BNM6G_R1.fastq.gz", "BMI_Plate37WellB2_ITS_BNM6G_R2.fastq.gz")
+#' # R2 file will be ignored
+#'
+#' filter_trackReads <- qualityFilterITS(
+#'   fl_nm, in_subdir = "2_trimmed", out_subdir = "3_filtered",
+#'   meta = seqmeta_greatplains_its, minLen = 50, maxEE = 2,
+#'   multithread = TRUE # set multithread = FALSE on Windows computers though
+#' )
+#' }
 qualityFilterITS <- function(fn, in_subdir, out_subdir, meta, in_explicitdir = NULL, out_explicitdir = NULL,
                              multithread = FALSE, ...){
   # Validate sequence metadata
@@ -449,6 +485,17 @@ qualityFilterITS <- function(fn, in_subdir, out_subdir, meta, in_explicitdir = N
 #' @export
 #'
 #' @examples
+#' \dontrun {
+#' fl_nm <- c("BMI_Plate37WellA12_16S_BJ8RK_R1.fastq.gz", "BMI_Plate37WellA12_16S_BJ8RK_R2.fastq.gz")
+#' dada_out <- runDada16S(
+#'   fl_nm, in_subdir = "2_filtered", meta = seqmeta_greatplains_16s,
+#'   verbose = FALSE,
+#'   multithread = TRUE # set multithread = FALSE on Windows computers though
+#' )
+#'
+#' dada_out$track # read-tracking table
+#' data_out$seqtab # ASV abundance table
+#' }
 runDada16S <- function(fn, in_subdir, meta, out_seqtab = NULL, out_track = NULL, in_explicitdir = NULL,
                        remove_chimeras = TRUE, multithread = FALSE, verbose = FALSE, seed = NULL, nbases = 1e7) {
 
@@ -638,6 +685,19 @@ runDada16S <- function(fn, in_subdir, meta, out_seqtab = NULL, out_track = NULL,
 #' @export
 #'
 #' @examples
+#' \dontrun {
+#' fl_nm <- c("BMI_Plate37WellB2_ITS_BNM6G_R1.fastq.gz", "BMI_Plate37WellB2_ITS_BNM6G_R2.fastq.gz")
+#' # R2 file will be ignored
+#'
+#' dada_out <- runDadaITS(
+#'   fl_nm, in_subdir = "3_filtered", meta = seqmeta_greatplains_its,
+#'   verbose = FALSE,
+#'   multithread = TRUE # set multithread = FALSE on Windows computers though
+#' )
+#'
+#' dada_out$track # read-tracking table
+#' data_out$seqtab # ASV abundance table
+#' }
 runDadaITS <- function(fn, in_subdir, meta, out_seqtab = NULL, out_track = NULL, in_explicitdir = NULL,
                        remove_chimeras = TRUE, multithread = FALSE, verbose = FALSE, seed = NULL, nbases = 1e7) {
 

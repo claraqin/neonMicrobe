@@ -38,3 +38,12 @@ with an option to download output by providing a valid output directory. This fu
 \details{
 Function by Lee F. Stanish and Clara Qin (2020). Currently available for testing only.
 }
+\examples{
+\dontrun {
+meta_16s <- downloadSequenceMetadata(
+  startYrMo = "2017-07", endYrMo = "2017-07",
+  sites = c("KONZ", "CPER", "NOGP"),
+  targetGene = "16S"
+)
+}
+}

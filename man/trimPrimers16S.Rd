@@ -40,3 +40,12 @@ This function assumes that each read begins with its full primer sequence
 and operates by truncating the beginning of each read by the length of its
 primer sequence.
 }
+\examples{
+\dontrun{
+fl_nm <- c("BMI_Plate37WellA12_16S_BJ8RK_R1.fastq.gz", "BMI_Plate37WellA12_16S_BJ8RK_R2.fastq.gz")
+trim_trackReads <- trimPrimers16S(
+  fl_nm, in_subdir = "raw", out_subdir = "1_trimmed", meta = seqmeta_greatplains_16s,
+  multithread = TRUE # set multithread = FALSE on Windows computers though
+)
+}
+}

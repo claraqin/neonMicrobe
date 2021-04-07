@@ -46,3 +46,16 @@ runDada16S(
 Runs the Dada algorithm to infer sample composition from paired-end 16S fastq files.
 This implementation is based on Ben Callahan's vignette at \url{https://benjjneb.github.io/dada2/bigdata_paired.html}.
 }
+\examples{
+\dontrun {
+fl_nm <- c("BMI_Plate37WellA12_16S_BJ8RK_R1.fastq.gz", "BMI_Plate37WellA12_16S_BJ8RK_R2.fastq.gz")
+dada_out <- runDada16S(
+  fl_nm, in_subdir = "2_filtered", meta = seqmeta_greatplains_16s,
+  verbose = FALSE,
+  multithread = TRUE # set multithread = FALSE on Windows computers though
+)
+
+dada_out$track # read-tracking table
+data_out$seqtab # ASV abundance table
+}
+}
