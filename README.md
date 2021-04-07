@@ -50,7 +50,7 @@ The tree structure in the upper-left represents the data directory structure con
 
 The **Process ([16S](https://people.ucsc.edu/~claraqin/process-16s-sequences.html)/[ITS](https://people.ucsc.edu/~claraqin/process-its-sequences.html)) Sequences** and **[Add Environmental Variables to 16S Data](https://people.ucsc.edu/~claraqin/add-environmental-variables-16s.html)** vignettes demonstrate how to process the NEON data inputs into useful sample-abundance tables with accompanying environmental data.
 
-By default, output data from `neonMicrobe` is downloaded into the `outputs/` directory.
+By default, output data from `neonMicrobe` is written to the `outputs/` directory.
 
 ```
 ─ outputs
