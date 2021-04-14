@@ -1,6 +1,6 @@
 #!/user/bin/env Rscript
 
-install.packages(c("BiocManager", "neonUtilities", "vegan", "zetadiv", 
+install.packages(c("BiocManager", "neonUtilities", "vegan", "zetadiv", "testthat",
           "deblur", "decontam", "tidyverse", "R.utils"), repos = "https://cloud.r-project.org/", 
           dependencies = TRUE)
 
