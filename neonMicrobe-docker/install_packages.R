@@ -19,4 +19,4 @@ BiocManager::install("phyloseq")
 devtools::install_github("NEONScience/NEON-geolocation/geoNEON", dependencies=TRUE)
 
 #install neonMicrobe
-
+devtools::install_github("claraqin/neonMicrobe")
