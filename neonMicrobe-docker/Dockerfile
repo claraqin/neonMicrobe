@@ -14,7 +14,6 @@ ENV BUILD_DEPS \
 RUN apt-get update && apt-get install -y $BUILD_DEPS
 
 # install and configure miniconda3 for cutadapt
-# need to update this for new absolute path in container
 # install miniconda
 ENV PATH="/root/miniconda3/bin:${PATH}"
 ARG PATH="/root/miniconda3/bin:${PATH}"
