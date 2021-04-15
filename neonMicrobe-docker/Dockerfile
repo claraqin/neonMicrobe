@@ -5,17 +5,21 @@ FROM rocker/r-base:4.0.4
 ENV BUILD_DEPS \
 	dialog \
     apt-utils \
-    tzdata
+    tzdata \
+    vim \
+    nano \
+    curl \
+    wget
 # update and install debian packages
 RUN apt-get update && apt-get install -y $BUILD_DEPS
 
 # install and configure miniconda3 for cutadapt
 # need to update this for new absolute path in container
 # install miniconda
-ENV PATH="/home/rstudio/miniconda3/bin:${PATH}"
-ARG PATH="/home/rstudio/miniconda3/bin:${PATH}"
+ENV PATH="/root/miniconda3/bin:${PATH}"
+ARG PATH="/root/miniconda3/bin:${PATH}"
 RUN curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
-    && mkdir /home/rstudio/.conda \
+    && mkdir /root/.conda \
     && bash Miniconda3-latest-Linux-x86_64.sh -b \
     && rm -f Miniconda3-latest-Linux-x86_64.sh
 
@@ -27,11 +31,13 @@ RUN conda init bash \
   && conda config --add channels bioconda \
   && conda config --add channels conda-forge \
   && conda install cutadapt \
-  && echo 'alias cutadapt = "conda run --prefix '/home/rstudio/miniconda3/envs/cutadaptenv' cutadapt"'
+  && echo 'alias cutadapt = "conda run --prefix '/miniconda3/envs/cutadaptenv' cutadapt"'
 
 
 # use R script to install neonMicrobe
+WORKDIR /root/
 COPY install_packages.R install_packages.R
-RUN R -e install_packages.R
+RUN chmod a+x install_packages.R
+RUN ./install_packages.R
 
 
