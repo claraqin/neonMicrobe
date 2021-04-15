@@ -9,7 +9,11 @@ ENV BUILD_DEPS \
     vim \
     nano \
     curl \
-    wget
+    wget \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    libxml2-dev 
+
 # update and install debian packages
 RUN apt-get update && apt-get install -y $BUILD_DEPS
 
@@ -33,10 +37,28 @@ RUN conda init bash \
   && echo 'alias cutadapt = "conda run --prefix '/miniconda3/envs/cutadaptenv' cutadapt"'
 
 
-# use R script to install neonMicrobe
-WORKDIR /root/
-COPY install_packages.R install_packages.R
-RUN chmod a+x install_packages.R
-RUN ./install_packages.R
+# use R exec to install neonMicrobe dependencies 
+  # and other programs
 
+RUN R -e 'install.packages(c("BiocManager", "tidyverse", "neonUtilities", "vegan", \
+          "zetadiv", "testthat", "deblur", "decontam", "R.utils"), \ 
+          repos = "https://cloud.r-project.org/", dependencies = TRUE)'
 
+# set BiocManager Version
+RUN R -e 'BiocManager::install(version = "3.11", ask = FALSE)'
+
+# install rhdf5 for neonUtilities
+RUN R -e 'BiocManager::install("rhdf5")'
+# install dada2 with biocmanager version 3.11
+RUN R -e 'BiocManager::install("dada2", version = "3.11")'
+RUN R -e 'BiocManager::install("DESeq2")'
+RUN R -e 'BiocManager::install("DECIPHER")'
+RUN R -e 'BiocManager::install("phyloseq")'
+
+#install devtools
+RUN R -e 'install.packages("devtools", repos = "https://cloud.r-project.org/", dependencies = TRUE)'
+# install geoNEON from GitHub with devtools
+RUN R -e 'devtools::install_github("NEONScience/NEON-geolocation/geoNEON", dependencies=TRUE)'
+
+#install neonMicrobe from GitHub with devtools
+RUN R -e 'devtools::install_github("claraqin/neonMicrobe", dependencies=TRUE)'
