@@ -34,7 +34,7 @@ RUN conda init bash \
   && conda config --add channels bioconda \
   && conda config --add channels conda-forge \
   && conda install cutadapt \
-  && echo 'alias cutadapt = "conda run --prefix '/miniconda3/envs/cutadaptenv' cutadapt"'
+  && echo 'alias cutadapt = "conda run --prefix '/root/miniconda3/envs/cutadaptenv' cutadapt"'
 
 
 # use R exec to install neonMicrobe dependencies 

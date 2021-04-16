@@ -20,14 +20,35 @@ This docker container's base image is the [Rocker Project's](https://www.rocker-
 
 `docker run --rm -it -v $(pwd):/work rbartelme/neonmicrobe:v1 bash`
 
-*`docker run` argument meaning in above statement:* 
+*`docker run` argument meanings in above statement:* 
 
 * `--rm` remove container from local machine after scripts finish. 
     * [docker container cleanup best practices](https://dzone.com/articles/docker-clean-after-yourself)
 * `-it` run docker interactively.
 * `-v $(pwd):/work` copy contents of current working directory into the container image in the directory `/work`
+* `bash` run the Debian bash commandline interface interactively as root.
 
 ### Running on HPC with Singularity
+
+Work with your local system administrator to see what requirements your HPC architecture has. Documentation for Singularity container users can be found [here.](https://singularity.lbl.gov/user-guide) The guide for system administrators is [here.](https://singularity.lbl.gov/admin-guide)
+
+*Singularity `shell` statment*
+
+This runs singularity interactively executing commands in your system's bash environment.
+
+`singularity shell docker://rbartelme/neonmicrobe:v1`
+
+*Singularity `run` statement*
+
+This launches the R console interactively.
+
+`singularity run docker://rbartelme/neonmicrobe:v1`
+
+*Singularity `exec` statement*
+
+This takes command line functions and scripts as arguments. As long as the path to the scripting language is specified.
+
+`singularity exec docker://rbartelme/neonmicrobe:v1 /usr/bin/r analysis_script.R`
 
 ---
 
