@@ -88,7 +88,7 @@ fl_nm
 
 ```{r, include=FALSE}
 ext_files <- file.path("ITS", c("BMI_Plate37WellB2_ITS_BNM6G_R1.fastq.gz",
-                                "BMI_Plate37WellB2_ITS_BNM6G_R1.fastq.gz"))
+                                "BMI_Plate37WellB2_ITS_BNM6G_R2.fastq.gz"))
 files <- system.file("extdata", ext_files, package="neonMicrobe")
 
 file.copy(files, file.path(NEONMICROBE_DIR_SEQUENCE(), ext_files), overwrite=FALSE)
