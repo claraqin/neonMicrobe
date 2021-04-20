@@ -54,9 +54,17 @@ This takes command line functions and scripts as arguments. As long as the path 
 
 ## Running on CyVerse Discovery Environment 2.0
 
+### Register a CyVerse Account
 
+Running RStudio server on CyVerse requires a CyVerse account. This application was created to have a cloud environment to test `neonMicrobe` code before running large analyses. For larger analyses please see the methods above.
+
+**`cutadapt` location inside the container**
+
+This container includes `cutadapt` used in the ITS workflow. To set the `cutadapt_path` for this container please use the following absolute path: `/home/rstudio/miniconda3/bin/cutadapt`
 
 ### RStudio Application
+
+`neonMicrobe` is available as an interactive application on the [CyVerse Discovery Environment](https://de2.cyverse.org/) under the app name `rstudio_neon_microbiome`. This docker container image uses R version 4.0.0 and the Rocker Project's RStudio Ubuntu 18.04 LTS image.
 
 ### CyVerse Data Store
 
