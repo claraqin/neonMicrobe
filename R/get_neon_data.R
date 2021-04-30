@@ -432,7 +432,7 @@ qcMetadata <- function(metadata, outDir=NULL, pairedReads="Y", rmDupes=TRUE, rmF
 #' @param outDir Location where output files are saved and sorted into target gene-specific subdirectories. By default (NULL), this is NEONMICROBE_DIR_SEQUENCE().
 #' @param overwrite Default FALSE. If TRUE, overwrites existing files.
 #' @param ignore_tar_files If TRUE (default), does not download tar files. Each tar file is a batch containing an entire sequence run of fastq files. The tar file structure will soon be deprecated.
-#' @param verbose If TRUE, prints status messages and progress bars associated with file downloads.
+#' @param verbose If TRUE, prints status messages associated with file downloads (in addition to default progress bars).
 #'
 #' @return Returns (invisibly) a list of integer codes: 0 indicates success of downloads and a non-zero integer indicates failure. See the help page for \code{\link[utils]{download.file}} for more details.
 #' @export
@@ -515,6 +515,9 @@ downloadRawSequenceData <- function(metadata, outDir = NULL, overwrite=FALSE,
 
   # Download files
   download_success <- list()
+
+  progressbar <- txtProgressBar(min = 0, max = nrow(metadata.u), style = 3)
+
   for(i in 1:nrow(metadata.u)) {
     if(is.na(targetGene[i])) {
       destfile <- file.path(outDir, metadata.u$rawDataFileName[i])
@@ -545,7 +548,9 @@ downloadRawSequenceData <- function(metadata, outDir = NULL, overwrite=FALSE,
       })
     }
     if(verbose) message("Finished downloading ", destfile, ".\n")
+    setTxtProgressBar(progressbar, i)
   }
+  close(progressbar)
 
   message("Finished download raw sequence files to ", outDir)
   return(invisible(download_success))
