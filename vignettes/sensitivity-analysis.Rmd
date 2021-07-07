@@ -1,6 +1,6 @@
 
 ---
-title: "Sensitivity Analysis for Quality Filtering Parameters"
+title: "Sensitivity Analysis of Quality Filtering Parameters"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Sensitivity Analysis for Quality Filtering Parameters}
@@ -13,7 +13,7 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
-devtools::load_all() # TODO: Before publishing, replace this with library(neonMicrobe)
+library(neonMicrobe)
 setBaseDirectory(dirname(getwd()))
 knitr::opts_knit$set(
   root.dir = NEONMICROBE_DIR_BASE()
@@ -27,8 +27,8 @@ The purpose of this vignette is to demonstrate how a researcher can test the eff
 
 The parameters that we vary to observe their downstream effects include the following:
 
-* `trunLen.R`: Reverse reads that do not meet or exceed `truncLen.R` in length will be discarded. Reverse reads that exceed `truncLen.R` will be truncated to `truncLen.R`.
-* `maxEE.R`: After truncation, reads with greater than `maxEE` expected errors will be discarded. Expected errors are calculated from the nominal definition of the quality score: EE = sum(10^(-Q/10)).
+* `truncLen.R`: Reverse reads that do not meet or exceed `truncLen.R` in length will be discarded. Reverse reads that exceed `truncLen.R` will be truncated to `truncLen.R`.
+* `maxEE.R`: After truncation, reverse reads with greater than `maxEE.R` expected errors will be discarded. Expected errors are calculated from the nominal definition of the quality score: EE = sum(10^(-Q/10)).
 
 Because we are interested in variation in these benchmark metrics across different parameter sets, we refer to this analysis as a **sensitivity analysis**. This vignette is intended to provide a boilerplate for users of this R package to construct their own sensitivity analyses.
 
@@ -343,7 +343,8 @@ track_long <- track_long[!grepl("F$", track_long$step),]
 # Aggregate read counts by run ID
 track_long[["step"]] <- factor(track_long[["step"]], levels=colnames(track)[1:9])
 track_aggRun <- group_by(track_long, maxEE.R, truncLen.R, runID, step) %>%
-  dplyr::summarise(reads = sum(reads))
+  dplyr::summarise(reads = sum(reads)) %>%
+  mutate(runID_print = sub("run", "", runID))
 ```
 
 Plot!
@@ -351,14 +352,20 @@ Plot!
 ```{r, fig.width=9, fig.height=3.5}
 theme_set(theme_bw())
 ggplot(track_aggRun, aes(x=step, y=reads, col=as.factor(truncLen.R))) +
-  geom_line(aes(linetype=as.factor(maxEE.R), group=interaction(maxEE.R, truncLen.R))) +
-  # facet_wrap(~runID, scales="free_y") +
-  facet_wrap(~runID) +
+  geom_line(aes(linetype=as.factor(maxEE.R), group=interaction(maxEE.R, truncLen.R)), alpha=0.7, size=0.5) +
+  facet_wrap(~runID_print, ncol=4) +
   labs(linetype="maxEE.R", color="truncLen.R") +
-  scale_linetype_manual(values=c("dotted", "dashed", "solid")) +
-  theme(axis.text.x = element_text(angle=45, hjust=1)) +
-  scale_y_continuous(trans="log10")
-ggsave(file.path(PATH_TEST, "results", "track_reads_plot.png"), width=10, height=7, units="in")
+  scale_linetype_manual(expression(maxEE[R]), values=c("dotted", "dashed", "solid")) +
+  theme(axis.text.x = element_text(angle=90, hjust=1, vjust=0.5)) +
+  scale_y_continuous(trans="log10") +
+  scale_color_manual(expression(truncLen[R]), values = c("#E69F00", "#56B4E9", "#CC79A7")) +
+  xlab("Step") + 
+  ylab("Reads") +
+  theme(legend.position = "top",
+        legend.text = element_text(size = 9),
+        legend.key.size = unit(0.5, "cm"),
+        strip.background = element_blank())
+ggsave(file.path(PATH_TEST, "results", "track_reads_plot.png"), width=5.5, height=7, units="in")
 ```
 
 
@@ -400,6 +407,7 @@ diversity_list <- lapply(seq_along(physeqs), function(i) {
 })
 
 diversity_df <- do.call(rbind, diversity_list)
+diversity_df$runID_print <- sub("run", "", diversity_df$runID)
 ```
 
 Plot!
@@ -407,23 +415,31 @@ Plot!
 ```{r, fig.width=5, fig.height=5}
 theme_set(theme_bw())
 ggplot(diversity_df, aes(y=obsrich, col=as.factor(truncLen.R), x=as.factor(maxEE.R))) +
-  geom_boxplot() +
-  # facet_wrap(~runID, scales="free_y") +
-  facet_wrap(~runID) +
-  labs(col="truncLen.R", x="maxEE.R") +
-  ylab("Observed richness")
-ggsave(file.path(PATH_TEST, "results", "diversity_plot_obsrich.png"), width=10, height=7, units="in")
+  geom_boxplot(size = 0.3) +
+  facet_wrap(~runID_print, ncol=4) +
+  labs(col=expression(truncLen[R]), x=expression(maxEE[R])) +
+  ylab("Observed richness") +
+  scale_color_manual(values = c("#E69F00", "#56B4E9", "#CC79A7")) +
+  theme(legend.position = "top",
+        legend.text = element_text(size = 9),
+        legend.key.size = unit(0.5, "cm"),
+        strip.background = element_blank())
+ggsave(file.path(PATH_TEST, "results", "diversity_plot_obsrich.png"), width=5.5, height=7, units="in")
 ```
 
 ```{r, fig.width=5, fig.height=5}
 theme_set(theme_bw())
 ggplot(diversity_df, aes(y=shannon, col=as.factor(truncLen.R), x=as.factor(maxEE.R))) +
-  geom_boxplot() +
-  # facet_wrap(~runID, scales="free_y") +
-  facet_wrap(~runID) +
-  labs(col="truncLen.R", x="maxEE.R") +
-  ylab("Shannon index")
-ggsave(file.path(PATH_TEST, "results", "diversity_plot_shannon.png"), width=10, height=7, units="in")
+  geom_boxplot(size = 0.3) +
+  facet_wrap(~runID_print, ncol=4) +
+  labs(col=expression(truncLen[R]), x=expression(maxEE[R])) +
+  ylab("Shannon index") +
+  scale_color_manual(values = c("#E69F00", "#56B4E9", "#CC79A7")) +
+  theme(legend.position = "top",
+        legend.text = element_text(size = 9),
+        legend.key.size = unit(0.5, "cm"),
+        strip.background = element_blank())
+ggsave(file.path(PATH_TEST, "results", "diversity_plot_shannon.png"), width=5.5, height=7, units="in")
 ```
 
 Test statistical significance using ANOVA
@@ -555,6 +571,8 @@ ord_list <- ps_runID <- list()
 
 for (i in 1:length(runIDs)) {
   ps_runID[[i]] <- subset_samples(physeq_joined_nonzero, sequencerRunID==runIDs[i])
+}
+for (i in 1:length(runIDs)) {
   set.seed(1010101)
   ord_list[[i]] <- ordinate(ps_runID[[i]], "NMDS", "bray", k=2)
   saveRDS(ord_list[[i]], file.path(PATH_TEST, "results", paste0("sensitivity_ordination_", runIDs[i], "_COLLAPSED.Rds")))
@@ -576,8 +594,9 @@ Generalize to plot with one facet for each runID:
 ```{r}
 stress_annotations <- lapply(ord_list, function(o) {
   data.frame(xloc=Inf, yloc=-Inf, 
-             label=paste0("Stress: ", formatC(signif(o$stress,digits=3), digits=3,format="fg", flag="#")),
-             hjust=1.10, vjust=-0.10)
+             # label=paste0("Stress: ", formatC(signif(o$stress,digits=3), digits=3,format="fg", flag="#")),
+             label=paste0("Stress: ", round(o$stress, 3)),
+             hjust=1.05, vjust=-0.15)
 })
 
 theme_set(theme_bw())
@@ -591,17 +610,49 @@ for(i in 1:length(ord_list)) {
     geom_point(aes(col=truncLen.R, shape=maxEE.R)) + 
     stat_ellipse(aes(group=sampleID), lwd=0.1, col="grey20") +
     scale_shape_manual(values=c(21, 22, 24)) +
-    guides(col=FALSE, shape=FALSE) +
+    scale_color_manual(values = c("#E69F00", "#56B4E9", "#CC79A7")) +
+    guides(col="none", shape="none") +
     ggtitle(runIDs[i]) +
     geom_text(data=stress_annotations[[i]], aes(x=xloc, y=yloc, label=label, hjust=hjust, vjust=vjust), size=3) +
-    theme(plot.title = element_text(hjust=0.5),
+    theme(plot.title = element_text(hjust=0.5, size=12),
           panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank())
+          panel.grid.minor = element_blank(),
+          # axis.title = element_text(size=9),
+          axis.title = element_blank())
 }
-g <- gridExtra::arrangeGrob(grobs=ordplot_list, ncol=5)
-ggsave(file.path(PATH_TEST, "results", "ordination_plot_COLLAPSED.png"), plot=g, width=10, height=7, units="in")
+
+# Sequencing run B9994 known to have convergence failure; optionally omit its plot
+plot(ordplot_list[[3]])
+ordplot_list[[3]] <- ordplot_list[[3]] + 
+       geom_rect(aes(xmin=-Inf, xmax=Inf, ymin=-Inf, ymax=Inf),
+            color="black", fill="white") +
+       theme(axis.text = element_text(color="white"),
+             axis.ticks = element_blank()) +
+       annotate(geom = 'text', x = 4750, y = 0.5, label = "Plot omitted due to\nconvergence failure", size=3)
+
+
+g <- gridExtra::arrangeGrob(grobs=ordplot_list, ncol=4)
 plot(g)
+ggsave(file.path(PATH_TEST, "results", "ordination_plot_COLLAPSED.png"), plot=g, width=6.6, height=7.7, units="in")
 ```
+
+Get just the legend
+
+```{r}
+library(cowplot)
+library(grid)
+
+legend <- cowplot::get_legend(ggplot(sampledata, aes(x=NMDS1, y=NMDS2)) +
+      geom_point(aes(col=truncLen.R, shape=maxEE.R)) + 
+      scale_shape_manual(expression(maxEE[R]), values=c(21, 22, 24)) +
+      scale_color_manual(expression(truncLen[R]), values = c("#E69F00", "#56B4E9", "#CC79A7")) +
+      theme(legend.position = "top"))
+
+grid.newpage()
+grid.draw(legend)
+ggsave(file.path(PATH_TEST, "results", "ordination_plot_COLLAPSED_legend.png"), plot=legend, width=6.6, height=0.5, units="in")
+```
+
 
 ### Test statistical significance using permANOVA
 

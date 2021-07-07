@@ -21,11 +21,11 @@ with(meta_16s_qc, table(siteID, sequencerRunID))
 # download_success_16s <- downloadRawSequenceData(meta_16s_qc[which(meta_16s_qc$siteID=="KONZ"),])
 download_success_16s <- downloadRawSequenceData(meta_16s_qc)
 
-outdir_sequence <- PRESET_OUTDIR_SEQUENCE
-fn0_16s <- file.path(outdir_sequence, meta_16s_qc$rawDataFileName)
-fn_16s <- unique(fn0_16s[file.exists(fn0_16s)])
-
-reorganized_files_16s <- organizeRawSequenceData(fn_16s, meta_16s_qc)
+# outdir_sequence <- NEONMICROBE_DIR_SEQUENCE()
+# fn0_16s <- file.path(outdir_sequence, meta_16s_qc$rawDataFileName)
+# fn_16s <- unique(fn0_16s[file.exists(fn0_16s)])
+#
+# reorganized_files_16s <- organizeRawSequenceData(fn_16s, meta_16s_qc)
 
 
 # Process sequences
@@ -57,7 +57,7 @@ dir.create(PATH_FILTERED, recursive=TRUE)
 dir.create(PATH_SEQTABS, recursive=TRUE)
 
 meta <- meta_16s_qc
-meta_fn <- matchFastqToMetadata(list.files(PATH_RAW, full.names=TRUE), meta)
+meta_fn <- matchFastqToMetadata(list.files(NEONMICROBE_DIR_SEQUENCE(), full.names=TRUE), meta)
 
 unique_runs <- unique(meta_fn$sequencerRunID)
 unique_runs
@@ -117,7 +117,7 @@ seqtab_joined <- mergeSequenceTables(tables = seqtab_filenames)
 
 t0 <- Sys.time()
 seqmeta_greatplains_16s <- collapseNoMismatch(seqtab_joined) # Took 6.93 hours on socs-stats.ucsc.edu
-usethis::use_data(seqmeta_greatplains_16s, overwrite=TRUE)
+usethis::use_data(seqtab_greatplains_16s, overwrite=TRUE)
 t1 <- Sys.time()
 
 t1 - t0

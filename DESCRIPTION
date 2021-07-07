@@ -34,7 +34,7 @@ Imports:
     R.utils (>= 2.10.1)
 Depends: 
     R (>= 3.5.0),
-    dada2 (>= 1.12.1)
+    dada2 (>= 1.19.2)
 Suggests: 
     rmarkdown,
     knitr,

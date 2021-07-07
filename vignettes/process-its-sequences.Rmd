@@ -196,7 +196,7 @@ dada_out <- runDadaITS(
 
 ## Combine the read-tracking tables
 
-It can be useful to track the loss of reads at each step in the processing pipeline, as it may allow you to pinpoint where something went wrong. Each of the processing functions shown above (`trimPrimers16S()`, `qualityFilter16S()`, and `runDada16S()`) returns a read-tracking table. The tables can be combined using the following function.
+It can be useful to track the loss of reads at each step in the processing pipeline, as it may allow you to pinpoint where something went wrong. Each of the processing functions shown above (`trimPrimersITS()`, `qualityFilterITS()`, and `runDadaITS()`) returns a read-tracking table. The tables can be combined using the following function.
 
 ```{r}
 track <- combineReadTrackingTablesITS(prefilter_trackReads, 

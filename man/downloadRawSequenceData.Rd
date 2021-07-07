@@ -22,7 +22,7 @@ downloadRawSequenceData(
 
 \item{ignore_tar_files}{If TRUE (default), does not download tar files. Each tar file is a batch containing an entire sequence run of fastq files. The tar file structure will soon be deprecated.}
 
-\item{verbose}{If TRUE, prints status messages and progress bars associated with file downloads.}
+\item{verbose}{If TRUE, prints status messages associated with file downloads (in addition to default progress bars).}
 }
 \value{
 Returns (invisibly) a list of integer codes: 0 indicates success of downloads and a non-zero integer indicates failure. See the help page for \code{\link[utils]{download.file}} for more details.

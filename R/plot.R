@@ -127,7 +127,7 @@ plotEEProfile <- function(fn, n=5e+5, aggregate=FALSE, logEE=TRUE, include_quali
         annotate("text", x = 0, y = 0, label = sprintf("Total reads: %d", sum(anndf$rc)), color = "red", hjust = 0) +
         theme_bw() +
         theme(panel.grid = element_blank()) +
-        guides(fill = FALSE) +
+        guides(fill = "none") +
         facet_wrap(~label) +
         ylim(c(0, NA))
       if (length(unique(statdf$Cum)) > 1) {
@@ -149,7 +149,7 @@ plotEEProfile <- function(fn, n=5e+5, aggregate=FALSE, logEE=TRUE, include_quali
       scale_linetype_manual(values=c("solid", "dashed", "solid", "dashed")) +
       scale_size_manual(values=c(1, 0.5, 0.5, 0.5)) +
       labs(y="Cum. expected errors", col="") +
-      guides(col=FALSE, linetype=FALSE, size=FALSE)
+      guides(col="none", linetype="none", size="none")
 
     # If not aggregating files
   } else {
@@ -162,7 +162,7 @@ plotEEProfile <- function(fn, n=5e+5, aggregate=FALSE, logEE=TRUE, include_quali
         geom_line(data = statdf, aes(y = Q50), color = "#FC8D62", size = 0.25) +
         geom_line(data = statdf, aes(y = Q75), color = "#FC8D62", size = 0.25, linetype = "dashed") +
         ylab("Quality Score") + xlab("Cycle") + theme_bw() +
-        theme(panel.grid = element_blank()) + guides(fill = FALSE) +
+        theme(panel.grid = element_blank()) + guides(fill = "none") +
         geom_text(data = anndf, aes(x = 0, label = rclabel,
                                     y = 0), color = "red", hjust = 0) +
         facet_wrap(~file) +
@@ -191,7 +191,7 @@ plotEEProfile <- function(fn, n=5e+5, aggregate=FALSE, logEE=TRUE, include_quali
       scale_size_manual(values=c(1, 0.5, 0.5, 0.5)) +
       labs(y="Cum. expected errors", col="") +
       facet_wrap(~file) +
-      guides(col=FALSE, linetype=FALSE, size=FALSE)
+      guides(col="none", linetype="none", size="none")
   }
 
   ee_label <- ee_label0[ee_label0$ee < max(eedf$expected_errors),]

@@ -403,3 +403,86 @@ combineReadTrackingTablesITS <- function(prefilter_table, filter_table, dada_tab
 
   return(track)
 }
+
+
+#' Combine together sequences that are identical up to shifts and/or length (with progress bar)
+#'
+#' This function adds a simply adds a progress bar to \code{\link[dada2]{collapseNoMismatch}}.
+#'
+#' @seealso \code{\link[dada2]{collapseNoMismatch}}
+#'
+#' @param seqtab (Required). A sample by sequence matrix, the return of \code{\link[dada2]{makeSequenceTable}}.
+#' @param minOverlap (Optional). numeric(1). Default 20. The minimum amount of overlap between sequences required to collapse them together.
+#' @param orderBy (Optional). character(1). Default "abundance". Specifies how the sequences (columns) of the returned table should be ordered (decreasing). Valid values: "abundance", "nsamples", NULL.
+#' @param identicalOnly (Optional). logical(1). Default FALSE. If TRUE, only identical sequences (i.e. duplicates) are collapsed together.
+#' @param vec (Optional). logical(1). Default TRUE. Use the vectorized aligner. Should be turned off if sequences exceed 2kb in length.
+#' @param verbose (Optional). logical(1). Default FALSE. If TRUE, a summary of the function results are printed to standard output.
+#'
+#' @return
+#' @export
+#'
+#' @examples
+collapseNoMismatch2 <- function (seqtab, minOverlap = 20, orderBy = "abundance", identicalOnly = FALSE,
+                                 vec = TRUE, verbose = FALSE)
+{
+  dupes <- duplicated(colnames(seqtab))
+  if (any(dupes)) {
+    st <- seqtab[, !dupes, drop = FALSE]
+    for (i in which(dupes)) {
+      sq <- colnames(seqtab)[[i]]
+      st[, sq] <- st[, sq] + seqtab[, i]
+    }
+    seqtab <- st
+  }
+  if (identicalOnly) {
+    return(seqtab)
+  }
+  unqs.srt <- sort(getUniques(seqtab), decreasing = TRUE)
+  seqs <- names(unqs.srt)
+  seqs.out <- character(0)
+  collapsed <- matrix(0L, nrow = nrow(seqtab), ncol = ncol(seqtab))
+  colnames(collapsed) <- colnames(seqtab)
+  rownames(collapsed) <- rownames(seqtab)
+
+  # progress bar
+  progressbar <- txtProgressBar(min = 0, max = , style = 3)
+  # for(i in 1:length(dnaSampleIDs)) {
+  setTxtProgressBar(progressbar, i)
+  # }
+  close(progressbar)
+
+  for (query in seqs) {
+    added = FALSE
+    prefix <- substr(query, 1, minOverlap)
+    for (ref in seqs.out) {
+      prefix.ref <- substr(ref, 1, minOverlap)
+      if (grepl(prefix, ref, fixed = TRUE) || grepl(prefix.ref, query, fixed = TRUE)) {
+        if (nwhamming(query, ref, vec = vec, band = 16) == 0) {
+          collapsed[, ref] <- collapsed[, ref] + seqtab[, query]
+          added = TRUE
+          break
+        }
+      }
+    }
+    if (!added) {
+      collapsed[, query] <- seqtab[, query]
+      seqs.out <- c(seqs.out, query)
+    }
+  }
+  collapsed <- collapsed[, colnames(collapsed) %in% seqs.out, drop = FALSE]
+  if (!is.null(orderBy)) {
+    if (orderBy == "abundance") {
+      collapsed <- collapsed[, order(colSums(collapsed),
+                                     decreasing = TRUE), drop = FALSE]
+    }
+    else if (orderBy == "nsamples") {
+      collapsed <- collapsed[, order(colSums(collapsed >
+                                               0), decreasing = TRUE), drop = FALSE]
+    }
+  }
+  collapsed <- collapsed[, order(colSums(collapsed), decreasing = TRUE)]
+  if (verbose)
+    message("Output ", ncol(collapsed), " collapsed sequences out of ",
+            ncol(seqtab), " input sequences.")
+  collapsed
+}
