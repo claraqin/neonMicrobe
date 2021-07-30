@@ -715,11 +715,11 @@ runDadaITS <- function(fn, in_subdir, meta, out_seqtab = NULL, out_track = NULL,
 
   # Validate output arguments
   if(is.null(out_seqtab)) {
-    out_seqtab <- file.path(NEONMICROBE_DIR_MIDPROCESS(), "16S", "4_seqtabs",
+    out_seqtab <- file.path(NEONMICROBE_DIR_MIDPROCESS(), "ITS", "4_seqtabs",
                             paste0("asv_its_", sub(" ", "_", gsub(":", "", Sys.time())), ".Rds"))
   }
   if(is.null(out_track)) {
-    out_track <- file.path(NEONMICROBE_DIR_TRACKREADS(), "16S",
+    out_track <- file.path(NEONMICROBE_DIR_TRACKREADS(), "ITS",
                            paste0("dada_its_", sub(" ", "_", gsub(":", "", Sys.time())), ".csv"))
   }
 
@@ -728,7 +728,7 @@ runDadaITS <- function(fn, in_subdir, meta, out_seqtab = NULL, out_track = NULL,
   fnFs <- fn[grep("R1", meta_ext$rawDataFileDescription)]
 
   # Confirm target gene
-  if(any(!grepl("16S", meta_ext$targetGene))) warning("You are using runDadaITS() on some non-ITS files. Did you mean to use runDada16S()?")
+  if(any(!grepl("ITS", meta_ext$targetGene))) warning("You are using runDadaITS() on some non-ITS files. Did you mean to use runDada16S()?")
 
   # Attempt to get DNA sample IDs to use as row names
   dnaSampleIDs <- as.character(meta_ext$dnaSampleID[match(fnFs, meta_ext$file)])

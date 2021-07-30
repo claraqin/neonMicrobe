@@ -669,22 +669,26 @@ organizeRawSequenceData <- function(fn, metadata, outdir_sequence = NEONMICROBE_
 #' @param sites Either the string 'all' (default), meaning all available sites, or a character vector of 4-letter NEON site codes, e.g. c('ONAQ','RMNP'). Defaults to PRESET_SITES parameter in params.R.
 #' @param startYrMo,endYrMo Either NA (default), meaning all available dates, or a character vector in the form YYYY-MM, e.g. 2017-01. Defaults to PRESET_START_YR_MO in params.R.
 #' @param dpID NEON data product(s) of interest. Default is DP1.10086.001 ("Soil physical and chemical properties, periodic").
-#' @param outDir Default NEONMICROBE_DIR_SOIL() If a local copy of the filtered metadata is desired, provide path to output directory.
+#' @param outDir Directory where a copy of the downloaded soil data will be saved. By default (NULL), this is NEONMICROBE_DIR_SOIL(). If no copy should be saved, set outDir=FALSE.
 #' @param rmSamplingImpractical Default TRUE. Whether to remove soil data records when sampling did not actually occur.
 #' @param rmNTransBouts Default TRUE. Whether to remove soil data records from bouts to collect N-transformation incubation tubes. These are only useful for calculating N-transformation rates and aren't associated with microbial data.
 #' @param rmFailedCNDataQF Default TRUE. Whether to remove soil data records where cnPercentQF indicates failure. While other QF fields exist and are simply passed to output, this particular check may be desirable because this function later aggregates nitrogenPercent and organicCPercent values for cnSampleIDs with analytical replicates.
 #'
-#' @return If return_data==TRUE, returns a dataframe consisting of joined soil data records from DP1.10086 ("Soil physical and chemical properties, periodic"). Otherwise, no value is returned.
+#' @return A dataframe consisting of joined soil data records from DP1.10086 ("Soil physical and chemical properties, periodic"). Otherwise, no value is returned.
 #' @export
 #'
 #' @importFrom magrittr "%>%"
 downloadSoilData <- function(sites='all', startYrMo = NA, endYrMo = NA,
-                             dpID = c("DP1.10086.001"), outDir=NEONMICROBE_DIR_SOIL(),
+                             dpID = c("DP1.10086.001"), outDir=NULL,
                              rmSamplingImpractical=TRUE, rmNTransBouts=TRUE,
                              rmFailedCNDataQF=TRUE) {
+  if(is.null(outDir)) {
+    outDir <- NEONMICROBE_DIR_SEQUENCE()
+  }
+
   if(!dir.exists(outDir)) {
-    message("Output directory does not exist. Returning NULL.")
-    return(NULL)
+    warning("Specified output directory does not exist.")
+    return(invisible(NULL))
   }
 
   # library(dplyr)
@@ -803,7 +807,7 @@ downloadSoilData <- function(sites='all', startYrMo = NA, endYrMo = NA,
       # Need to collapse nitrogenPercent and organicCPercent values into the same rows. (They come in separate rows.)
       soilchem <- dplyr::select(slsL1[["DP1.10086.001"]]$"sls_soilChemistry", all_of(c(joining_cols, keep_cols))) %>%
         dplyr::rename(cnTestMethod=testMethod, cnInstrument=instrument) %>%
-        tidyr::pivot_longer(c(nitrogenPercent, organicCPercent)) %>%
+        tidyr::pivot_longer(c(nitrogenPercent, organicCPercent, CNratio)) %>%
         dplyr::filter(!is.na(value))
       if(rmFailedCNDataQF==TRUE) {
         soilchem <- dplyr::filter(soilchem, cnPercentQF == "OK" | is.na(cnPercentQF))
@@ -854,10 +858,7 @@ downloadSoilData <- function(sites='all', startYrMo = NA, endYrMo = NA,
   }
 
   # download local copy if user provided output dir path
-  if(outDir != "") {
-    if(!dir.exists(outDir)) {
-      dir.create(outDir)
-    }
+  if(!identical(outDir, FALSE)) {
     write.csv(dat_soil, paste0(outDir, "/sls_soilData_", Sys.Date(), ".csv"),
               row.names=F)
     message(paste0("Soil data downloaded to: ", outDir, "/sls_soilData_", Sys.Date(), ".csv") )
@@ -878,5 +879,5 @@ downloadRawSoilData <- function(sites='all', startYrMo = NA, endYrMo = NA,
                              dpID = c("DP1.10086.001"), outDir=NEONMICROBE_DIR_SOIL(),
                              rmSamplingImpractical=TRUE, rmNTransBouts=TRUE,
                              rmFailedCNDataQF=TRUE) {
-  warning("downloadRawSoilData() is now downloadSoilData().")
+  .Deprecated("downloadSoilData")
 }

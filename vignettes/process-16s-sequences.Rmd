@@ -58,7 +58,7 @@ setBaseDirectory()
 As explained in the "Download NEON Data" vignette, `neonMicrobe` is a *metadata-first* processing pipeline. So we begin by retrieving sequence metadata. Any fastq files that are represented in the metadata will be processed by the functions in the next section, and any fastq files that are *not* represented in the metadata will be ignored. Therefore, it is recommended that you use the same metadata you used to download the files in the first place, lest you end up with fewer or more processed samples than intended.
 
 ```{r}
-data("seqmeta_greatplains_16s")
+data("seqmeta_greatplains_16s") # This is external data that comes with the package, much like "data(mtcars)"
 meta <- qcMetadata(seqmeta_greatplains_16s, pairedReads = "Y", rmFlagged = "Y")
 meta$date_ymd <- as.Date(format(as.Date(meta$collectDate, format="%Y-%m-%d %H:%M:%S"), "%Y-%m-%d"))
 ```
@@ -188,17 +188,24 @@ At this point, it is safe to clear some variables from the R environment, freein
 ```{r}
 rm(trim_trackReads)
 rm(filter_trackReads)
-rm(dada_out)
 ```
 
 
 ## Merging ASV tables from across sequencing runs
 
-If you've processed multiple sequencing runs separately (as you should!), then you will have created multiple ASV tables. You can merge ASV tables together using the `dada2` function `mergeSequenceTables()`.
+If you've processed multiple sequencing runs separately (as you should!), then you will have created multiple ASV tables. You can merge ASV tables together using the `dada2` function `mergeSequenceTables()`. The example below shows you how you might use `mergeSequenceTables()` if you processed multiple sequencing runs. However, if you are following this tutorial, which only processes samples from one sequencing run, then there is no need to `mergeSequenceTables()`.
 
 ```{r, eval=FALSE}
-seqtab_joined <- mergeSequenceTables(tables = seqtab_filenames)
+# If multiple sequencing runs were processed:
+seqtab_filenames = list.files(file.path(NEONMICROBE_DIR_MIDPROCESS(), "16S", "3_seqtabs"), pattern = ".Rds", full.names = TRUE)
+seqtab_joined <- mergeSequenceTables(tables = seqtab_filenames) # Also accepts other input formats, e.g. tables provided as in-memory objects
 ```
+
+```{r}
+# If following this tutorial, which processes only one sequencing run:
+seqtab_joined <- dada_out$seqtab
+```
+
 
 While `mergeSequenceTables()` checks for duplicate samples, it performs no ASV clustering. Clustering may be prudent when joining sequences across sequencing runs, because the 'dada' algorithm could produce an ASV in one run that is identical to an ASV in another run *except that one of the ASVs is one or two base pairs longer*. (Anecdotally, this can result in the detection of a mean effect on community composition where it does not exist!) ASVs that differ only in length can be combined using any "100% clustering" algorithm, and `dada2` provides one through `collapseNoMismatch()`. Be warned, though, that at the time of writing (`dada2` version 1.12.1), `collapseNoMismatch()` is not parallelizable, and does not scale well with an increasing number of ASVs. 
 

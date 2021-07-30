@@ -9,7 +9,7 @@ downloadSoilData(
   startYrMo = NA,
   endYrMo = NA,
   dpID = c("DP1.10086.001"),
-  outDir = NEONMICROBE_DIR_SOIL(),
+  outDir = NULL,
   rmSamplingImpractical = TRUE,
   rmNTransBouts = TRUE,
   rmFailedCNDataQF = TRUE
@@ -22,7 +22,7 @@ downloadSoilData(
 
 \item{dpID}{NEON data product(s) of interest. Default is DP1.10086.001 ("Soil physical and chemical properties, periodic").}
 
-\item{outDir}{Default NEONMICROBE_DIR_SOIL() If a local copy of the filtered metadata is desired, provide path to output directory.}
+\item{outDir}{Directory where a copy of the downloaded soil data will be saved. By default (NULL), this is NEONMICROBE_DIR_SOIL(). If no copy should be saved, set outDir=FALSE.}
 
 \item{rmSamplingImpractical}{Default TRUE. Whether to remove soil data records when sampling did not actually occur.}
 
@@ -31,7 +31,7 @@ downloadSoilData(
 \item{rmFailedCNDataQF}{Default TRUE. Whether to remove soil data records where cnPercentQF indicates failure. While other QF fields exist and are simply passed to output, this particular check may be desirable because this function later aggregates nitrogenPercent and organicCPercent values for cnSampleIDs with analytical replicates.}
 }
 \value{
-If return_data==TRUE, returns a dataframe consisting of joined soil data records from DP1.10086 ("Soil physical and chemical properties, periodic"). Otherwise, no value is returned.
+A dataframe consisting of joined soil data records from DP1.10086 ("Soil physical and chemical properties, periodic"). Otherwise, no value is returned.
 }
 \description{
 Downloads the following NEON data product:
