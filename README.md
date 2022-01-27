@@ -1,6 +1,12 @@
 # neonMicrobe
 
-`neonMicrobe` is a suite of functions for downloading, pre-processing, and assembling heterogeneous data around the NEON soil microbe marker gene sequence data. To do so, `neonMicrobe` downloads NEON data products from the NEON Data API and processes sequences using the DADA2 workflow. In addition, `neonMicrobe` offers a processing-batch infrastructure to encourage explicit versioning of processed data.
+`neonMicrobe` is a suite of functions for downloading, pre-processing, and assembling heterogeneous data around the NEON soil microbe marker gene sequence data. To do so, `neonMicrobe` downloads NEON data products from the NEON Data API and processes sequences using the DADA2 workflow. In the future, `neonMicrobe` will offer a processing-batch infrastructure to encourage explicit versioning of processed data.
+
+## How to cite
+
+Please cite this package by citing the associated methods paper:
+
+Qin, C., Bartelme, R., Chung, Y. A., Fairbanks, D., Lin, Y., Liptzin, D., Muscarella, C., Natihani, K., Peay, K., Pellitier, P., St. Rose, A., Werbin, Z., & Zhu, K. (2021). From DNA sequences to microbial ecology: Wrangling NEON soil microbe data with the neonMicrobe R package. Ecosphere, 12(11). https://doi.org/10.1002/ecs2.3842
 
 ## Installation
 
@@ -68,6 +74,3 @@ The `track_reads/` subdirectory contains tables tracking the number of reads rem
 
 (Coming soon: When the processing batch feature is released, the default outputs directory will be switched to `batch_outputs`. More on this later!)
 
-## Methods paper
-
-A methods paper describing the use of `neonMicrobe` is currently in review.
