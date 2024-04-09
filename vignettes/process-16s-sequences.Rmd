@@ -12,8 +12,9 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
-devtools::load_all() # TODO: Switch this to library(neonMicrobe) before publishing
-setBaseDirectory(dirname(getwd()))
+library(neonMicrobe)
+# devtools::load_all() # TODO: Switch this to library(neonMicrobe) before publishing
+# setBaseDirectory(dirname(getwd()))
 knitr::opts_knit$set(
   root.dir = NEONMICROBE_DIR_BASE()
 )
@@ -211,9 +212,10 @@ While `mergeSequenceTables()` checks for duplicate samples, it performs no ASV c
 
 ```{r, eval=FALSE}
 seqtab_joined_collapsed <- collapseNoMismatch(seqtab_joined)
-saveRDS(seqtab_joined_collapse, 
-        file.path(NEONMICROBE_PATH_MIDPROCESS(), "16S", "4_collapsed",
+saveRDS(seqtab_joined_collapsed, 
+        file.path(NEONMICROBE_DIR_MIDPROCESS(), "16S", "4_collapsed",
                   "NEON_16S_seqtab_nochim_grasslands_COLLAPSED.Rds"))
+seqtab_joined_collapsed <- readRDS(file.path(NEONMICROBE_DIR_MIDPROCESS(), "16S", "4_collapsed", "NEON_16S_seqtab_nochim_grasslands_COLLAPSED.Rds"))
 ```
 
 
@@ -225,8 +227,8 @@ In this final section of the vignette, we assign taxonomy to each of the identif
 # Remove low-abundance taxa and low-quality samples
 keep_taxa <- which(colSums(seqtab_joined_collapsed) > 10)
 keep_samples <- which(rowSums(seqtab_joined_collapsed) > 1000)
-seqtab_joined_collapsed <- seqtab_joined_collapsed[,keep_taxa]
-seqtab_joined_collapsed <- seqtab_joined_collapsed[keep_samples,]
+seqtab_joined_collapsed <- seqtab_joined_collapsed[,keep_taxa,drop=FALSE]
+seqtab_joined_collapsed <- seqtab_joined_collapsed[keep_samples,,drop=FALSE]
 
 # Check size of dataset
 print(dim(seqtab_joined_collapsed))
@@ -236,7 +238,7 @@ We will be assigning taxonomy using the SILVA reference database. Download the S
 
 ```{r, eval=FALSE}
 silva.url <- "https://zenodo.org/record/3986799/files/silva_nr99_v138_train_set.fa.gz"
-download.file(silva.url, NEONMICROBE_DIR_TAXREF(), basename(silva.url))
+download.file(silva.url, file.path(NEONMICROBE_DIR_TAXREF(), basename(silva.url)))
 ```
 
 Assign taxonomy using the SILVA reference database:
@@ -253,7 +255,7 @@ Save the taxonomy table to file:
 ```{r, eval=FALSE}
 saveRDS(
   tax, 
-  file.path(NEONMICROBE_DIR_OUTPUTS(), "16S", "5_tax", 
+  file.path(NEONMICROBE_DIR_MIDPROCESS(), "16S", "5_tax", 
             "NEON_16S_tax_grasslands_COLLAPSED.Rds")
 )
 ```

@@ -12,8 +12,9 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
-devtools::load_all() # TODO: Switch this to library(neonMicrobe) before publishing
-setBaseDirectory(dirname(getwd()))
+library(neonMicrobe)
+# devtools::load_all() # TODO: Switch this to library(neonMicrobe) before publishing
+# setBaseDirectory(dirname(getwd()))
 knitr::opts_knit$set(
   root.dir = NEONMICROBE_DIR_BASE()
 )
@@ -50,19 +51,19 @@ setBaseDirectory()
 
 # Load outputs from DADA2
 
-Load in the outputs from dada2. These would normally consist of the ASV table and the associated taxonomy table, but for the purposes of demonstration, we load only the ASV table in this vignette. In particular, we'll us the ASV table that came pre-loaded with `neonMicrobe` for use in examples.
+Load in the outputs from dada2. These would normally consist of the ASV table and the associated taxonomy table, but for the purposes of demonstration, we load only the ASV table in this vignette. In particular, we'll use the ASV table that came pre-loaded with `neonMicrobe` for use in examples.
 
 ```{r}
 data("seqtab_greatplains_16s")
 seqtab_orig <- seqtab_greatplains_16s
 ```
 
-For reference, this is what loading your own data into this workflow might look like, if you have previously saved them to an Rds file:
+For reference, this is what loading your own data into this workflow might look like, if you have previously saved them to an Rds file. Please note that if you actually run the following code chunk after having run the "process-16s-sequences" vignette, then this will yield a sequence table `seqtab_orig` containing only 1 sample. This is expected behavior. To include more samples or a different set of samples, use the code in the "process-16s-sequences" vignette as a template, modifying the sample selection under the "Process reads into ASV tables" section. Alternatively, simply use the preloaded `seqtab_orig` to follow along in the vignette for now.
 
 ```{r, eval=FALSE}
 seqtab_orig <- readRDS(file.path(NEONMICROBE_DIR_MIDPROCESS(), "16S", "4_collapsed",
                        "NEON_16S_seqtab_nochim_grasslands_COLLAPSED.Rds"))
-taxa_orig <- readRDS(file.path(NEONMICROBE_DIR_OUTPUTS(), "16S", "5_tax", 
+taxa_orig <- readRDS(file.path(NEONMICROBE_DIR_MIDPROCESS(), "16S", "5_tax", 
                     "NEON_16S_tax_grasslands_COLLAPSED.Rds"))
 ```
 
@@ -154,7 +155,7 @@ ps
 Don't forget to save!
 
 ```{r, eval = FALSE}
-saveRDS(ps, file.path(NEONMICROBE_DIR_OUTPUTS(), "phyloseq", "NEON_16S_phyloseq_greatplains.Rds"))
+saveRDS(ps, file.path(NEONMICROBE_DIR_OUTPUTS(), "phyloseq", "16S", "NEON_16S_phyloseq_greatplains.Rds"))
 ```
 
 If the saved object still takes up too much memory, consider removing or consolidating additional taxa, using agglomeration functions in `dada2`. The `speedyseq` [package](https://github.com/mikemc/speedyseq) is also useful for manipulating large Phyloseq objects
@@ -165,5 +166,5 @@ If the saved object still takes up too much memory, consider removing or consoli
 # This protects against an OTU with small mean & trivially large C.V. 
 # (from phyloseq tutorial)
 ps_subset = filter_taxa(ps, function(x) sum(x > 3) > 10, TRUE)
-saveRDS(ps_subset, file.path(newest_outputs, "NEON_16S_phyloseq_greatplains_subset.Rds"))
+saveRDS(ps_subset, file.path(NEONMICROBE_DIR_OUTPUTS(), "phyloseq", "16S", "NEON_16S_phyloseq_greatplains_subset.Rds"))
 ```

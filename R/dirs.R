@@ -37,7 +37,9 @@ setBaseDirectory <- function(dir = getwd()) {
 #' }
 makeDataDirectories <- function(check_location = TRUE) {
   if(identical(check_location, TRUE)) {
-    resp <- readline(paste("Create new data directory structure in current working directory (", getwd(), ")? y/n: ", sep=" "))
+    resp <- readline(paste("Create new data directory structure in base director (",
+                           get("NEONMICROBE_DIR_BASE", envir = neonmicrobe_env),
+                           ")? y/n: ", sep=" "))
     if(!(resp %in% c("y","Y"))) return(invisible(NULL))
   }
 
@@ -80,14 +82,21 @@ makeDataDirectories <- function(check_location = TRUE) {
   createDirIfNotExist(file.path(outputs_dir, "mid_process", "ITS", c("1_filtN",
                                                                      "2_trimmed",
                                                                      "3_filtered",
-                                                                     "4_seqtabs")))
+                                                                     "4_seqtabs",
+                                                                     "5_tax")))
   createDirIfNotExist(file.path(outputs_dir, "mid_process", "16S", c("1_trimmed",
                                                                      "2_filtered",
-                                                                     "3_seqtabs")))
+                                                                     "3_seqtabs",
+                                                                     "4_collapsed",
+                                                                     "5_tax")))
 
   # Also create directories for read-tracking tables
   createDirIfNotExist(file.path(outputs_dir, "track_reads", c("ITS",
                                                               "16S")))
+
+  # Also create directories for Phyloseq objects
+  createDirIfNotExist(file.path(outputs_dir, "phyloseq", c("ITS",
+                                                           "16S")))
 
   # If preset directory for soil data does not exist, create it
   createDirIfNotExist(soil_dir)

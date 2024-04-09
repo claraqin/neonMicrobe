@@ -1,8 +1,8 @@
 ---
-title: "Convert ITS data to Phyloseq with environmental variables"
+title: "Add Environmental Variables to ITS Data"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{dada2-to-phyloseq-its}
+  %\VignetteIndexEntry{Add Environmental Variables to ITS Data}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
